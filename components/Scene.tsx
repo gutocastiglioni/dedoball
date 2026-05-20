@@ -28,6 +28,9 @@ interface SceneProps {
   updateGoalkeeperPositions?: (homeX: number, awayX: number) => void;
   homeKitConfig?: any;
   awayKitConfig?: any;
+  recenterTrigger: number;
+  isCameraCentered: boolean;
+  setIsCameraCentered: (val: boolean) => void;
 }
 
 interface Ball3DProps {
@@ -116,12 +119,25 @@ const CameraManager: React.FC<{
   ballPos: [number, number, number]; 
   turn: Team;
   controlsEnabled?: boolean;
-}> = ({ phase, ballPos, turn, controlsEnabled = true }) => {
+  recenterTrigger: number;
+  isCameraCentered: boolean;
+  setIsCameraCentered: (val: boolean) => void;
+}> = ({ 
+  phase, 
+  ballPos, 
+  turn, 
+  controlsEnabled = true, 
+  recenterTrigger, 
+  isCameraCentered, 
+  setIsCameraCentered 
+}) => {
   const controlsRef = useRef<any>(null);
   const { camera } = useThree();
   const targetLookAt = useRef(new THREE.Vector3(0, 0.2, 0));
   const isUserControlled = useRef(false);
   const lastPhase = useRef<GamePhase | null>(null);
+  const lastBallPos = useRef<[number, number, number]>(ballPos);
+  const lastRecenterTrigger = useRef(recenterTrigger);
 
   // Reset automatic tracking mode when game phase changes
   if (phase !== lastPhase.current) {
@@ -129,17 +145,30 @@ const CameraManager: React.FC<{
     lastPhase.current = phase;
   }
 
+  // Detect recenter trigger click
+  if (recenterTrigger !== lastRecenterTrigger.current) {
+    isUserControlled.current = false;
+    lastRecenterTrigger.current = recenterTrigger;
+  }
+
+  // Detect ball movement to auto-track it
+  const isBallMoving = Math.hypot(ballPos[0] - lastBallPos.current[0], ballPos[2] - lastBallPos.current[2]) > 0.05;
+  if (isBallMoving && isUserControlled.current) {
+    isUserControlled.current = false;
+  }
+  lastBallPos.current = ballPos;
+
   useFrame(() => {
     if (!controlsRef.current) return;
 
     let desiredLookAt = new THREE.Vector3(ballPos[0], 0.2, ballPos[2]);
     
-    // Smooth camera tracking
-    targetLookAt.current.lerp(desiredLookAt, 0.08);
-    controlsRef.current.target.copy(targetLookAt.current);
-
-    // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
+    // Smooth camera tracking if not user controlled
     if (!isUserControlled.current) {
+      targetLookAt.current.lerp(desiredLookAt, 0.08);
+      controlsRef.current.target.copy(targetLookAt.current);
+
+      // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
       if (phase === GamePhase.PREPARATION) {
         // Top down taptic view for placing players
         const destPos = new THREE.Vector3(0, 11, -2);
@@ -150,6 +179,20 @@ const CameraManager: React.FC<{
         const destPos = new THREE.Vector3(Math.sin(t) * 5, 2.5, ballPos[2] + Math.cos(t) * 4);
         camera.position.lerp(destPos, 0.05);
       }
+    } else {
+      // If user controlled, apply lock boundaries to controls target
+      const target = controlsRef.current.target;
+      target.x = THREE.MathUtils.clamp(target.x, -5, 5);
+      target.z = THREE.MathUtils.clamp(target.z, -5.5, 3.93);
+      target.y = THREE.MathUtils.clamp(target.y, 0, 1.5);
+    }
+
+    // Check if camera target has deviated from desired look at to toggle centered state
+    const currentTarget = controlsRef.current.target;
+    const distance = currentTarget.distanceTo(desiredLookAt);
+    const centered = distance < 0.5;
+    if (centered !== isCameraCentered) {
+      setTimeout(() => setIsCameraCentered(centered), 0);
     }
 
     controlsRef.current.update();
@@ -159,7 +202,7 @@ const CameraManager: React.FC<{
     <OrbitControls 
       ref={controlsRef}
       enabled={controlsEnabled}
-      enablePan={false} 
+      enablePan={true} 
       minPolarAngle={Math.PI / 8} 
       maxPolarAngle={Math.PI / 2.1} 
       minDistance={3}
@@ -318,7 +361,10 @@ const SceneContent: React.FC<SceneProps> = ({
   handleBallStopped,
   updateGoalkeeperPositions,
   homeKitConfig,
-  awayKitConfig
+  awayKitConfig,
+  recenterTrigger,
+  isCameraCentered,
+  setIsCameraCentered
 }) => {
   const [hoveredSlotId, setHoveredSlotId] = useState<string | null>(null);
   const [isDraggingBall, setIsDraggingBall] = useState(false);
@@ -746,7 +792,15 @@ const SceneContent: React.FC<SceneProps> = ({
         />
 
         {/* Cinematics camera manager */}
-        <CameraManager phase={phase} ballPos={activeBallPos} turn={turn} controlsEnabled={!isDraggingBall} />
+        <CameraManager 
+          phase={phase} 
+          ballPos={activeBallPos} 
+          turn={turn} 
+          controlsEnabled={!isDraggingBall} 
+          recenterTrigger={recenterTrigger}
+          isCameraCentered={isCameraCentered}
+          setIsCameraCentered={setIsCameraCentered}
+        />
       </Suspense>
     </>
   );

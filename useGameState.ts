@@ -97,6 +97,13 @@ export const useGameState = () => {
   const [gameTime, setGameTime] = useState(0); // minutes (0 to 90)
   const [homeFlicksRemaining, setHomeFlicksRemaining] = useState(3);
   const [awayFlicksRemaining, setAwayFlicksRemaining] = useState(3);
+  const [isCameraCentered, setIsCameraCentered] = useState(true);
+  const [recenterTrigger, setRecenterTrigger] = useState(0);
+
+  const recenterCamera = useCallback(() => {
+    setRecenterTrigger(prev => prev + 1);
+    setIsCameraCentered(true);
+  }, []);
 
   // Firebase/Multiplayer States
   const [activeUser, setActiveUser] = useState<User | null>(null);
@@ -1370,6 +1377,10 @@ export const useGameState = () => {
     awayFlicksRemaining,
     handleBallStopped,
     updateGoalkeeperPositions,
+    isCameraCentered,
+    setIsCameraCentered,
+    recenterTrigger,
+    recenterCamera,
 
     // Firebase Multiplayer exports
     activeUser,

@@ -28,6 +28,8 @@ const HUDPreparationPanel: React.FC = () => {
     updatePlayerActionType,
     setCaptain,
     completePreparation,
+    isCameraCentered,
+    recenterCamera,
   } = useGameStateContext();
 
   const [tackleLimitError, setTackleLimitError] = useState(false);
@@ -219,7 +221,16 @@ const HUDPreparationPanel: React.FC = () => {
       )}
 
       {/* Confirm Escalation Done Button */}
-      <div className="pointer-events-auto w-full landscape:w-auto md:w-auto ml-auto">
+      <div className="pointer-events-auto w-full landscape:w-auto md:w-auto ml-auto flex flex-col gap-2.5 md:gap-3 items-end">
+        {!isCameraCentered && (
+          <button
+            onClick={recenterCamera}
+            className="hud-recenter-btn w-full py-2.5 md:py-3 px-5 md:px-7 bg-zinc-900/90 hover:bg-zinc-800/95 border border-zinc-700 text-cyan-400 font-bold tracking-widest uppercase rounded-xl md:rounded-2xl shadow-lg transform transition-all active:scale-98 flex items-center justify-center gap-2 text-xs md:text-sm animate-scaleUp pointer-events-auto"
+          >
+            <Navigation size={14} className="rotate-45" />
+            RECENTRALIZAR
+          </button>
+        )}
         <button
           onClick={completePreparation}
           className="hud-confirm-btn w-full py-3.5 md:py-5 px-6 md:px-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black tracking-widest uppercase rounded-2xl md:rounded-3xl shadow-[0_4px_30px_rgba(16,185,129,0.35)] hover:shadow-[0_4px_35px_rgba(16,185,129,0.5)] transform transition-all active:scale-98 flex items-center justify-center gap-2 text-xs md:text-sm"

@@ -357,19 +357,13 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               })}
             </div>
 
-            {/* Sidebar Footer: Rules & Branding */}
-            <div className="w-full flex flex-col items-center gap-1.5 pt-1.5 border-t border-zinc-850">
-              <button 
-                onClick={() => setShowInstructions(!showInstructions)}
-                className="text-[6.5px] font-black text-zinc-500 hover:text-cyan-400 uppercase tracking-widest transition-colors w-full text-center"
-              >
-                Regras
-              </button>
-              <div className="flex flex-col items-center gap-[2px] text-[5.5px] font-extrabold text-zinc-600 uppercase tracking-wider select-none leading-none pb-0.5 text-center">
-                <span>v0.1.0</span>
-                <span className="text-[4.5px] text-zinc-700 tracking-tight">gutocastiglioni</span>
-              </div>
-            </div>
+            {/* Rules Button */}
+            <button 
+              onClick={() => setShowInstructions(!showInstructions)}
+              className="text-[6.5px] font-black text-zinc-500 hover:text-cyan-400 uppercase tracking-widest transition-colors py-1 border-t border-zinc-850 w-full text-center"
+            >
+              Regras
+            </button>
           </div>
 
           {/* 2. RIGHT CONTENT AREA */}
@@ -402,6 +396,12 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             onSuccess={handleLoginSuccess}
           />
         )}
+
+        {/* Floating Version & Branding in Bottom-Right Corner (Mobile) */}
+        <div className="absolute bottom-3 right-4 z-20 pointer-events-none select-none flex flex-col items-end gap-[1px] text-[5.5px] font-extrabold text-zinc-600 uppercase tracking-wider leading-none text-right">
+          <span>v0.1.0</span>
+          <span className="text-[4.5px] text-zinc-700 tracking-tight">gutocastiglioni</span>
+        </div>
       </div>
     );
   };

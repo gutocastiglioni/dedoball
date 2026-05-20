@@ -9,6 +9,7 @@ import HUDPreparationPanel from './components/hud/HUDPreparationPanel';
 import HUDActionOverlay from './components/hud/HUDActionOverlay';
 import HUDOverlays from './components/hud/HUDOverlays';
 import { useIsMobile } from './hooks/useIsMobile';
+import { Navigation } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const {
@@ -31,7 +32,11 @@ const AppContent: React.FC = () => {
     updateGoalkeeperPositions,
     homeKitConfig,
     awayKitConfig,
-    activeUser
+    activeUser,
+    isCameraCentered,
+    setIsCameraCentered,
+    recenterTrigger,
+    recenterCamera
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -151,6 +156,9 @@ const AppContent: React.FC = () => {
             updateGoalkeeperPositions={updateGoalkeeperPositions}
             homeKitConfig={homeKitConfig}
             awayKitConfig={awayKitConfig}
+            recenterTrigger={recenterTrigger}
+            isCameraCentered={isCameraCentered}
+            setIsCameraCentered={setIsCameraCentered}
           />
         )}
       </div>
@@ -175,6 +183,19 @@ const AppContent: React.FC = () => {
           {phase === GamePhase.ACTION && <HUDActionOverlay />}
           <HUDOverlays />
         </>
+      )}
+
+      {/* Recenter Button when NOT in preparation phase and center is lost */}
+      {phase !== GamePhase.MENU && phase !== GamePhase.PREPARATION && !isCameraCentered && (
+        <div className="absolute bottom-6 right-6 z-15 pointer-events-auto">
+          <button
+            onClick={recenterCamera}
+            className="hud-recenter-btn py-3.5 md:py-4 px-6 md:px-8 bg-zinc-900/90 hover:bg-zinc-800/95 border border-zinc-700 text-cyan-400 font-bold tracking-widest uppercase rounded-2xl shadow-2xl backdrop-blur-lg transform transition-all active:scale-98 flex items-center justify-center gap-2 text-xs md:text-sm animate-scaleUp"
+          >
+            <Navigation size={14} className="rotate-45" />
+            RECENTRALIZAR
+          </button>
+        </div>
       )}
 
       {/* Profile & Kit Customizer Modal Overlay */}
