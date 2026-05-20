@@ -28,3 +28,6 @@ dist-ssr
 *debug.log*
 *.log
 
+# Scratch files
+scratch_*.txt
+scratch*.txt

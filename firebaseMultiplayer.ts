@@ -204,7 +204,8 @@ export const createMultiplayerRoom = async (name: string, password?: string): Pr
   // Set Presence for HOME
   const presenceRef = ref(db, `rooms/${roomId}/presence/home`);
   await set(presenceRef, true);
-  onDisconnect(presenceRef).set(false);
+  onDisconnect(presenceRef).remove();
+  onDisconnect(ref(db, `rooms/${roomId}`)).remove();
   
   return roomId;
 };
@@ -244,8 +245,6 @@ export const joinMultiplayerRoom = async (roomId: string, password?: string) => 
 
 export const leaveMultiplayerRoom = async (roomId: string, role: Team) => {
   if (!roomId || !role) return;
-  const user = auth.currentUser;
-  if (!user) return;
   
   const roomRef = ref(db, `rooms/${roomId}`);
   const snap = await get(roomRef);
@@ -253,12 +252,20 @@ export const leaveMultiplayerRoom = async (roomId: string, role: Team) => {
   
   const room: Room = snap.val();
   
-  // If it was waiting, delete the room if creator leaves
-  if (room.status === 'waiting' && role === 'HOME') {
+  if (role === 'HOME') {
+    // If the host leaves, delete the room entirely
     await remove(roomRef);
-  } else if (room.status === 'playing' || room.status === 'preparation') {
-    // If a player leaves during a match, we mark presence as false
-    await set(ref(db, `rooms/${roomId}/presence/${role.toLowerCase()}`), false);
+  } else {
+    // If the guest leaves:
+    if (room.status === 'playing') {
+      // If the match is already active, deleting the room ends it cleanly for both
+      await remove(roomRef);
+    } else {
+      // If guest leaves in preparation, reset room to waiting so host can wait for another guest
+      await update(roomRef, { status: 'waiting' });
+      await remove(ref(db, `rooms/${roomId}/players/away`));
+      await remove(ref(db, `rooms/${roomId}/presence/away`));
+    }
   }
 };
 

@@ -21,7 +21,7 @@ import {
   onDisconnect, 
   child 
 } from 'firebase/database';
-import { getStorage } from 'firebase/storage';
+
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -38,7 +38,7 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getDatabase(app);
-export const storage = getStorage(app);
+
 export const googleProvider = new GoogleAuthProvider();
 
 // Re-export Auth types and functions

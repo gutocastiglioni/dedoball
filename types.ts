@@ -46,6 +46,8 @@ export interface UserProfile {
   teamName: string;
   logoUrl?: string;
   uniform?: UniformConfig;
+  awayUniform?: UniformConfig;
+  selectedKit?: 'home' | 'away';
 }
 
 export interface Slot {

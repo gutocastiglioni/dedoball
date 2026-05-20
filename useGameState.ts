@@ -109,6 +109,8 @@ export const useGameState = () => {
   const [opponentInfo, setOpponentInfo] = useState<RoomPlayer | null>(null);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [disconnectCountdown, setDisconnectCountdown] = useState(15);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
 
   // Tournament States
   const [activeTournamentId, setActiveTournamentId] = useState<string | null>(null);
@@ -119,6 +121,8 @@ export const useGameState = () => {
   const ballRef = useRef(ball);
   const turnRef = useRef(turn);
   const myRoleRef = useRef(myRole);
+  const phaseRef = useRef(phase);
+  const isLeavingRef = useRef(false);
 
   useEffect(() => {
     ballRef.current = ball;
@@ -131,6 +135,10 @@ export const useGameState = () => {
   useEffect(() => {
     myRoleRef.current = myRole;
   }, [myRole]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   // Auth Listener & User Profile Listener
   useEffect(() => {
@@ -152,16 +160,23 @@ export const useGameState = () => {
         profileUnsub = onValue(userRef, (snap) => {
           if (snap.exists()) {
             const data = snap.val();
-            if (data.uniform) {
+            setUserProfile(data);
+            const activeKit = data.selectedKit || 'home';
+            if (activeKit === 'away' && data.awayUniform) {
+              setHomeKitConfig(data.awayUniform);
+            } else if (data.uniform) {
               setHomeKitConfig(data.uniform);
             } else {
               setHomeKitConfig(undefined);
             }
+          } else {
+            setUserProfile(null);
           }
         });
       } else {
         setMatchHistory([]);
         setHomeKitConfig(undefined);
+        setUserProfile(null);
       }
     });
 
@@ -251,13 +266,59 @@ export const useGameState = () => {
 
   // Sincronização Multiplayer em Tempo Real
   useEffect(() => {
-    if (!isMultiplayer || !roomId) return;
+    if (!isMultiplayer || !roomId) {
+      setCurrentRoom(null);
+      return;
+    }
 
     const roomRef = ref(db, `rooms/${roomId}`);
 
     const unsubscribe = onValue(roomRef, (snapshot) => {
-      if (!snapshot.exists()) return;
+      if (!snapshot.exists()) {
+        // Room was deleted/canceled by either client
+        if (!isLeavingRef.current) {
+          if (myRoleRef.current === 'AWAY') {
+            alert('O host cancelou a partida.');
+          } else if (myRoleRef.current === 'HOME') {
+            alert('O oponente saiu da partida.');
+          }
+        }
+        resetMatch();
+        return;
+      }
       const room: Room = snapshot.val();
+      setCurrentRoom(room);
+
+      const isHome = myRoleRef.current === 'HOME';
+
+      // If we are HOME (host) and room is in preparation, but guest disconnected (presence is false)
+      if (isHome && room.status === 'preparation') {
+        const guestPresent = room.presence ? !!room.presence.away : false;
+        if (!guestPresent) {
+          // Reset room to waiting and remove away player
+          update(roomRef, { status: 'waiting' });
+          remove(ref(db, `rooms/${roomId}/players/away`));
+          remove(ref(db, `rooms/${roomId}/presence/away`));
+          alert('O oponente desconectou. Voltando para o lobby de espera...');
+          return;
+        }
+      }
+
+      // If room status is waiting and host is currently in game preparation, return to menu lobby
+      if (room.status === 'waiting' && isHome && phaseRef.current !== GamePhase.MENU) {
+        setPhase(GamePhase.MENU);
+        setScores({ home: 0, away: 0 });
+        setHomeReady(false);
+        setAwayReady(false);
+        initializeTeams();
+        setBall(INITIAL_BALL);
+        return;
+      }
+
+      // If room moves to preparation and client is still in menu (waiting), transition to preparation phase
+      if (room.status === 'preparation' && phaseRef.current === GamePhase.MENU) {
+        setPhase(GamePhase.PREPARATION);
+      }
 
       // Sync players readiness and tactical positions in preparation phase
       if (room.status === 'preparation') {
@@ -307,7 +368,6 @@ export const useGameState = () => {
       }
 
       // Detecção de Desconexão (Presence Engine)
-      const isHome = myRoleRef.current === 'HOME';
       const oppKey = isHome ? 'away' : 'home';
       const oppPresent = room.presence ? !!room.presence[oppKey] : true;
       
@@ -1115,6 +1175,7 @@ export const useGameState = () => {
   }, []);
 
   const resetMatch = () => {
+    isLeavingRef.current = true;
     if (isMultiplayer && roomId && myRole) {
       leaveMultiplayerRoom(roomId, myRole);
     }
@@ -1127,6 +1188,7 @@ export const useGameState = () => {
     setIsMultiplayer(false);
     setRoomId(null);
     setMyRole(null);
+    setCurrentRoom(null);
     setTournament(null);
     setActiveTournamentId(null);
     setCurrentMatchId(null);
@@ -1135,6 +1197,7 @@ export const useGameState = () => {
   // --- MULTIPLAYER ROOM HELPERS ---
   const handleCreateRoom = async (name: string, pass?: string) => {
     try {
+      isLeavingRef.current = false;
       const id = await createMultiplayerRoom(name, pass);
       setRoomId(id);
       setMyRole('HOME');
@@ -1142,7 +1205,7 @@ export const useGameState = () => {
       setScores({ home: 0, away: 0 });
       initializeTeams();
       setBall(INITIAL_BALL);
-      setPhase(GamePhase.PREPARATION);
+      setPhase(GamePhase.MENU);
       setActionStatus('Sala criada! Aguardando oponente...');
       
       if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
@@ -1154,6 +1217,7 @@ export const useGameState = () => {
 
   const handleJoinRoom = async (id: string, pass?: string) => {
     try {
+      isLeavingRef.current = false;
       await joinMultiplayerRoom(id, pass);
       setRoomId(id);
       setMyRole('AWAY');
@@ -1274,6 +1338,7 @@ export const useGameState = () => {
     phase,
     setPhase,
     difficulty,
+    setDifficulty,
     scores,
     homePlayers,
     awayPlayers,
@@ -1308,10 +1373,12 @@ export const useGameState = () => {
 
     // Firebase Multiplayer exports
     activeUser,
+    userProfile,
     isMultiplayer,
     roomId,
     myRole,
     activeRooms,
+    currentRoom,
     leaderboard,
     matchHistory,
     opponentInfo,
