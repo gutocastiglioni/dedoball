@@ -1,0 +1,295 @@
+/* Reset & Core base style overrides */
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #070a0e;
+  user-select: none;
+  /* safe-area para iOS notch */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+#root {
+  height: 100vh;
+  height: 100dvh; /* dynamic viewport height: corrige bug do Safari mobile com barra de endereço */
+  width: 100vw;
+}
+
+
+/* Custom Tailwind utility animations and CSS variables */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes loadingBar {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+/* CSS Classes for premium animations */
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleUp {
+  animation: scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-loadingBar {
+  animation: loadingBar 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Vertical Text utility */
+.vertical-text {
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+}
+
+/* Custom styled modern scrollbar for instructions */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.4);
+}
+
+/* Premium range input/slider overrides for cross-browser visual unity */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FULLSCREEN GATE — exibido apenas em mobile antes de entrar em tela cheia
+───────────────────────────────────────────────────────────────────────────── */
+.fullscreen-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: radial-gradient(ellipse at 50% 40%, #0e1a2e 0%, #060a0e 100%);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fullscreen-gate .gate-pulse {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 211, 238, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: gatePulse 2s ease-in-out infinite;
+}
+
+.fullscreen-gate .gate-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(34, 211, 238, 0.15);
+  animation: gatePulse 2s ease-in-out infinite 0.3s;
+}
+
+.fullscreen-gate .gate-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -28px;
+  border-radius: 50%;
+  border: 1px solid rgba(34, 211, 238, 0.07);
+  animation: gatePulse 2s ease-in-out infinite 0.6s;
+}
+
+@keyframes gatePulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   FLOATING FULLSCREEN BUTTON (mobile-only — hidden via sm:hidden no JSX)
+───────────────────────────────────────────────────────────────────────────── */
+.btn-fullscreen-float {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  right: calc(12px + env(safe-area-inset-right));
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(9, 14, 22, 0.82);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(34, 211, 238, 0.85);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(34, 211, 238, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.btn-fullscreen-float:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TOUCH IMPROVEMENTS — aumenta área de toque e remove delay em mobile
+───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input[type="range"] {
+    height: 28px; /* área de toque maior no mobile */
+  }
+
+  /* Scrollbar invisível no mobile */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LANDSCAPE COMPRESS & SCALING FOR MOBILE (max-height: 500px)
+───────────────────────────────────────────────────────────────────────────── */
+@media (max-height: 500px) {
+  /* Scale down the bottom player card */
+  .hud-player-card {
+    padding: 10px !important;
+    border-radius: 16px !important;
+  }
+  
+  .hud-player-card .space-y-3,
+  .hud-player-card .space-y-4 {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    gap: 6px !important;
+  }
+  
+  .hud-player-card h3 {
+    font-size: 11px !important;
+  }
+  
+  .hud-player-card input[type="range"] {
+    height: 16px !important;
+  }
+  
+  .hud-player-card button {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    border-radius: 8px !important;
+    font-size: 8px !important;
+  }
+
+  /* Compact top scoreboard & broadcast timer */
+  .hud-scoreboard-pill {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .hud-timer-pill {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  /* Compact confirm tactics button */
+  .hud-confirm-btn {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+  }
+
+  /* Make Main Menu title smaller in landscape */
+  h1 {
+    font-size: 2.2rem !important;
+  }
+
+  /* Hide description on extremely short screens to save space */
+  .hidden.sm\:block {
+    display: none !important;
+  }
+}

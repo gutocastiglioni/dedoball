@@ -1,0 +1,5 @@
+{
+  "name": "3D Soccer Pro Showcase",
+  "description": "An interactive 3D soccer player showcase featuring realistic articulated movements, camera controls, and smooth animations using React Three Fiber.",
+  "requestFramePermissions": []
+}
