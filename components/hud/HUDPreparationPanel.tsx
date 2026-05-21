@@ -23,18 +23,30 @@ const getDegreeAngle = (rad: number) => {
 const HUDPreparationPanel: React.FC = () => {
   const {
     homePlayers,
+    awayPlayers,
     selectedPlayerId,
     updatePlayerAngle,
     updatePlayerActionType,
+    updatePlayerBlocking,
     setCaptain,
     completePreparation,
     isCameraCentered,
     recenterCamera,
+    myRole,
+    lastGoalScorer,
+    consecutiveGoalsCount,
   } = useGameStateContext();
 
-  const [tackleLimitError, setTackleLimitError] = useState(false);
+  const [blockingLimitError, setBlockingLimitError] = useState(false);
 
-  const selectedPlayer = homePlayers.find(p => p.id === selectedPlayerId);
+  // Dynamic player list and blocker limits based on role and fairness rule
+  const playersList = myRole === 'AWAY' ? awayPlayers : homePlayers;
+  const selectedPlayer = playersList.find(p => p.id === selectedPlayerId);
+
+  const localTeam = myRole === 'AWAY' ? 'AWAY' : 'HOME';
+  const opponentTeam = localTeam === 'HOME' ? 'AWAY' : 'HOME';
+  const maxBlockers = 3;
+  const currentBlockers = playersList.filter(p => p.isBlocking).length;
 
   const handleAngleChange = (deg: number) => {
     if (!selectedPlayerId) return;
@@ -43,15 +55,7 @@ const HUDPreparationPanel: React.FC = () => {
   };
 
   const handleActionTypeChange = (playerId: string, actionType: ActionType) => {
-    try {
-      updatePlayerActionType(playerId, actionType);
-      setTackleLimitError(false);
-    } catch (err: any) {
-      if (err.message === 'LIMIT_EXCEEDED') {
-        setTackleLimitError(true);
-        setTimeout(() => setTackleLimitError(false), 3000);
-      }
-    }
+    updatePlayerActionType(playerId, actionType);
   };
 
   return (
@@ -66,24 +70,26 @@ const HUDPreparationPanel: React.FC = () => {
                 <div className="w-10 h-10 rounded-2xl bg-blue-950 border border-blue-800/50 flex items-center justify-center font-black text-blue-450 shadow-inner">
                   {selectedPlayer.number}
                 </div>
-                <div>
+                <div className="flex flex-col">
                   <h3 className="text-sm font-black tracking-wider uppercase text-zinc-100">
                     {selectedPlayer.number === 1 ? 'GOLEIRO' : 'JOGADOR EM CAMPO'}
                   </h3>
                   {selectedPlayer.isCaptain && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-900/40 mt-0.5 animate-pulse">
-                      <Crown size={10} /> CAPITÃO
-                    </span>
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-400 bg-amber-955/40 px-2 py-0.5 rounded-full border border-amber-900/40 animate-pulse">
+                        <Crown size={10} /> CAPITÃO
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
               
               {/* Status & Captain Actions */}
               <div className="flex items-center gap-2">
-                {!selectedPlayer.isCaptain && (
+                {!selectedPlayer.isCaptain && selectedPlayer.number !== 1 && (
                   <button
                     onClick={() => setCaptain(selectedPlayer.id)}
-                    className="text-[9px] font-black text-amber-400 bg-amber-950/20 hover:bg-amber-950/50 border border-amber-800/40 px-2.5 py-1.5 rounded-xl transition-colors pointer-events-auto flex items-center gap-1"
+                    className="text-[9px] font-black text-amber-400 bg-amber-955/20 hover:bg-amber-955/50 border border-amber-800/40 px-2.5 py-1.5 rounded-xl transition-colors pointer-events-auto flex items-center gap-1"
                     title="Definir este jogador como Capitão"
                   >
                     <Crown size={10} /> +CAPITÃO
@@ -129,12 +135,12 @@ const HUDPreparationPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Action Mode Toggle (Cross vs. Shoot vs. Tackle) */}
+                {/* Action Mode Toggle (Cross vs. Shoot vs. Blocker) */}
                 <div className="space-y-2">
                   <span className="text-xs text-zinc-400 font-bold uppercase block">
                     Ação Programada na Colisão
                   </span>
-                  <div className="grid grid-cols-4 gap-1.5 md:gap-2">
+                  <div className="grid grid-cols-3 gap-1.5 md:gap-2">
                     <button
                       onClick={() => handleActionTypeChange(selectedPlayer.id, 'PASS')}
                       className={`
@@ -154,8 +160,8 @@ const HUDPreparationPanel: React.FC = () => {
                       className={`
                         py-2.5 md:py-3 px-0.5 md:px-1 rounded-xl md:rounded-2xl border-2 font-black tracking-wide text-[9px] flex flex-col items-center justify-center gap-1 md:gap-1.5 transition-all pointer-events-auto
                         ${selectedPlayer.actionType === 'CROSS'
-                          ? 'border-amber-500 text-amber-400 bg-amber-950/30'
-                          : 'border-zinc-800 text-zinc-500 hover:text-amber-400 hover:bg-amber-950/10 hover:border-amber-950/40'
+                          ? 'border-amber-500 text-amber-400 bg-amber-955/30'
+                          : 'border-zinc-800 text-zinc-500 hover:text-amber-400 hover:bg-amber-955/10 hover:border-amber-955/40'
                         }
                       `}
                     >
@@ -175,8 +181,8 @@ const HUDPreparationPanel: React.FC = () => {
                             ${!canShoot 
                               ? 'opacity-30 border-zinc-800 text-zinc-700 cursor-not-allowed'
                               : selectedPlayer.actionType === 'SHOOT'
-                                ? 'border-rose-500 text-rose-450 bg-rose-950/30'
-                                : 'border-zinc-800 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/10 hover:border-rose-950/40'
+                                ? 'border-rose-500 text-rose-450 bg-rose-955/30'
+                                : 'border-zinc-800 text-zinc-500 hover:text-rose-400 hover:bg-rose-955/10 hover:border-rose-955/40'
                             }
                           `}
                           title={!canShoot ? "Chutes bloqueados atrás da linha do meio campo!" : "Chutar direto"}
@@ -186,29 +192,54 @@ const HUDPreparationPanel: React.FC = () => {
                         </button>
                       );
                     })()}
+                  </div>
 
+                  {/* Blocker Aggregate Toggle */}
+                  <div className="pt-2 md:pt-3">
                     <button
-                      onClick={() => handleActionTypeChange(selectedPlayer.id, 'TACKLE')}
+                      onClick={() => {
+                        try {
+                          updatePlayerBlocking(selectedPlayer.id, !selectedPlayer.isBlocking);
+                          setBlockingLimitError(false);
+                        } catch (err: any) {
+                          if (err.message === 'LIMIT_EXCEEDED') {
+                            setBlockingLimitError(true);
+                            setTimeout(() => setBlockingLimitError(false), 3500);
+                          }
+                        }
+                      }}
                       className={`
-                        py-2.5 md:py-3 px-0.5 md:px-1 rounded-xl md:rounded-2xl border-2 font-black tracking-wide text-[9px] flex flex-col items-center justify-center gap-1 md:gap-1.5 transition-all pointer-events-auto
-                        ${selectedPlayer.actionType === 'TACKLE'
-                          ? 'border-zinc-300 text-zinc-100 bg-zinc-850 shadow-[0_0_15px_rgba(255,255,255,0.05)]'
-                          : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'
+                        w-full py-2.5 px-3 rounded-xl border font-bold text-[10px] md:text-xs flex items-center justify-between transition-all pointer-events-auto
+                        ${selectedPlayer.isBlocking
+                          ? 'border-zinc-300 text-zinc-100 bg-zinc-800 shadow-[0_0_15px_rgba(255,255,255,0.08)]'
+                          : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30 hover:border-zinc-700'
                         }
                       `}
                     >
-                      <Shield size={12} />
-                      DESARME
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <Shield size={14} className={selectedPlayer.isBlocking ? "text-zinc-200 animate-pulse" : "text-zinc-650"} />
+                        <span>🛡️ BLOQUEAR JOGADA NO TURNO RIVAL ({currentBlockers}/{maxBlockers})</span>
+                      </div>
+                      <div className={`w-8 h-4 rounded-full transition-all relative flex items-center p-0.5 ${selectedPlayer.isBlocking ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
+                        <div className={`w-3 h-3 rounded-full bg-white transition-all shadow-md transform ${selectedPlayer.isBlocking ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
                     </button>
-                  </div>
-                  
-                  {tackleLimitError && (
-                    <span className="text-[10px] text-rose-400 font-bold flex items-center justify-center gap-1 animate-pulse bg-rose-950/40 border border-rose-900/30 py-1.5 px-3 rounded-xl mt-1.5">
-                      <ShieldAlert size={12} /> Limite de 3 Desarmes atingido!
-                    </span>
-                  )}
 
-                  {selectedPlayer.position[2] < 0 && selectedPlayer.actionType !== 'TACKLE' && (
+                    {blockingLimitError && (
+                      <span className="text-[10px] text-rose-400 font-bold flex items-center justify-center gap-1 animate-pulse bg-rose-955/40 border border-rose-900/30 py-1.5 px-3 rounded-xl mt-1.5">
+                        <ShieldAlert size={12} /> Limite de {maxBlockers} Bloqueios atingido!
+                      </span>
+                    )}
+
+                    <p className="text-[9.5px] text-zinc-500 leading-normal mt-1.5 px-1">
+                      {selectedPlayer.isBlocking 
+                        ? "Ativo: Captura a bola e encerra o turno se o oponente colidir com ele. No seu turno, executa a ação selecionada."
+                        : "Inativo: Apenas desvia a bola. Não intercepta a posse de bola no turno do oponente."
+                      }
+                    </p>
+                  </div>
+
+                  {selectedPlayer.position[2] < 0 && (
                     <span className="text-[9px] text-zinc-500 font-semibold block text-center italic mt-1">
                       * Posição defensiva: Chutes estão bloqueados.
                     </span>

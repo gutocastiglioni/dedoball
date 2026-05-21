@@ -7,27 +7,39 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+build/
+out/
+
+# Environments and Secrets
 *.local
+.env.local
+.env.*.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.tmp
 
 # Firebase
 .firebase/
-*debug.log*
+firebase-debug.log*
+ui-debug.log*
 *.log
 
-# Scratch files
+# Scratch / temp files (gerados por ferramentas de IA ou testes)
 scratch_*.txt
 scratch*.txt
+metadata.json
+*.diff.txt
+

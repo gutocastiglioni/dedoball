@@ -5,6 +5,7 @@ import { ALL_SLOTS } from '../useGameState';
 
 interface PitchProps {
   phase: string;
+  captainMoveMode?: string | null;
   onSlotClick?: (slotId: string) => void;
   hoveredSlotId: string | null;
   setHoveredSlotId: (id: string | null) => void;
@@ -66,6 +67,7 @@ const stripes = Array.from({ length: 16 }, (_, i) => {
 
 const Pitch: React.FC<PitchProps> = ({ 
   phase, 
+  captainMoveMode = null,
   onSlotClick, 
   hoveredSlotId, 
   setHoveredSlotId,
@@ -191,8 +193,8 @@ const Pitch: React.FC<PitchProps> = ({
         </mesh>
       </group>
 
-      {/* 5. Placement Slots (Preparation Phase Only) */}
-      {phase === 'PREPARATION' && ALL_SLOTS.map((slot) => {
+      {/* 5. Placement Slots (Preparation Phase or Captain Repositioning Mode) */}
+      {(phase === 'PREPARATION' || captainMoveMode !== null) && ALL_SLOTS.map((slot) => {
         // Show all field slots on the entire pitch (excluding Goalkeeper slots)
         if (slot.lineType === 'GK') return null;
 

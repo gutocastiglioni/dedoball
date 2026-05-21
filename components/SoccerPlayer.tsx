@@ -11,6 +11,7 @@ interface SoccerPlayerProps {
   team: Team;
   angle?: number;
   actionType?: ActionType;
+  isBlocking?: boolean;
   isSelected?: boolean;
   isCaptain?: boolean;
   number?: number;
@@ -27,6 +28,7 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
   team,
   angle = 0,
   actionType = 'PASS',
+  isBlocking = false,
   isSelected = false,
   isCaptain = false,
   number = 10,
@@ -426,22 +428,21 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
       {/* Arrows and rings are ONLY visible for player team (HOME) and hidden for opponent (AWAY) to maintain taptic secrecy */}
       {role === 'player' && team === 'HOME' && (
         <>
-          {/* Action Visual Ring */}
-          {actionType === 'TACKLE' ? (
-            // Desarme visual shield ring flutuante (octogonal, mantido inalterado)
-            <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.38, 0.44, 8]} />
+          {/* Action Visual Ring: anel circular redondo suave e elegante flutuante com a cor da ação */}
+          <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.38, 0.44, 32]} />
+            <primitive object={arrowMat} attach="material" />
+          </mesh>
+
+          {/* Blocker Visual Shield Ring (floating octagonal steel ring above the action ring) */}
+          {isBlocking && (
+            <mesh position={[0, 0.13, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[0.42, 0.48, 8]} />
               <primitive object={tackleGuardMat} attach="material" />
-            </mesh>
-          ) : (
-            // Outras ações: anel circular redondo suave e elegante flutuante com a cor da ação
-            <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[0.38, 0.44, 32]} />
-              <primitive object={arrowMat} attach="material" />
             </mesh>
           )}
 
-          {/* Seta direcional normal (não mostrada para o desarme) */}
+          {/* Seta direcional normal (mostrada se o jogador estiver configurado com uma ação de direção) */}
           {actionType !== 'TACKLE' && (
             <group position={[0, 0.05, 0]} rotation={[0, angle, 0]}>
               <mesh position={[0, 0.04, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
@@ -475,8 +476,8 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
         <primitive object={baseWoodMat} attach="material" />
       </mesh>
 
-      {/* 5. TACKLE BASE SHIELD GUARD (For all Tackle players, shows their peg shape in action) */}
-      {actionType === 'TACKLE' && (
+      {/* 5. TACKLE BASE SHIELD GUARD (For all Blocker players, shows their peg shape in action) */}
+      {isBlocking && (
         <mesh position={[0, 0.11, 0]}>
           <cylinderGeometry args={[0.36, 0.36, 0.04, 8, 1, true]} />
           <primitive object={tackleGuardMat} attach="material" />

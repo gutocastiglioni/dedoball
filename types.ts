@@ -21,6 +21,7 @@ export interface PlayerConfig {
   slotId: string | null;
   angle: number; // in radians
   actionType: ActionType;
+  isBlocking: boolean;
   isCaptain: boolean;
   number: number;
   position: [number, number, number]; // [x, y, z]
@@ -44,6 +45,7 @@ export interface UserProfile {
   uid: string;
   username: string;
   teamName: string;
+  abbreviation?: string; // 3-letter sigla for scoreboard (e.g. "CAL")
   logoUrl?: string;
   uniform?: UniformConfig;
   awayUniform?: UniformConfig;
@@ -62,6 +64,8 @@ export interface BallState {
   velocity: [number, number, number];
   possession: Team;
   lastTouchedByPlayerId: string | null;
+  isKickoff?: boolean;
+  speedMultiplier?: number; // Accumulates +5% per bounce/touch during a play
 }
 
 export enum MovementState {
@@ -82,3 +86,15 @@ export enum MovementState {
   RUNNING_GUN = 'Running Gun',
   CROUCHING = 'Crouching'
 }
+
+export interface GameLogEntry {
+  id: string;
+  timestamp: string; // "HH:MM:SS"
+  gameTime: number; // in minutes
+  turn: Team;
+  homeFlicks: number;
+  awayFlicks: number;
+  message: string;
+  type: 'info' | 'flick' | 'collision' | 'foul' | 'goal' | 'tackle' | 'phase';
+}
+

@@ -37,6 +37,8 @@ export interface Room {
     ball?: BallState;
     homePlayers?: PlayerConfig[];
     awayPlayers?: PlayerConfig[];
+    lastGoalScorer?: Team | null;
+    consecutiveGoalsCount?: number;
   };
 }
 

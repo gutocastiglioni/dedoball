@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStateContext } from '../../GameStateContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import LoginModal from '../LoginModal';
+import SoundManager from '../../SoundManager';
 import SoloTab from './SoloTab';
 import MultiplayerTab from './MultiplayerTab';
 import TournamentTab from './TournamentTab';
@@ -150,6 +151,16 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
   } = useGameStateContext();
   const isMobile = useIsMobile();
 
+  const currentKitType = userProfile?.selectedKit || 'home';
+  const currentKit = currentKitType === 'home'
+    ? (userProfile?.uniform || defaultHomeUniform)
+    : (userProfile?.awayUniform || defaultAwayUniform);
+
+  const userAbbreviation = userProfile?.abbreviation || 
+    userProfile?.teamName?.substring(0, 3).toUpperCase() || 
+    activeUser?.displayName?.substring(0, 3).toUpperCase() || 
+    'CAS';
+
   // Tab navigation in menu
   const [currentMenuTab, setCurrentMenuTab] = useState<'solo' | 'multi' | 'tournament' | 'ranking' | 'history'>('solo');
   const [showInstructions, setShowInstructions] = useState(false);
@@ -159,6 +170,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
   const [restrictedTabAttempt, setRestrictedTabAttempt] = useState<'multi' | 'tournament' | 'ranking' | 'history' | null>(null);
 
   const handleSetActiveKit = async (kit: 'home' | 'away') => {
+    SoundManager.playUIClick();
     if (!activeUser) return;
     try {
       const { update } = await import('firebase/database');
@@ -170,6 +182,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
   };
 
   const handleLoginAttempt = (targetTab?: 'multi' | 'tournament' | 'ranking' | 'history') => {
+    SoundManager.playUIClick();
     if (targetTab) {
       setRestrictedTabAttempt(targetTab);
     }
@@ -245,45 +258,51 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   })}
                 </div>
 
-                {/* Team logo & name from profile with default slot (Mobile) */}
-                <div 
+                {/* Unified Team & Player Profile Pill (Mobile) */}
+                <div
                   onClick={() => setShowProfileModal(true)}
-                  className="flex items-center gap-1 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-95 transition-all duration-200 rounded-full px-2 shadow-md cursor-pointer pointer-events-auto group/team h-[30px]"
-                  title="Configurar Nome & Escudo do Time"
+                  className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-95 transition-all duration-200 rounded-full pl-4 pr-3 py-0.5 shadow-md cursor-pointer pointer-events-auto group/profile h-[30px]"
+                  title="Customizar Perfil, Time e Uniforme"
                 >
-                  <div className="w-5 h-5 rounded-full bg-zinc-950/60 border border-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover/team:border-cyan-400/50 transition-colors">
+                  {/* Left: Team Name */}
+                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[65px] xs:max-w-[85px]">
+                    {userProfile?.teamName || 'Meu Time'}
+                  </span>
+
+                  {/* Center: Separated Circular Shield (Escudo) */}
+                  <div className="w-5 h-5 rounded-full bg-zinc-950/60 border border-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover/profile:border-cyan-400/50 transition-colors relative shadow-[0_0_6px_rgba(0,0,0,0.4)]">
                     {userProfile?.logoUrl ? (
                       <img src={userProfile.logoUrl} alt="logo" className="w-full h-full object-cover animate-fadeIn" />
                     ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-500 w-2.5 h-2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <div 
+                        className="w-full h-full flex items-center justify-center font-black text-[8px] tracking-tighter"
+                        style={{
+                          background: `linear-gradient(135deg, ${currentKit.primaryColor} 50%, ${currentKit.secondaryColor} 50%)`,
+                          color: '#ffffff',
+                          textShadow: '0px 1px 2px rgba(0,0,0,0.8)'
+                        }}
+                      >
+                        <div className="absolute inset-0.5 rounded-full bg-black/15 backdrop-blur-[0.5px] flex items-center justify-center">
+                          {userAbbreviation.substring(0, 2)}
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/team:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
-                    {userProfile?.teamName || 'Meu Time'}
-                  </span>
-                </div>
 
-                {/* User Config and Logout Bubble (Mobile) */}
-                <div 
-                  onClick={() => setShowProfileModal(true)}
-                  className="flex items-center gap-1.5 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-95 transition-all duration-200 rounded-full pl-1.5 pr-2 py-0.5 shadow-md cursor-pointer pointer-events-auto group/bubble h-[30px]"
-                  title="Configurações & Uniforme"
-                >
-                  <div className="relative flex-shrink-0">
-                    <img 
-                      src={activeUser.photoURL || ''} 
-                      alt="" 
-                      className="w-5 h-5 rounded-full border border-cyan-400 object-cover" 
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center text-[3.5px] text-zinc-400">
-                      ⚙️
-                    </span>
-                  </div>
-                  <span className="text-[8px] xs:text-[9px] text-zinc-300 font-semibold uppercase whitespace-nowrap">
+                  {/* Right: Player Name */}
+                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[65px] xs:max-w-[85px]">
                     {userProfile?.username || activeUser.displayName}
                   </span>
 
+                  {/* Divider */}
+                  <span className="w-[1px] h-2.5 bg-zinc-800 self-center"></span>
+
+                  {/* Settings Icon Indicator */}
+                  <span className="text-[9px] text-zinc-400 group-hover/profile:text-cyan-400 transition-colors">
+                    ⚙️
+                  </span>
+
+                  {/* Logout Button */}
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -336,6 +355,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => {
+                      SoundManager.playUIClick();
                       if (tab.id !== 'solo' && !activeUser) {
                         handleLoginAttempt(tab.id as any);
                       } else {
@@ -359,7 +379,10 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
 
             {/* Rules Button */}
             <button 
-              onClick={() => setShowInstructions(!showInstructions)}
+              onClick={() => {
+                SoundManager.playUIClick();
+                setShowInstructions(!showInstructions);
+              }}
               className="text-[6.5px] font-black text-zinc-500 hover:text-cyan-400 uppercase tracking-widest transition-colors py-1 border-t border-zinc-850 w-full text-center"
             >
               Regras
@@ -452,39 +475,51 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   })}
                 </div>
 
-                {/* Team logo & name from profile with default slot */}
-                <div 
+                {/* Unified Team & Player Profile Pill (Desktop) */}
+                <div
                   onClick={() => setShowProfileModal(true)}
-                  className="hidden sm:flex items-center gap-1.5 md:gap-2 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-[0.98] transition-all duration-200 rounded-full px-2.5 md:px-4 shadow-md cursor-pointer pointer-events-auto group/team h-[30px] md:h-[38px]"
-                  title="Configurar Nome & Escudo do Time"
+                  className="hidden sm:flex items-center gap-3 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-[0.98] transition-all duration-200 rounded-full pl-5 md:pl-7 pr-4 md:pr-6 py-1 shadow-md cursor-pointer pointer-events-auto group/profile h-[30px] md:h-[38px]"
+                  title="Customizar Perfil, Time e Uniforme"
                 >
-                  <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-zinc-950/60 border border-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover/team:border-cyan-400/50 transition-colors">
+                  {/* Left: Team Name */}
+                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[120px] md:max-w-[150px]">
+                    {userProfile?.teamName || 'Meu Time'}
+                  </span>
+
+                  {/* Center: Separated Circular Shield (Escudo) */}
+                  <div className="w-5 h-5 md:w-6.5 md:h-6.5 rounded-full bg-zinc-950/60 border border-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover/profile:border-cyan-400/50 transition-colors relative shadow-[0_0_8px_rgba(0,0,0,0.4)]">
                     {userProfile?.logoUrl ? (
                       <img src={userProfile.logoUrl} alt="logo" className="w-full h-full object-cover animate-fadeIn" />
                     ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-500 w-3 h-3 md:w-3.5 md:h-3.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      <div 
+                        className="w-full h-full flex items-center justify-center font-black text-[9px] md:text-[10px] tracking-tighter"
+                        style={{
+                          background: `linear-gradient(135deg, ${currentKit.primaryColor} 50%, ${currentKit.secondaryColor} 50%)`,
+                          color: '#ffffff',
+                          textShadow: '0px 1px 2px rgba(0,0,0,0.8)'
+                        }}
+                      >
+                        <div className="absolute inset-0.5 rounded-full bg-black/15 backdrop-blur-[0.5px] flex items-center justify-center">
+                          {userAbbreviation.substring(0, 2)}
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/team:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[150px]">
-                    {userProfile?.teamName || 'Meu Time'}
+
+                  {/* Right: Player Name */}
+                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[120px] md:max-w-[150px]">
+                    {userProfile?.username || activeUser.displayName}
                   </span>
-                </div>
-                
-                <div 
-                  onClick={() => setShowProfileModal(true)}
-                  className="flex items-center gap-1.5 md:gap-2 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-[0.98] transition-all duration-200 rounded-full px-2.5 md:px-4 shadow-md cursor-pointer pointer-events-auto group/bubble h-[30px] md:h-[38px]"
-                  title="Customizar Perfil e Uniforme"
-                >
-                  <img src={activeUser.photoURL || ''} alt="" className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-cyan-400 object-cover" referrerPolicy="no-referrer" />
-                  <span className="hidden sm:inline text-xs font-semibold text-zinc-300">{userProfile?.username || activeUser.displayName}</span>
-                  
+
+                  {/* Divider */}
+                  <span className="w-[1px] h-3.5 bg-zinc-800 self-center"></span>
+
                   {/* Profile / Kit Customizer Icon Indicator */}
-                  <div
-                    className="text-zinc-400 group-hover/bubble:text-cyan-400 transition-all p-1"
-                  >
+                  <div className="text-zinc-400 group-hover/profile:text-cyan-400 transition-all p-0.5 hover:scale-110">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1-2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                   </div>
-                  
+
+                  {/* Logout Button */}
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -557,6 +592,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => {
+                    SoundManager.playUIClick();
                     if (tab.id !== 'solo' && !activeUser) {
                       handleLoginAttempt(tab.id as any);
                     } else {
@@ -586,7 +622,10 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           {/* Instruction Toggle & Footer Merged for Perfect Viewport Proportion */}
           <div className="w-full pt-3 border-t border-zinc-900 flex justify-between items-center text-[10px] font-bold text-zinc-500 px-2 mt-2 select-none relative">
             <button 
-              onClick={() => setShowInstructions(!showInstructions)}
+              onClick={() => {
+                SoundManager.playUIClick();
+                setShowInstructions(!showInstructions);
+              }}
               className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors uppercase tracking-wider pointer-events-auto"
             >
               <Info size={12} />

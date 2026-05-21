@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGameStateContext } from '../../GameStateContext';
 import { GamePhase } from '../../types';
-import { Trophy, Shield, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Trophy, Shield, RotateCcw, ShieldAlert, Crown, CheckCircle2, Hourglass } from 'lucide-react';
 
 const HUDOverlays: React.FC = () => {
   const {
@@ -12,12 +12,27 @@ const HUDOverlays: React.FC = () => {
     resetMatch,
     opponentDisconnected,
     disconnectCountdown,
+    captainMoveMode,
+    confirmCaptainMove,
+    homePlayers,
+    awayPlayers,
+    myRole,
+    isMultiplayer,
   } = useGameStateContext();
+
+  // Determine if the local player IS the conceding team
+  const isConceding = captainMoveMode !== null && (
+    !isMultiplayer
+      ? captainMoveMode === 'HOME'               // offline: local player = HOME
+      : myRole === captainMoveMode               // multiplayer: match by role
+  );
+
+  const concedingPlayers = captainMoveMode === 'HOME' ? homePlayers : awayPlayers;
 
   return (
     <>
       {/* E. HUD OVERLAY - GOAL CELEBRATION */}
-      {phase === GamePhase.GOAL_CELEBRATION && (
+      {phase === GamePhase.GOAL_CELEBRATION && captainMoveMode === null && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.15),transparent_60%)] animate-pulse"></div>
           
@@ -35,6 +50,59 @@ const HUDOverlays: React.FC = () => {
               Os jogadores continuam onde pararam. O capitão do time adversário se posicionará no centro para dar a saída!
             </p>
           </div>
+        </div>
+      )}
+
+      {/* E2. CAPTAIN REPOSITION MODE OVERLAY */}
+      {phase === GamePhase.GOAL_CELEBRATION && captainMoveMode !== null && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-full max-w-sm px-4">
+          {isConceding ? (
+            /* ── CONCEDING PLAYER ── */
+            <div className="pointer-events-auto relative w-full animate-scaleUp">
+              {/* Title badge */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Crown size={14} className="text-amber-400 animate-pulse" />
+                <span className="text-[10px] font-black tracking-[0.35em] uppercase text-amber-400">
+                  REPOSICIONE SEU CAPITÃO
+                </span>
+                <Crown size={14} className="text-amber-400 animate-pulse" />
+              </div>
+
+              <div className="bg-zinc-900/95 border border-amber-800/50 rounded-2xl md:rounded-3xl p-4 md:p-5 shadow-[0_0_40px_rgba(217,119,6,0.25)]">
+                {/* Instruction row */}
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-amber-950/60 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
+                    <Crown size={18} className="text-amber-400" />
+                  </div>
+                  <p className="text-[11px] md:text-xs text-zinc-300 font-semibold leading-relaxed">
+                    Selecione o <span className="text-amber-400 font-black">Capitão</span> em campo e clique num slot para movê-lo — ou confirme diretamente para manter a posição atual.
+                  </p>
+                </div>
+
+                {/* Confirm button — always active */}
+                <button
+                  id="captain-confirm-btn"
+                  onClick={confirmCaptainMove}
+                  className="w-full py-3.5 rounded-xl md:rounded-2xl font-black tracking-widest uppercase text-xs flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-[0_4px_25px_rgba(217,119,6,0.45)] hover:shadow-[0_4px_30px_rgba(217,119,6,0.6)] active:scale-98"
+                >
+                  <CheckCircle2 size={15} />
+                  CONFIRMAR E RETOMAR
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── SCORING PLAYER or AI waiting ── */
+            <div className="pointer-events-none relative animate-scaleUp">
+              <div className="flex items-center gap-3 bg-zinc-900/95 border border-zinc-700/60 rounded-2xl px-5 py-3.5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+                <Hourglass size={14} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
+                <span className="text-[11px] font-bold tracking-widest text-zinc-300 uppercase">
+                  {captainMoveMode === 'AWAY'
+                    ? 'IA reposicionando capitão...'
+                    : 'Adversário reposicionando o capitão...'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

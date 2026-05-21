@@ -3,6 +3,7 @@ import { useGameStateContext } from '../GameStateContext';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { auth, db, ref, onValue, onAuthStateChanged } from '../firebase';
 import { Crown } from 'lucide-react';
+import SoundManager from '../SoundManager';
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -16,6 +17,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   // Profile & Kit Customizer Modal States
   const [editUsername, setEditUsername] = useState('');
   const [editTeamName, setEditTeamName] = useState('');
+  const [editAbbreviation, setEditAbbreviation] = useState('');
   
   // Home uniform states
   const [editPrimaryColor, setEditPrimaryColor] = useState('#1e3799');
@@ -113,6 +115,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
       if (userProfile) {
         setEditUsername(userProfile.username || activeUser.displayName || '');
         setEditTeamName(userProfile.teamName || 'Meu Time');
+        setEditAbbreviation(userProfile.abbreviation || (userProfile.teamName ? userProfile.teamName.substring(0, 3).toUpperCase() : 'MEU'));
         if (userProfile.uniform) {
           const u = userProfile.uniform;
           setEditPrimaryColor(u.primaryColor || '#1e3799');
@@ -151,6 +154,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
       } else {
         setEditUsername(activeUser.displayName || 'Jogador');
         setEditTeamName('Meu Time');
+        setEditAbbreviation('MEU');
         setEditPrimaryColor('#1e3799');
         setEditSecondaryColor('#ffffff');
         setEditPattern('solid');
@@ -223,6 +227,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
 
   // Logo file selection handler
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    SoundManager.playUIClick();
     const file = e.target.files?.[0];
     if (!file) return;
     try {
@@ -240,6 +245,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
   // Save profile & kit configurations to Realtime DB and upload logo to Storage
   const handleSaveProfile = async () => {
     if (!activeUser) return;
+    SoundManager.playUIClick();
     setIsSavingProfile(true);
     setSaveError(null);
     try {
@@ -250,6 +256,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         uid: activeUser.uid,
         username: editUsername.trim() || activeUser.displayName || 'Jogador',
         teamName: editTeamName.trim() || 'Meu Time',
+        abbreviation: (editAbbreviation.trim().toUpperCase() || editTeamName.trim().substring(0, 3).toUpperCase() || 'MEU').substring(0, 3),
         displayName: editUsername.trim() || activeUser.displayName || 'Jogador',
         uniform: {
           primaryColor: editPrimaryColor,
@@ -319,7 +326,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             </div>
           </div>
           <button
-            onClick={() => { onClose(); setSelectedLogoBlob(null); }}
+            onClick={() => { SoundManager.playUIClick(); onClose(); setSelectedLogoBlob(null); }}
             className={`text-zinc-500 hover:text-zinc-200 transition-colors hover:bg-zinc-900 rounded-lg ${isMobile ? 'p-1 text-xs' : 'p-2 text-sm'}`}
           >
             ✕
@@ -359,6 +366,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                       className="w-full bg-zinc-900 border border-zinc-800 focus:border-cyan-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-zinc-200 outline-none transition-colors"
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block">Sigla do Time (3 letras)</label>
+                    <input
+                      type="text"
+                      value={editAbbreviation}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase();
+                        setEditAbbreviation(val.substring(0, 3));
+                      }}
+                      maxLength={3}
+                      placeholder="Ex: CAL, FLA, COR..."
+                      className="w-full bg-zinc-900 border border-zinc-800 focus:border-cyan-700 rounded-xl px-3 py-2.5 text-xs font-semibold text-zinc-200 outline-none transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -383,7 +404,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                       </label>
                       {logoPreview && (
                         <button
-                          onClick={() => { setLogoPreview(null); setSelectedLogoBlob(null); }}
+                          onClick={() => { SoundManager.playUIClick(); setLogoPreview(null); setSelectedLogoBlob(null); }}
                           className="text-[10px] text-rose-500 hover:text-rose-455 font-bold transition-colors ml-1"
                         >
                           Remover
@@ -404,7 +425,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             {/* Action buttons side-by-side at the bottom-left of Left Column */}
             <div className="pt-3 border-t border-zinc-800/60 mt-2.5 flex-shrink-0 flex gap-3">
               <button
-                onClick={() => { onClose(); setSelectedLogoBlob(null); }}
+                onClick={() => { SoundManager.playUIClick(); onClose(); setSelectedLogoBlob(null); }}
                 className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-xl text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-center active:scale-98"
               >
                 Cancelar
@@ -433,7 +454,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setCurrentKitType(prev => prev === 'home' ? 'away' : 'home')}
+                  onClick={() => { SoundManager.playUIClick(); setCurrentKitType(prev => prev === 'home' ? 'away' : 'home'); }}
                   className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 rounded-lg text-[9px] font-black uppercase text-cyan-400 hover:text-cyan-300 transition-all hover:scale-105 active:scale-95"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -446,7 +467,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
               
                 {/* Jersey Selector Card */}
                 <div
-                  onClick={() => setSelectedUniformItem('shirt')}
+                  onClick={() => { SoundManager.playUIClick(); setSelectedUniformItem('shirt'); }}
                   className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                     selectedUniformItem === 'shirt'
                       ? 'border-cyan-500 bg-cyan-950/20 scale-[1.03] shadow-[0_0_15px_rgba(6,182,212,0.25)]'
@@ -553,7 +574,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
 
                 {/* Shorts Selector Card */}
                 <div
-                  onClick={() => setSelectedUniformItem('shorts')}
+                  onClick={() => { SoundManager.playUIClick(); setSelectedUniformItem('shorts'); }}
                   className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                     selectedUniformItem === 'shorts'
                       ? 'border-cyan-500 bg-cyan-950/20 scale-[1.03] shadow-[0_0_15px_rgba(6,182,212,0.25)]'
@@ -631,7 +652,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
 
                 {/* Socks Selector Card */}
                 <div
-                  onClick={() => setSelectedUniformItem('socks')}
+                  onClick={() => { SoundManager.playUIClick(); setSelectedUniformItem('socks'); }}
                   className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
                     selectedUniformItem === 'socks'
                       ? 'border-cyan-500 bg-cyan-950/20 scale-[1.03] shadow-[0_0_15px_rgba(6,182,212,0.25)]'
@@ -760,7 +781,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                           { id: 'cross',          label: 'Cruz Vert.' },
                           { id: 'sash-cross',     label: 'Cruz e Faixa' },
                         ].map(p => (
-                          <button key={p.id} onClick={() => setActivePattern(p.id as any)}
+                          <button key={p.id} onClick={() => { SoundManager.playUIClick(); setActivePattern(p.id as any); }}
                             className={`py-1.5 px-2 rounded-xl border text-[8px] font-black tracking-wider uppercase transition-all ${
                               activePattern === p.id
                                 ? 'border-cyan-600 bg-cyan-950/50 text-cyan-400'
@@ -817,7 +838,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                           { id: 'three-stripes', label: '3 Listras' },
                           { id: 'two-tone', label: 'Bicolor' },
                         ].map(p => (
-                          <button key={p.id} onClick={() => setActiveShortsPattern(p.id as any)}
+                          <button key={p.id} onClick={() => { SoundManager.playUIClick(); setActiveShortsPattern(p.id as any); }}
                             className={`py-1.5 px-2 rounded-xl border text-[8px] font-black tracking-wider uppercase transition-all ${
                               activeShortsPattern === p.id
                                 ? 'border-cyan-600 bg-cyan-950/50 text-cyan-400'
@@ -874,7 +895,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                           { id: 'three-stripes', label: '3 Listras' },
                           { id: 'two-tone', label: 'Bicolor' },
                         ].map(p => (
-                          <button key={p.id} onClick={() => setActiveSocksPattern(p.id as any)}
+                          <button key={p.id} onClick={() => { SoundManager.playUIClick(); setActiveSocksPattern(p.id as any); }}
                             className={`py-1.5 px-2 rounded-xl border text-[8px] font-black tracking-wider uppercase transition-all ${
                               activeSocksPattern === p.id
                                 ? 'border-cyan-600 bg-cyan-950/50 text-cyan-400'
