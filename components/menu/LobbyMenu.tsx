@@ -227,7 +227,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             <h1 className="text-[10px] xs:text-xs font-black italic tracking-tighter uppercase bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
               TABLEBALL
             </h1>
-            <span className="text-[8px] font-bold text-zinc-600 tracking-wide">v0.1.0</span>
+            <span className="text-[8px] font-bold text-zinc-600 tracking-wide">v0.3.0</span>
           </div>
 
           {/* Right: Auth Profile, Rules, Fullscreen, Logout */}
@@ -422,7 +422,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
 
         {/* Floating Version & Branding in Bottom-Right Corner (Mobile) */}
         <div className="absolute bottom-3 right-4 z-20 pointer-events-none select-none flex flex-col items-end gap-[1px] text-[5.5px] font-extrabold text-zinc-600 uppercase tracking-wider leading-none text-right">
-          <span>v0.1.0</span>
+          <span>v0.3.0</span>
           <span className="text-[4.5px] text-zinc-700 tracking-tight">gutocastiglioni</span>
         </div>
       </div>
@@ -646,7 +646,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             )}
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v0.1.0</span>
+              <span>v0.3.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -758,7 +758,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               Cancelar e Excluir Sala
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-600 uppercase tracking-widest select-none">
-              <span>v0.1.0</span>
+              <span>v0.3.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>

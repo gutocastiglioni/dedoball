@@ -146,6 +146,9 @@ const CameraManager: React.FC<{
   const lastBallPos = useRef<[number, number, number]>(ballPos);
   const lastRecenterTrigger = useRef(recenterTrigger);
 
+  // Retrieve cameraMode from the GameStateContext
+  const { cameraMode } = useGameStateContext();
+
   // Reset automatic tracking mode when game phase changes
   if (phase !== lastPhase.current) {
     isUserControlled.current = false;
@@ -170,26 +173,45 @@ const CameraManager: React.FC<{
     
     // Detect ball movement inside the frame loop to auto-track it in real-time
     const isBallMoving = Math.hypot(currentBallPos[0] - lastBallPos.current[0], currentBallPos[2] - lastBallPos.current[2]) > 0.05;
-    if (isBallMoving && isUserControlled.current) {
+    if (isBallMoving && isUserControlled.current && cameraMode === 'dynamic') {
       isUserControlled.current = false;
     }
     lastBallPos.current = [currentBallPos[0], currentBallPos[1], currentBallPos[2]];
 
     // Smooth camera tracking if not user controlled
     if (!isUserControlled.current) {
-      targetLookAt.current.lerp(desiredLookAt, 0.08);
-      controlsRef.current.target.copy(targetLookAt.current);
+      if (cameraMode === 'fixed') {
+        // Fixed camera: target the center of the field and keep positions static
+        const centerLookAt = new THREE.Vector3(0, 0.2, 0);
+        targetLookAt.current.lerp(centerLookAt, 0.03);
+        controlsRef.current.target.copy(targetLookAt.current);
 
-      // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
-      if (phase === GamePhase.PREPARATION || captainMoveMode !== null) {
-        // Top down taptic view for placing players
-        const destPos = new THREE.Vector3(0, 11, -2);
-        camera.position.lerp(destPos, 0.03);
-      } else if (phase === GamePhase.GOAL_CELEBRATION) {
-        // Dramatic orbit
-        const t = Date.now() * 0.001;
-        const destPos = new THREE.Vector3(Math.sin(t) * 5, 2.5, currentBallPos[2] + Math.cos(t) * 4);
-        camera.position.lerp(destPos, 0.05);
+        // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
+        if (phase === GamePhase.PREPARATION || captainMoveMode !== null) {
+          // Top down taptic view for placing players
+          const destPos = new THREE.Vector3(0, 11, -2);
+          camera.position.lerp(destPos, 0.03);
+        } else {
+          // Steady isometric side overview
+          const destPos = new THREE.Vector3(0, 7, -10);
+          camera.position.lerp(destPos, 0.03);
+        }
+      } else {
+        // Dynamic camera: follow the ball with extremely smooth LERP (0.035 instead of 0.08) to prevent motion sickness
+        targetLookAt.current.lerp(desiredLookAt, 0.035);
+        controlsRef.current.target.copy(targetLookAt.current);
+
+        // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
+        if (phase === GamePhase.PREPARATION || captainMoveMode !== null) {
+          // Top down taptic view for placing players
+          const destPos = new THREE.Vector3(0, 11, -2);
+          camera.position.lerp(destPos, 0.03);
+        } else if (phase === GamePhase.GOAL_CELEBRATION) {
+          // Dramatic orbit
+          const t = Date.now() * 0.001;
+          const destPos = new THREE.Vector3(Math.sin(t) * 5, 2.5, currentBallPos[2] + Math.cos(t) * 4);
+          camera.position.lerp(destPos, 0.05);
+        }
       }
     } else {
       // If user controlled, apply lock boundaries to controls target
@@ -201,7 +223,8 @@ const CameraManager: React.FC<{
 
     // Check if camera target has deviated from desired look at to toggle centered state
     const currentTarget = controlsRef.current.target;
-    const distance = currentTarget.distanceTo(desiredLookAt);
+    const checkTarget = cameraMode === 'fixed' ? new THREE.Vector3(0, 0.2, 0) : desiredLookAt;
+    const distance = currentTarget.distanceTo(checkTarget);
     const centered = distance < 0.5;
     if (centered !== isCameraCentered) {
       setTimeout(() => setIsCameraCentered(centered), 0);

@@ -133,6 +133,18 @@ export const useGameState = () => {
   const [awayFlicksRemaining, setAwayFlicksRemaining] = useState(3);
   const [isCameraCentered, setIsCameraCentered] = useState(true);
   const [recenterTrigger, setRecenterTrigger] = useState(0);
+  const [cameraMode, setCameraMode] = useState<'dynamic' | 'fixed'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('tableball_camera_mode') as 'dynamic' | 'fixed') || 'dynamic';
+    }
+    return 'dynamic';
+  });
+
+  const changeCameraMode = useCallback((mode: 'dynamic' | 'fixed') => {
+    setCameraMode(mode);
+    localStorage.setItem('tableball_camera_mode', mode);
+  }, []);
+
 
   const [gameLogs, setGameLogs] = useState<GameLogEntry[]>([]);
 
@@ -2241,6 +2253,8 @@ export const useGameState = () => {
     setIsCameraCentered,
     recenterTrigger,
     recenterCamera,
+    cameraMode,
+    changeCameraMode,
     gameLogs,
     addGameLog,
     lastGoalScorer,
