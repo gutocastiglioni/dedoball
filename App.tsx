@@ -10,8 +10,10 @@ import HUDActionOverlay from './components/hud/HUDActionOverlay';
 import HUDOverlays from './components/hud/HUDOverlays';
 // import HUDTelemetryLog from './components/hud/HUDTelemetryLog';
 import { useIsMobile } from './hooks/useIsMobile';
-import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video } from 'lucide-react';
+import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen } from 'lucide-react';
 import SoundManager from './SoundManager';
+import RulesModal from './components/RulesModal';
+
 
 const AppContent: React.FC = () => {
   const {
@@ -41,7 +43,10 @@ const AppContent: React.FC = () => {
     recenterTrigger,
     recenterCamera,
     cameraMode,
-    changeCameraMode
+    changeCameraMode,
+    incrementGoalkeeperSaves,
+    showRulesModal,
+    setShowRulesModal
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -52,6 +57,7 @@ const AppContent: React.FC = () => {
   const [sfxVolume, setSfxVolume] = useState(0.5);
   const [crowdVolume, setCrowdVolume] = useState(0.5);
   const [isExpanded, setIsExpanded] = useState(false);
+
 
   useEffect(() => {
     setIsMuted(SoundManager.getMuted());
@@ -218,6 +224,7 @@ const AppContent: React.FC = () => {
             recenterTrigger={recenterTrigger}
             isCameraCentered={isCameraCentered}
             setIsCameraCentered={setIsCameraCentered}
+            incrementGoalkeeperSaves={incrementGoalkeeperSaves}
           />
         )}
       </div>
@@ -258,134 +265,183 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      {/* Premium Glassmorphic Settings Controller Card */}
-      <div 
-        className="absolute bottom-6 left-6 z-20 pointer-events-auto flex flex-col items-center justify-center bg-zinc-950/85 hover:bg-zinc-950/90 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-all duration-300 ease-out group"
-        onMouseEnter={() => setIsExpanded(true)}
-        onMouseLeave={() => setIsExpanded(false)}
-        style={{
-          width: isExpanded ? '260px' : '48px',
-          height: isExpanded ? '290px' : '48px',
-          padding: isExpanded ? '16px' : '0px',
-        }}
-      >
-        {!isExpanded ? (
-          <button
-            className="flex items-center justify-center w-full h-full text-cyan-400 active:scale-90 transition-all duration-200"
-            title="Ajustes de Jogo"
-          >
-            <Settings size={18} className="text-cyan-400 transition-transform duration-700 ease-out group-hover:rotate-180" />
-          </button>
-        ) : (
-          <div className="flex flex-col h-full w-full justify-between select-none animate-scaleUp">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-2 w-full">
-              <span className="text-[10px] font-black tracking-widest text-cyan-400 uppercase flex items-center gap-1">
-                <Settings size={11} className="animate-spin-slow" />
-                AJUSTES DO JOGO
-              </span>
+      {/* Premium Glassmorphic In-Game Unified Sidebar Dock */}
+      {phase !== GamePhase.MENU && (
+        <div 
+          className="absolute bottom-6 left-6 z-20 pointer-events-auto flex items-end gap-3 select-none"
+        >
+          {/* Vertical Dock Container */}
+          <div className="flex flex-col items-center bg-zinc-950/85 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl p-1.5 gap-1.5">
+            {/* Gear Button (Settings) */}
+            <button
+              onClick={() => {
+                SoundManager.playUIClick();
+                setIsExpanded(!isExpanded);
+              }}
+              onMouseEnter={() => {
+                if (!isMobile) setIsExpanded(true);
+              }}
+              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 ${
+                isExpanded
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
+                  : 'text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900/60 border border-transparent'
+              }`}
+              title="Ajustes de Jogo"
+            >
+              <Settings size={18} className={`transition-transform duration-700 ease-out ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Info Button (Rules) */}
+            <button
+              onClick={() => {
+                SoundManager.playUIClick();
+                setShowRulesModal(true);
+              }}
+              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 ${
+                showRulesModal
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
+                  : 'text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900/60 border border-transparent'
+              }`}
+              title="Regras do Jogo"
+            >
+              <Info size={18} />
+            </button>
+          </div>
+
+          {/* Floating Settings Card Panel */}
+          {isExpanded && (
+            <div 
+              className="bg-zinc-950/90 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl p-4 flex flex-col justify-between w-[260px] h-[335px] animate-scaleUp animate-duration-200"
+              onMouseLeave={() => {
+                if (!isMobile) setIsExpanded(false);
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-2 w-full">
+                <span className="text-[10px] font-black tracking-widest text-cyan-400 uppercase flex items-center gap-1">
+                  <Settings size={11} className="animate-spin-slow" />
+                  AJUSTES DO JOGO
+                </span>
+                <button
+                  onClick={handleToggleMute}
+                  className="hover:text-cyan-400 active:scale-90 transition-all duration-200"
+                  title={isMuted ? "Desmutar tudo" : "Mutar tudo"}
+                >
+                  {isMuted ? (
+                    <VolumeX size={14} className="text-zinc-550 hover:text-cyan-400 transition-colors" />
+                  ) : (
+                    <Volume2 size={14} className="text-cyan-400 hover:text-cyan-300 transition-colors" />
+                  )}
+                </button>
+              </div>
+
+              {/* Seção 1: Audio */}
+              <div className="flex flex-col gap-2 w-full">
+                {/* Slider 1: SFX */}
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                    <div className="flex items-center gap-1.5">
+                      <Zap size={11} className="text-cyan-400" />
+                      <span>Efeitos (SFX)</span>
+                    </div>
+                    <span>{isMuted ? 0 : Math.round(sfxVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : sfxVolume}
+                    onChange={handleSFXVolumeChange}
+                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
+                    style={{
+                      background: `linear-gradient(to right, #00d2ff 0%, #00d2ff ${(isMuted ? 0 : sfxVolume) * 100}%, #27272a ${(isMuted ? 0 : sfxVolume) * 100}%, #27272a 100%)`
+                    }}
+                  />
+                </div>
+
+                {/* Slider 2: Crowd / Torcida */}
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                    <div className="flex items-center gap-1.5">
+                      <Users size={11} className="text-cyan-400" />
+                      <span>Torcida</span>
+                    </div>
+                    <span>{isMuted ? 0 : Math.round(crowdVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : crowdVolume}
+                    onChange={handleCrowdVolumeChange}
+                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
+                    style={{
+                      background: `linear-gradient(to right, #00d2ff 0%, #00d2ff ${(isMuted ? 0 : crowdVolume) * 100}%, #27272a ${(isMuted ? 0 : crowdVolume) * 100}%, #27272a 100%)`
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Seção 2: Câmera */}
+              <div className="flex flex-col gap-1.5 w-full border-t border-zinc-800/80 pt-2.5 mt-0.5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                  <div className="flex items-center gap-1.5">
+                    <Video size={11} className="text-cyan-400" />
+                    <span>Modo de Câmera</span>
+                  </div>
+                </div>
+                
+                <div className="flex bg-zinc-900/95 border border-zinc-800/60 p-0.5 rounded-lg w-full relative">
+                  <button
+                    onClick={() => changeCameraMode('dynamic')}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      cameraMode === 'dynamic'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Seguir Bola
+                  </button>
+                  <button
+                    onClick={() => changeCameraMode('fixed')}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      cameraMode === 'fixed'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Câmera Livre
+                  </button>
+                </div>
+                <span className="text-[9.5px] text-zinc-550 leading-tight">
+                  {cameraMode === 'dynamic' 
+                    ? 'Acompanha a bola com suavização extra anti-tontura.' 
+                    : 'A câmera fica livre e estável. Ela não segue a bola e não redefine sozinha.'}
+                </span>
+              </div>
+
+              {/* Seção 3: Regras */}
               <button
-                onClick={handleToggleMute}
-                className="hover:text-cyan-400 active:scale-90 transition-all duration-200"
-                title={isMuted ? "Desmutar tudo" : "Mutar tudo"}
+                onClick={() => {
+                  SoundManager.playUIClick();
+                  setShowRulesModal(true);
+                }}
+                className="w-full mt-2.5 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 active:from-cyan-500/40 active:to-blue-500/40 border border-cyan-500/30 hover:border-cyan-500/50 text-cyan-400 font-extrabold text-[10px] tracking-wider uppercase rounded-xl shadow-lg transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5"
               >
-                {isMuted ? (
-                  <VolumeX size={14} className="text-zinc-550 hover:text-cyan-400 transition-colors" />
-                ) : (
-                  <Volume2 size={14} className="text-cyan-400 hover:text-cyan-300 transition-colors" />
-                )}
+                <BookOpen size={12} />
+                REGRAS DO JOGO
               </button>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Seção 1: Audio */}
-            <div className="flex flex-col gap-2 w-full">
-              {/* Slider 1: SFX */}
-              <div className="flex flex-col gap-1 w-full">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
-                  <div className="flex items-center gap-1.5">
-                    <Zap size={11} className="text-cyan-400" />
-                    <span>Efeitos (SFX)</span>
-                  </div>
-                  <span>{isMuted ? 0 : Math.round(sfxVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isMuted ? 0 : sfxVolume}
-                  onChange={handleSFXVolumeChange}
-                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
-                  style={{
-                    background: `linear-gradient(to right, #00d2ff 0%, #00d2ff ${(isMuted ? 0 : sfxVolume) * 100}%, #27272a ${(isMuted ? 0 : sfxVolume) * 100}%, #27272a 100%)`
-                  }}
-                />
-              </div>
-
-              {/* Slider 2: Crowd / Torcida */}
-              <div className="flex flex-col gap-1 w-full">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
-                  <div className="flex items-center gap-1.5">
-                    <Users size={11} className="text-cyan-400" />
-                    <span>Torcida</span>
-                  </div>
-                  <span>{isMuted ? 0 : Math.round(crowdVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isMuted ? 0 : crowdVolume}
-                  onChange={handleCrowdVolumeChange}
-                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
-                  style={{
-                    background: `linear-gradient(to right, #00d2ff 0%, #00d2ff ${(isMuted ? 0 : crowdVolume) * 100}%, #27272a ${(isMuted ? 0 : crowdVolume) * 100}%, #27272a 100%)`
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Seção 2: Câmera */}
-            <div className="flex flex-col gap-1.5 w-full border-t border-zinc-800/80 pt-2.5 mt-0.5">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
-                <div className="flex items-center gap-1.5">
-                  <Video size={11} className="text-cyan-400" />
-                  <span>Modo de Câmera</span>
-                </div>
-              </div>
-              
-              <div className="flex bg-zinc-900/95 border border-zinc-800/60 p-0.5 rounded-lg w-full relative">
-                <button
-                  onClick={() => changeCameraMode('dynamic')}
-                  className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
-                    cameraMode === 'dynamic'
-                      ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Seguir Bola
-                </button>
-                <button
-                  onClick={() => changeCameraMode('fixed')}
-                  className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
-                    cameraMode === 'fixed'
-                      ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Câmera Livre
-                </button>
-              </div>
-              <span className="text-[9.5px] text-zinc-550 leading-tight">
-                {cameraMode === 'dynamic' 
-                  ? 'Acompanha a bola com suavização extra anti-tontura.' 
-                  : 'A câmera fica livre e estável. Ela não segue a bola e não redefine sozinha.'}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Premium Global Rules & Tutorial Modal */}
+      {showRulesModal && (
+        <RulesModal onClose={() => setShowRulesModal(false)} />
+      )}
 
       {/* Profile & Kit Customizer Modal Overlay */}
       {showProfileModal && activeUser && (

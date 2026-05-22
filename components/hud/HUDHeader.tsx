@@ -27,12 +27,25 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
     gameTime,
     resetMatch,
     lastGoalScorer,
-    consecutiveGoalsCount
+    consecutiveGoalsCount,
+    gameTimeSeconds,
+    matchDuration,
+    ball,
+    homePlayers,
+    awayPlayers
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remainder = secs % 60;
+    return `${mins.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+  };
+
+  const isBallMoving = ball ? Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05 : false;
 
   // Click outside scoreboard pill collapses expanded team names
   useEffect(() => {
@@ -70,6 +83,11 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
   const awayPlayerName = isMultiplayer 
     ? (opponentProfile?.username || opponentInfo?.displayName || 'Oponente')
     : 'MÁQUINA';
+
+  const homeGK = homePlayers?.find(p => p.number === 1);
+  const awayGK = awayPlayers?.find(p => p.number === 1);
+  const homeSaves = homeGK?.gkSaves ?? 0;
+  const awaySaves = awayGK?.gkSaves ?? 0;
 
   // Helper to render procedural crests or uploaded logos
   const renderCrest = (
@@ -160,6 +178,17 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                   <span className={`font-bold text-zinc-400 max-w-[80px] truncate ${isMobile ? 'text-[8px]' : 'text-[11px]'}`}>
                     {homePlayerName}
                   </span>
+                  {homeSaves > 0 && (
+                    <>
+                      <span className="text-zinc-700 text-[10px] font-bold">|</span>
+                      <span 
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 font-extrabold text-[8px] md:text-[9.5px] shadow-[0_0_8px_rgba(34,211,238,0.15)]`}
+                        title={`Goleiro: ${homeSaves} defesas (Lentidão de -${homeSaves}%)`}
+                      >
+                        🧤 {homeSaves} (-{homeSaves}%)
+                      </span>
+                    </>
+                  )}
                 </div>
               ) : (
                 <span className={`font-black tracking-widest uppercase transition-all duration-300 animate-fadeIn ${turn === 'HOME' ? 'text-blue-400' : 'text-zinc-450'} ${isMobile ? 'text-[9.5px]' : 'text-sm'}`}>
@@ -264,6 +293,17 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
             <div className="flex items-center">
               {isExpanded ? (
                 <div className="flex items-center gap-1.5 animate-fadeIn">
+                  {awaySaves > 0 && (
+                    <>
+                      <span 
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-800/40 text-amber-400 font-extrabold text-[8px] md:text-[9.5px] shadow-[0_0_8px_rgba(245,158,11,0.15)]`}
+                        title={`Goleiro: ${awaySaves} defesas (Lentidão de -${awaySaves}%)`}
+                      >
+                        (-{awaySaves}%) {awaySaves} 🧤
+                      </span>
+                      <span className="text-zinc-700 text-[10px] font-bold">|</span>
+                    </>
+                  )}
                   <span className={`font-bold text-zinc-400 max-w-[80px] truncate ${isMobile ? 'text-[8px]' : 'text-[11px]'}`}>
                     {awayPlayerName}
                   </span>
@@ -300,15 +340,27 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
           </div>
         ) : (
           <div className={`flex items-center ${isMobile ? 'gap-1.5' : 'gap-2.5 md:gap-4'} text-zinc-300`}>
-            {/* Game Time (Minutes) */}
-            <div className={`flex items-center gap-1 bg-zinc-950/60 rounded-full border border-zinc-800/50 text-cyan-400 shadow-inner ${isMobile ? 'px-1.5 py-0.5' : 'px-2 py-0.5 md:px-3 md:py-1'}`}>
-              <Clock size={isMobile ? 10 : 12} className="text-cyan-500" />
-              <span className={`font-black tracking-widest ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>{gameTime}'</span>
+            {/* Game Time (MM:SS / TotalMM:SS) */}
+            <div className={`flex items-center gap-1.5 bg-zinc-950/60 rounded-full border border-zinc-800/50 text-cyan-400 shadow-inner ${isMobile ? 'px-2 py-0.5' : 'px-3 py-1'}`}>
+              <Clock size={isMobile ? 10 : 12} className="text-cyan-500 animate-pulse" />
+              <span className={`font-black tracking-widest ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>
+                {formatTime(gameTimeSeconds)} <span className="opacity-40 text-zinc-550 font-medium">/</span> {formatTime(matchDuration)}
+              </span>
             </div>
             
-            {/* Round Counter */}
-            <div className={`${isMobile ? 'hidden' : 'hidden sm:block'} text-[10px] font-bold text-zinc-500 border-l border-zinc-800 pl-4 uppercase`}>
-              Rodada <span className="text-zinc-300 font-black">{Math.floor(gameTime / 5) + 1}</span> de <span className="text-zinc-300 font-black">18</span>
+            {/* Status Indicator */}
+            <div className={`${isMobile ? 'hidden' : 'hidden sm:block'} text-[10px] font-bold text-zinc-550 border-l border-zinc-800 pl-4 uppercase flex items-center gap-1.5`}>
+              {isBallMoving ? (
+                <span className="text-emerald-400 flex items-center gap-1 text-[9px] md:text-xs font-black">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 animate-ping"></span>
+                  BOLA EM JOGO
+                </span>
+              ) : (
+                <span className="text-amber-500 flex items-center gap-1 text-[9px] md:text-xs font-black">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-450 animate-pulse"></span>
+                  TEMPO PARADO
+                </span>
+              )}
             </div>
             
             {/* Active Turn Signal */}

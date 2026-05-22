@@ -123,7 +123,7 @@ export const updateBallPhysics = (
         const dot = vx * nx + vz * nz;
         if (dot < 0) {
           const prevMult = nextSpeedMult;
-          nextSpeedMult = Math.min(nextSpeedMult * 1.05, 4.0);
+          nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
           const ratio = nextSpeedMult / prevMult;
           vx = (vx - 2 * dot * nx) * postRestitution * ratio;
           vz = (vz - 2 * dot * nz) * postRestitution * ratio;
@@ -155,7 +155,7 @@ export const updateBallPhysics = (
         const dot = vy * ny + vz * nz;
         if (dot < 0) {
           const prevMult = nextSpeedMult;
-          nextSpeedMult = Math.min(nextSpeedMult * 1.05, 4.0);
+          nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
           const ratio = nextSpeedMult / prevMult;
           vy = (vy - 2 * dot * ny) * postRestitution * ratio;
           vz = (vz - 2 * dot * nz) * postRestitution * ratio;
@@ -171,12 +171,12 @@ export const updateBallPhysics = (
   const wallLimitX = 4.8;
   if (x < -wallLimitX) {
     x = -wallLimitX;
-    nextSpeedMult = Math.min(currentSpeedMult * 1.05, 4.0);
+    nextSpeedMult = Math.min(currentSpeedMult * 1.03, 4.0);
     vx = -vx * 0.7 * (nextSpeedMult / currentSpeedMult);
     collisionWall = true;
   } else if (x > wallLimitX) {
     x = wallLimitX;
-    nextSpeedMult = Math.min(currentSpeedMult * 1.05, 4.0);
+    nextSpeedMult = Math.min(currentSpeedMult * 1.03, 4.0);
     vx = -vx * 0.7 * (nextSpeedMult / currentSpeedMult);
     collisionWall = true;
   }
@@ -187,13 +187,13 @@ export const updateBallPhysics = (
     if (z < -wallLimitZ) {
       z = -wallLimitZ;
       const prevMult = nextSpeedMult;
-      nextSpeedMult = Math.min(nextSpeedMult * 1.05, 4.0);
+      nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
       vz = -vz * 0.7 * (nextSpeedMult / prevMult);
       collisionWall = true;
     } else if (z > wallLimitZ) {
       z = wallLimitZ;
       const prevMult = nextSpeedMult;
-      nextSpeedMult = Math.min(nextSpeedMult * 1.05, 4.0);
+      nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
       vz = -vz * 0.7 * (nextSpeedMult / prevMult);
       collisionWall = true;
     }
@@ -256,8 +256,8 @@ export const updateBallPhysics = (
           const baseAngle = forwardZ === 1 ? 0 : Math.PI;
           const angle = baseAngle + chosenSpread;
 
-          // Accumulate +5% per GK touch (capped at 4x) — same rule as field players
-          nextSpeedMult = Math.min(nextSpeedMult * 1.05, 4.0);
+          // Accumulate +3% per GK touch (capped at 4x) — same rule as field players
+          nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
 
           // Randomly pick deflection style: PASS (fast ground), CROSS (lob), SHOOT (power)
           const styleRoll = Math.random();
@@ -313,8 +313,8 @@ export const updateBallPhysics = (
         const angleNoise = (Math.random() - 0.5) * 0.06; // up to ±1.7 degrees (±0.03 rad)
         let angle = p.angle + angleNoise;
 
-        // 3. Accumulate +5% speed per touch (capped at 4x) — dynamic bouncing feel
-        nextSpeedMult = Math.min(nextSpeedMult * 1.05, 4.0);
+        // 3. Accumulate +3% speed per touch (capped at 4x) — dynamic bouncing feel
+        nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
 
         // 4. If in a loop (C >= 3), apply progressive 15 deg rotation and extra speed multiplier
         let loopSpeedBonus = 1.0;

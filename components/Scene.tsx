@@ -28,6 +28,7 @@ interface SceneProps {
   setActionStatus: (status: string) => void;
   handleBallStopped: (stoppedPosition: [number, number, number]) => void;
   updateGoalkeeperPositions?: (homeX: number, awayX: number) => void;
+  incrementGoalkeeperSaves?: (team: Team) => void;
   triggerFoul?: (e1: string, e2: string, stoppedPosition: [number, number, number]) => void;
   homeKitConfig?: any;
   awayKitConfig?: any;
@@ -406,6 +407,7 @@ const SceneContent: React.FC<SceneProps> = ({
   setActionStatus,
   handleBallStopped,
   updateGoalkeeperPositions,
+  incrementGoalkeeperSaves,
   triggerFoul,
   homeKitConfig,
   awayKitConfig,
@@ -721,17 +723,21 @@ const SceneContent: React.FC<SceneProps> = ({
     // --- GOALKEEPER sliding logic (Real-Time Tracking) ---
     const ballX = ballStateRef.current.position[0];
     
-    let gkSpeed = 4.275; // -5% (era 4.5)
-    if (difficulty === Difficulty.EASY) gkSpeed = 1.9; // -5% (era 2.0)
-    else if (difficulty === Difficulty.HARD) gkSpeed = 7.125; // -5% (era 7.5)
+    let baseGkSpeed = 4.275; // -5% (era 4.5)
+    if (difficulty === Difficulty.EASY) baseGkSpeed = 1.9; // -5% (era 2.0)
+    else if (difficulty === Difficulty.HARD) baseGkSpeed = 7.125; // -5% (era 7.5)
 
     // Home Goalkeeper (number 1)
     const homeGK = homePlayersRef.current.find(p => p.number === 1);
     if (homeGK) {
+      const homeSaves = homeGK.gkSaves ?? 0;
+      const homeSpeedMult = Math.max(0.1, 1 - homeSaves * 0.01);
+      const currentHomeGkSpeed = baseGkSpeed * homeSpeedMult;
+
       const targetX = THREE.MathUtils.clamp(ballX, -0.85, 0.85);
       const currentX = homeGK.position[0];
       const dx = targetX - currentX;
-      const step = Math.sign(dx) * Math.min(Math.abs(dx), gkSpeed * dt);
+      const step = Math.sign(dx) * Math.min(Math.abs(dx), currentHomeGkSpeed * dt);
       homeGK.position[0] = currentX + step;
       
       if (homeGKRef.current) {
@@ -742,10 +748,14 @@ const SceneContent: React.FC<SceneProps> = ({
     // Away Goalkeeper (number 1)
     const awayGK = awayPlayersRef.current.find(p => p.number === 1);
     if (awayGK) {
+      const awaySaves = awayGK.gkSaves ?? 0;
+      const awaySpeedMult = Math.max(0.1, 1 - awaySaves * 0.01);
+      const currentAwayGkSpeed = baseGkSpeed * awaySpeedMult;
+
       const targetX = THREE.MathUtils.clamp(ballX, -0.85, 0.85);
       const currentX = awayGK.position[0];
       const dx = targetX - currentX;
-      const step = Math.sign(dx) * Math.min(Math.abs(dx), gkSpeed * dt);
+      const step = Math.sign(dx) * Math.min(Math.abs(dx), currentAwayGkSpeed * dt);
       awayGK.position[0] = currentX + step;
       
       if (awayGKRef.current) {
@@ -859,6 +869,10 @@ const SceneContent: React.FC<SceneProps> = ({
         const isGK = result.collisionPlayerId.endsWith('-p1');
         if (isGK) {
           SoundManager.playKeeperSave(speed);
+          const gkTeam = result.collisionPlayerId.startsWith('home') ? 'HOME' : 'AWAY';
+          if (incrementGoalkeeperSaves) {
+            incrementGoalkeeperSaves(gkTeam);
+          }
         } else {
           SoundManager.playRebound(speed);
         }
@@ -906,14 +920,14 @@ const SceneContent: React.FC<SceneProps> = ({
       if (recordedCollision) {
         const history = collisionHistoryRef.current;
         const N = history.length;
-        if (N >= 10) {
+        if (N >= 6) {
           let isLoop = true;
           const e1 = history[N - 1];
           const e2 = history[N - 2];
           if (e1 === e2 || e1 === 'WALL' || e2 === 'WALL') {
             isLoop = false;
           } else {
-            for (let i = 1; i <= 10; i++) {
+            for (let i = 1; i <= 6; i++) {
               const expected = (i % 2 === 1) ? e1 : e2;
               if (history[N - i] !== expected) {
                 isLoop = false;

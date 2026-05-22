@@ -27,6 +27,7 @@ export interface PlayerConfig {
   position: [number, number, number]; // [x, y, z]
   skinColor?: string;
   hairColor?: string;
+  gkSaves?: number;
 }
 
 export interface UniformConfig {

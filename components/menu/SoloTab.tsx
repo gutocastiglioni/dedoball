@@ -1,37 +1,67 @@
 import React from 'react';
 import { useGameStateContext } from '../../GameStateContext';
 import { Difficulty } from '../../types';
-import { Trophy, Play } from 'lucide-react';
+import { Trophy, Play, Clock } from 'lucide-react';
 
 const SoloTab: React.FC = () => {
-  const { difficulty, setDifficulty, startGame } = useGameStateContext();
+  const { difficulty, setDifficulty, startGame, matchDuration, setMatchDuration } = useGameStateContext();
 
   return (
     <div className="w-full max-w-xl mx-auto backdrop-blur-md bg-zinc-900/50 border border-zinc-800 shadow-2xl rounded-3xl p-6 space-y-6 animate-scaleUp">
       <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-400">DESAFIE A INTELIGÊNCIA ARTIFICIAL</h3>
       
-      <div className="grid grid-cols-3 gap-2.5">
-        {[
-          { id: Difficulty.EASY, label: 'FÁCIL', desc: 'IA com rebote instável', color: 'border-emerald-500/40 text-emerald-400 bg-emerald-950/10' },
-          { id: Difficulty.MEDIUM, label: 'MÉDIO', desc: 'IA competitiva', color: 'border-amber-500/40 text-amber-400 bg-amber-950/10' },
-          { id: Difficulty.HARD, label: 'DIFÍCIL', desc: 'IA com precisão cirúrgica', color: 'border-rose-500/40 text-rose-400 bg-rose-950/10' }
-        ].map((diff) => (
-          <button
-            key={diff.id}
-            onClick={() => setDifficulty(diff.id)}
-            className={`
-              rounded-2xl border font-black transition-all duration-300 transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center p-4 gap-2
-              ${difficulty === diff.id 
-                ? `${diff.color} ring-2 ring-white/10 shadow-lg` 
-                : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
-              }
-            `}
-          >
-            <Trophy size={16} className={difficulty === diff.id ? 'animate-bounce text-cyan-400' : 'opacity-40'} />
-            <span className="text-xs tracking-wide">{diff.label}</span>
-            <span className="text-[8px] font-medium text-zinc-500 leading-none">{diff.desc}</span>
-          </button>
-        ))}
+      <div className="space-y-2.5">
+        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-450 text-left">Dificuldade da IA</h4>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { id: Difficulty.EASY, label: 'FÁCIL', desc: 'IA com rebote instável', color: 'border-emerald-500/40 text-emerald-400 bg-emerald-950/10' },
+            { id: Difficulty.MEDIUM, label: 'MÉDIO', desc: 'IA competitiva', color: 'border-amber-500/40 text-amber-400 bg-amber-950/10' },
+            { id: Difficulty.HARD, label: 'DIFÍCIL', desc: 'IA com precisão cirúrgica', color: 'border-rose-500/40 text-rose-400 bg-rose-950/10' }
+          ].map((diff) => (
+            <button
+              key={diff.id}
+              onClick={() => setDifficulty(diff.id)}
+              className={`
+                rounded-2xl border font-black transition-all duration-300 transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center p-4 gap-2
+                ${difficulty === diff.id 
+                  ? `${diff.color} ring-2 ring-white/10 shadow-lg` 
+                  : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
+                }
+              `}
+            >
+              <Trophy size={16} className={difficulty === diff.id ? 'animate-bounce text-cyan-400' : 'opacity-40'} />
+              <span className="text-xs tracking-wide">{diff.label}</span>
+              <span className="text-[8px] font-medium text-zinc-500 leading-none">{diff.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-450 text-left">Duração do Jogo (Tempo de Bola Rolando)</h4>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { id: 60, label: '1 MINUTO', desc: 'Partida Relâmpago' },
+            { id: 180, label: '3 MINUTOS', desc: 'Tempo Clássico' },
+            { id: 300, label: '5 MINUTOS', desc: 'Guerra Tática' }
+          ].map((timeOpt) => (
+            <button
+              key={timeOpt.id}
+              onClick={() => setMatchDuration(timeOpt.id)}
+              className={`
+                rounded-2xl border font-black transition-all duration-300 transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center p-4 gap-2
+                ${matchDuration === timeOpt.id 
+                  ? 'border-cyan-500/40 text-cyan-400 bg-cyan-950/10 ring-2 ring-white/10 shadow-lg' 
+                  : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
+                }
+              `}
+            >
+              <Clock size={16} className={matchDuration === timeOpt.id ? 'text-cyan-400' : 'opacity-40'} />
+              <span className="text-xs tracking-wide">{timeOpt.label}</span>
+              <span className="text-[8px] font-medium text-zinc-500 leading-none">{timeOpt.desc}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <button 

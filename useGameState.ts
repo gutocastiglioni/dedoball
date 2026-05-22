@@ -129,6 +129,8 @@ export const useGameState = () => {
   const [homeReady, setHomeReady] = useState(false);
   const [awayReady, setAwayReady] = useState(false);
   const [gameTime, setGameTime] = useState(0); // minutes (0 to 90)
+  const [matchDuration, setMatchDuration] = useState(180); // in seconds (1, 3, or 5 mins)
+  const [gameTimeSeconds, setGameTimeSeconds] = useState(0); // in seconds elapsed
   const [homeFlicksRemaining, setHomeFlicksRemaining] = useState(3);
   const [awayFlicksRemaining, setAwayFlicksRemaining] = useState(3);
   const [isCameraCentered, setIsCameraCentered] = useState(true);
@@ -221,6 +223,21 @@ export const useGameState = () => {
   const [consecutiveGoalsCount, setConsecutiveGoalsCount] = useState<number>(0);
   const [captainMoveMode, setCaptainMoveMode] = useState<Team | null>(null);
 
+  const [showRulesModal, setShowRulesModal] = useState(false);
+
+  const setHasSeenRules = useCallback(async () => {
+    localStorage.setItem('tableball_has_seen_rules', 'true');
+    if (activeUser) {
+      try {
+        const { update } = await import('firebase/database');
+        const userRef = ref(db, `users/${activeUser.uid}`);
+        await update(userRef, { hasSeenRules: true });
+      } catch (err) {
+        console.error("Error updating hasSeenRules in DB:", err);
+      }
+    }
+  }, [activeUser]);
+
   const ballRef = useRef(ball);
   const captainMoveModeRef = useRef<Team | null>(null);
   // Stores transient goal data needed after captain is repositioned
@@ -241,6 +258,9 @@ export const useGameState = () => {
   const awayFlicksRemainingRef = useRef(awayFlicksRemaining);
   const lastGoalScorerRef = useRef(lastGoalScorer);
   const consecutiveGoalsCountRef = useRef(consecutiveGoalsCount);
+  const matchDurationRef = useRef(matchDuration);
+  const gameTimeSecondsRef = useRef(gameTimeSeconds);
+  const wasKickoffRef = useRef(false);
 
   useEffect(() => {
     lastGoalScorerRef.current = lastGoalScorer;
@@ -302,6 +322,14 @@ export const useGameState = () => {
   useEffect(() => {
     awayFlicksRemainingRef.current = awayFlicksRemaining;
   }, [awayFlicksRemaining]);
+
+  useEffect(() => {
+    matchDurationRef.current = matchDuration;
+  }, [matchDuration]);
+
+  useEffect(() => {
+    gameTimeSecondsRef.current = gameTimeSeconds;
+  }, [gameTimeSeconds]);
 
   useEffect(() => {
     ballRef.current = ball;
@@ -499,6 +527,11 @@ export const useGameState = () => {
       const room: Room = snapshot.val();
       setCurrentRoom(room);
 
+      if (room.matchDuration !== undefined) {
+        setMatchDuration(room.matchDuration);
+        matchDurationRef.current = room.matchDuration;
+      }
+
       const isHome = myRoleRef.current === 'HOME';
 
       // If we are HOME (host) and room is in preparation, but guest disconnected (presence is false)
@@ -568,6 +601,10 @@ export const useGameState = () => {
           setScores(room.gameState.scores);
           setTurn(room.gameState.turn);
           setGameTime(room.gameState.gameTime);
+          if (room.gameState.gameTimeSeconds !== undefined) {
+            setGameTimeSeconds(room.gameState.gameTimeSeconds);
+            gameTimeSecondsRef.current = room.gameState.gameTimeSeconds;
+          }
           setHomeFlicksRemaining(room.gameState.homeFlicksRemaining);
           setAwayFlicksRemaining(room.gameState.awayFlicksRemaining);
           setPhase(dbPhase);
@@ -779,7 +816,8 @@ export const useGameState = () => {
         number: i + 1,
         position,
         skinColor: eth.skin,
-        hairColor: eth.hair
+        hairColor: eth.hair,
+        gkSaves: 0
       };
     });
 
@@ -802,7 +840,8 @@ export const useGameState = () => {
         number: i + 1,
         position,
         skinColor: eth.skin,
-        hairColor: eth.hair
+        hairColor: eth.hair,
+        gkSaves: 0
       };
     });
 
@@ -896,6 +935,13 @@ export const useGameState = () => {
     setAwayFlicksRemaining(3);
     setActionStatus('Preparação: Monte seu campo de guerra!');
     addGameLog(`Nova partida iniciada! Dificuldade: ${diff}. Fase de Preparação Tática.`, 'phase');
+
+    // Automatically trigger rules tutorial modal if this is the first AI match
+    const localHasSeen = localStorage.getItem('tableball_has_seen_rules') === 'true';
+    const dbHasSeen = userProfile?.hasSeenRules === true;
+    if (!localHasSeen && !dbHasSeen) {
+      setShowRulesModal(true);
+    }
   };
 
   // Drag and place player in slot
@@ -1086,6 +1132,7 @@ export const useGameState = () => {
       turn: nextTurn,
       scores: nextScores,
       gameTime: nextGameTime,
+      gameTimeSeconds: gameTimeSecondsRef.current,
       homeFlicksRemaining: nextHomeFlicks,
       awayFlicksRemaining: nextAwayFlicks,
       phase: nextPhase,
@@ -1128,47 +1175,42 @@ export const useGameState = () => {
     let nextStatus = '';
     const isFairnessActive = nextCount >= 2;
 
-    setGameTime(prevTime => {
-      if (isFairnessActive) {
-        nextPhase = GamePhase.PREPARATION;
-        nextStatus = `Vantagem Tática Ativada! Time adversário marcou ${nextCount} gols seguidos. Posicione até 4 Bloqueadores (Stopper Extra).`;
-      } else if (prevTime > 0 && prevTime % 15 === 0) {
-        nextPhase = GamePhase.PREPARATION;
-        nextStatus = `Gol marcado! Intervalo Tático (${prevTime}'): Reajuste seu time.`;
-      } else {
-        nextPhase = GamePhase.ACTION;
-        nextStatus = concedingTeam === 'HOME'
-          ? 'Gol sofrido! Saída de bola: chute do meio campo.'
-          : 'GOLAÇO! Saída de bola da IA.';
-      }
+    if (isFairnessActive) {
+      nextPhase = GamePhase.PREPARATION;
+      nextStatus = `Vantagem Tática Ativada! Time adversário marcou ${nextCount} gols seguidos. Posicione até 4 Bloqueadores (Stopper Extra).`;
+    } else {
+      nextPhase = GamePhase.ACTION;
+      nextStatus = concedingTeam === 'HOME'
+        ? 'Gol sofrido! Saída de bola: chute do meio campo.'
+        : 'GOLAÇO! Saída de bola da IA.';
+    }
 
-      flushSync(() => {
-        setBall(freshBall);
-        setTurn(concedingTeam);
-        setHomeReady(false);
-        setAwayReady(false);
-        setPhase(nextPhase);
-        setActionStatus(nextStatus);
-      });
-
-      addGameLog(
-        isFairnessActive
-          ? `Capitão reposicionado! Vantagem Tática Ativada. Posse e kickoff do time ${concedingTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} para fase de Preparação Tática com Stopper Extra.`
-          : `Capitão reposicionado! Posse do time ${concedingTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} para reiniciar no centro (Kickoff).`,
-        'phase'
-      );
-
-      console.log(`%c[Captain Move] ✅ Captain confirmed at slot. Phase=${nextPhase}, Turn=${concedingTeam}`, 'color: #2ed573; font-weight: bold;');
-
-      if (isMultiplayer) {
-        syncGameStateToFirebase(
-          freshBall, currentHomePlayers, currentAwayPlayers, concedingTeam,
-          nextScores, prevTime, homeFlicksRemainingRef.current, awayFlicksRemainingRef.current, nextPhase, nextStatus
-        );
-      }
-
-      return prevTime;
+    flushSync(() => {
+      setBall(freshBall);
+      setTurn(concedingTeam);
+      setHomeReady(false);
+      setAwayReady(false);
+      setPhase(nextPhase);
+      setActionStatus(nextStatus);
     });
+
+    addGameLog(
+      isFairnessActive
+        ? `Capitão reposicionado! Vantagem Tática Ativada. Posse e kickoff do time ${concedingTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} para fase de Preparação Tática com Stopper Extra.`
+        : `Capitão reposicionado! Posse do time ${concedingTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} para reiniciar no centro (Kickoff).`,
+      'phase'
+    );
+
+    console.log(`%c[Captain Move] ✅ Captain confirmed at slot. Phase=${nextPhase}, Turn=${concedingTeam}`, 'color: #2ed573; font-weight: bold;');
+
+    const currentTimeValue = gameTimeRef.current;
+
+    if (isMultiplayer) {
+      syncGameStateToFirebase(
+        freshBall, currentHomePlayers, currentAwayPlayers, concedingTeam,
+        nextScores, currentTimeValue, homeFlicksRemainingRef.current, awayFlicksRemainingRef.current, nextPhase, nextStatus
+      );
+    }
   }, [addGameLog, isMultiplayer, syncGameStateToFirebase]);
 
   // Change Captain (only during Preparation; GK cannot be captain)
@@ -1282,9 +1324,11 @@ export const useGameState = () => {
         `%c[Flick Event] 🟢 Kickoff shot taken by ${turn}! This flick does NOT count toward the 3-flick round limit. Ball set in motion.`,
         "color: #2ecc71; font-weight: bold; background: #e8f8f5; padding: 2px 4px; border-radius: 4px;"
       );
+      wasKickoffRef.current = true;
       addGameLog(`Saída de bola (Kickoff) por ${turn === 'HOME' ? 'Casa' : 'Visitante/IA'}. (Sem custo de peteleco)`, 'flick');
       setBall(prev => ({ ...prev, velocity: [vx, 0, vz], isKickoff: false }));
     } else {
+      wasKickoffRef.current = false;
       if (turn === 'HOME') {
         const oldFlicks = homeFlicksRemainingRef.current;
         const newFlicks = Math.max(0, oldFlicks - 1);
@@ -1323,109 +1367,48 @@ export const useGameState = () => {
     const isMaster = !isMultiplayer || turnRef.current === myRoleRef.current;
 
     // ─── Round-over detection (tackle path) ───────────────────────────────────
-    // handleBallStopped handles this for natural stops, but tackles bypass it.
-    // We must mirror the same round-over logic here so 0/0 flicks ends the round.
     const currentHomeFlicks = homeFlicksRemainingRef.current;
     const currentAwayFlicks = awayFlicksRemainingRef.current;
     const isRoundOverOnTackle = currentHomeFlicks === 0 && currentAwayFlicks === 0;
 
     if (isRoundOverOnTackle && isMaster) {
-      const nextGameTimeValue = gameTimeRef.current + 5;
-
       console.log(
-        `%c[Game Loop] 🔁 ROUND COMPLETED VIA TACKLE! Both teams at 0 flicks. Time: ${gameTimeRef.current}' ➔ ${nextGameTimeValue}'. Flicks reset to 3.`,
+        `%c[Game Loop] 🔁 ROUND COMPLETED VIA TACKLE! Both teams at 0 flicks. Entering PREPARATION. Flicks reset to 3.`,
         "color: #e67e22; font-weight: bold; background: #fdebd0; padding: 4px 8px; border: 2px solid #e67e22; border-radius: 5px;"
       );
-      addGameLog(`Fim da Rodada (via desarme)! Ambos os times esgotaram seus petelecos. Tempo avançado para ${nextGameTimeValue}'. Petelecos reabastecidos para 3.`, 'phase');
+      addGameLog(`Fim da Rodada (via desarme)! Ambos os times esgotaram seus petelecos. Preparação Tática liberada. Flicks reabastecidos para 3.`, 'phase');
 
       homeFlicksRemainingRef.current = 3;
       awayFlicksRemainingRef.current = 3;
 
       const nextScoresValue = scoresRef.current;
-      let nextPhaseValue = phaseRef.current;
-      let nextStatusValue = '';
-      let nextTurnValue = newPossession;
-      let updatedBallPrep: BallState;
+      const nextPhaseValue = GamePhase.PREPARATION;
+      const nextStatusValue = `Fim da rodada (via desarme)! Retornando à fase de Preparação Tática.`;
+      const nextTurnValue = newPossession;
+      const updatedBallPrep: BallState = { 
+        possession: newPossession, 
+        velocity: [0, 0, 0], 
+        position: stoppedPosition, 
+        lastTouchedByPlayerId: ballRef.current.lastTouchedByPlayerId, 
+        isKickoff: isKickoff !== undefined ? isKickoff : ballRef.current.isKickoff, 
+        speedMultiplier: 1 
+      };
 
-      if (nextGameTimeValue >= 90) {
-        nextPhaseValue = GamePhase.GAME_OVER;
-        const endStatus = nextScoresValue.home > nextScoresValue.away
-          ? `Fim de jogo! Vitória da Casa por ${nextScoresValue.home}x${nextScoresValue.away}!`
-          : nextScoresValue.away > nextScoresValue.home
-            ? `Fim de jogo! Vitória do Visitante por ${nextScoresValue.away}x${nextScoresValue.home}!`
-            : `Fim de jogo! Empate dramático de ${nextScoresValue.home}x${nextScoresValue.away}!`;
-        
-        nextStatusValue = endStatus;
-        updatedBallPrep = { possession: newPossession, velocity: [0, 0, 0], position: stoppedPosition, lastTouchedByPlayerId: ballRef.current.lastTouchedByPlayerId, isKickoff: true, speedMultiplier: 1 };
-        
-        flushSync(() => {
-          setGameTime(nextGameTimeValue);
-          setHomeFlicksRemaining(3);
-          setAwayFlicksRemaining(3);
-          setPhase(nextPhaseValue);
-          setTurn(nextTurnValue);
-          setBall(updatedBallPrep);
-          setActionStatus(nextStatusValue);
-        });
+      flushSync(() => {
+        setHomeFlicksRemaining(3);
+        setAwayFlicksRemaining(3);
+        setPhase(nextPhaseValue);
+        setTurn(nextTurnValue);
+        setBall(updatedBallPrep);
+        setActionStatus(nextStatusValue);
+        setHomeReady(false);
+        setAwayReady(false);
+      });
 
-        addGameLog(`FIM DE PARTIDA! Placar Final: Casa ${nextScoresValue.home} x ${nextScoresValue.away} Visitante/IA.`, 'phase');
-        if (isMultiplayer && isMaster && roomId) {
-          syncGameStateToFirebase(updatedBallPrep, homePlayersRef.current, awayPlayersRef.current, newPossession, nextScoresValue, nextGameTimeValue, 3, 3, GamePhase.GAME_OVER, endStatus);
-        }
-        return;
-      } else if (nextGameTimeValue % 15 === 0) {
-        nextPhaseValue = GamePhase.PREPARATION;
-        updatedBallPrep = { possession: nextTurnValue, velocity: [0, 0, 0], position: nextGameTimeValue === 45 ? [0, 0.11, 0] as [number, number, number] : stoppedPosition, lastTouchedByPlayerId: ballRef.current.lastTouchedByPlayerId, isKickoff: true, speedMultiplier: 1 };
-        if (nextGameTimeValue === 45) {
-          nextTurnValue = 'AWAY';
-          updatedBallPrep.possession = 'AWAY';
-        }
-        
-        const prepStatus = nextGameTimeValue === 45
-          ? (isMultiplayer ? `Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff do Visitante (AWAY).` : `Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff da IA.`)
-          : `Intervalo Tático dos ${nextGameTimeValue} minutos! Retornando à fase de Preparação Tática.`;
-        
-        nextStatusValue = prepStatus;
-
-        flushSync(() => {
-          setGameTime(nextGameTimeValue);
-          setHomeFlicksRemaining(3);
-          setAwayFlicksRemaining(3);
-          setPhase(nextPhaseValue);
-          setTurn(nextTurnValue);
-          setBall(updatedBallPrep);
-          setActionStatus(nextStatusValue);
-          setHomeReady(false);
-          setAwayReady(false);
-        });
-
-        addGameLog(prepStatus, 'phase');
-        if (isMultiplayer && isMaster && roomId) {
-          syncGameStateToFirebase(updatedBallPrep, homePlayersRef.current, awayPlayersRef.current, nextTurnValue, nextScoresValue, nextGameTimeValue, 3, 3, GamePhase.PREPARATION, prepStatus);
-        }
-        return;
-      } else {
-        // Regular new round — possession to tackle winner
-        const roundStatus = `Rodada finalizada! Iniciando nova rodada (${nextGameTimeValue}'). Posse do time ${newPossession === 'HOME' ? 'Casa' : 'Visitante'}.`;
-        updatedBallPrep = { possession: newPossession, velocity: [0, 0, 0], position: stoppedPosition, lastTouchedByPlayerId: ballRef.current.lastTouchedByPlayerId, isKickoff: isKickoff !== undefined ? isKickoff : ballRef.current.isKickoff, speedMultiplier: 1 };
-        
-        nextStatusValue = roundStatus;
-
-        flushSync(() => {
-          setGameTime(nextGameTimeValue);
-          setHomeFlicksRemaining(3);
-          setAwayFlicksRemaining(3);
-          setTurn(newPossession);
-          setBall(updatedBallPrep);
-          setActionStatus(roundStatus);
-        });
-
-        addGameLog(`Rodada finalizada! Nova rodada iniciada (${nextGameTimeValue}'). Posse com ${newPossession === 'HOME' ? 'Casa' : 'Visitante/IA'}. Flicks resetados para 3/3.`, 'phase');
-        if (isMultiplayer && isMaster && roomId) {
-          syncGameStateToFirebase(updatedBallPrep, homePlayersRef.current, awayPlayersRef.current, newPossession, nextScoresValue, nextGameTimeValue, 3, 3, phaseRef.current, roundStatus);
-        }
-        return;
+      if (isMultiplayer && isMaster && roomId) {
+        syncGameStateToFirebase(updatedBallPrep, homePlayersRef.current, awayPlayersRef.current, nextTurnValue, nextScoresValue, gameTimeRef.current, 3, 3, GamePhase.PREPARATION, nextStatusValue);
       }
+      return;
     }
     // ─── END Round-over detection ─────────────────────────────────────────────
 
@@ -1455,7 +1438,6 @@ export const useGameState = () => {
       setActionStatus(nextStatus);
     });
 
-    // Sync the entire game state to Firebase in multiplayer if we are the master of the turn
     if (isMultiplayer && isMaster && roomId) {
       syncGameStateToFirebase(
         updatedBall,
@@ -1547,60 +1529,24 @@ export const useGameState = () => {
     addGameLog(`Falta! Loop detectado entre ${e1Name} e ${e2Name}. Time ${committingTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} perde 1 peteleco como punição. Posse transferida para ${recipientTeam === 'HOME' ? 'Casa' : 'Visitante/IA'}.`, 'foul');
 
     if (isRoundOver) {
-      nextGameTimeValue = gameTimeRef.current + 5;
-      setGameTime(nextGameTimeValue);
-      
       console.log(
-        `%c[Game Loop] 🔁 ROUND COMPLETED ON FOUL! Both teams have 0 flicks remaining. Time advanced by 5 minutes: ${gameTimeRef.current}' ➔ ${nextGameTimeValue}'. Flicks reset to 3. New possession set to fouled team: ${recipientTeam}`,
+        `%c[Game Loop] 🔁 ROUND COMPLETED ON FOUL! Both teams have 0 flicks remaining. Resetting flicks to 3. Entering PREPARATION.`,
         "color: #e67e22; font-weight: bold; background: #fdebd0; padding: 4px 6px; border: 1px dashed #e67e22; border-radius: 4px;"
       );
       
-      addGameLog(`Fim da Rodada! Ambos os times esgotaram seus 3 petelecos. Tempo avançado em 5 minutos para ${nextGameTimeValue}'. Petelecos reabastecidos para 3.`, 'phase');
+      addGameLog(`Fim da Rodada! Ambos os times esgotaram seus 3 petelecos. Preparação Tática liberada. Flicks reabastecidos para 3.`, 'phase');
 
-      if (nextGameTimeValue >= 90) {
-        nextPhaseValue = GamePhase.GAME_OVER;
-        setPhase(nextPhaseValue);
-        
-        if (nextScoresValue.home > nextScoresValue.away) {
-          nextStatusValue = `Fim de jogo! Vitória da Casa por ${nextScoresValue.home}x${nextScoresValue.away}!`;
-        } else if (nextScoresValue.away > nextScoresValue.home) {
-          nextStatusValue = `Fim de jogo! Vitória do Visitante por ${nextScoresValue.away}x${nextScoresValue.home}!`;
-        } else {
-          nextStatusValue = `Fim de jogo! Empate dramático de ${nextScoresValue.home}x${nextScoresValue.away}!`;
-        }
-        addGameLog(`FIM DE PARTIDA! Placar Final: Casa ${nextScoresValue.home} x ${nextScoresValue.away} Visitante/IA.`, 'phase');
-      } else if (nextGameTimeValue % 15 === 0) {
-        nextPhaseValue = GamePhase.PREPARATION;
-        setPhase(nextPhaseValue);
-        setHomeReady(false);
-        setAwayReady(false);
-        if (nextGameTimeValue === 45) {
-          nextTurnValue = 'AWAY';
-          updatedBall.position = [0, 0.11, 0];
-          updatedBall.velocity = [0, 0, 0];
-          updatedBall.possession = 'AWAY';
-          updatedBall.isKickoff = true;
-          setBall(updatedBall);
-          nextStatusValue = isMultiplayer 
-            ? `Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff do Visitante (AWAY).`
-            : `Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff da IA.`;
-          addGameLog(`Fim do Primeiro Tempo (45')! Intervalo Tático. O segundo tempo inicia com posse e kickoff do Visitante/IA no centro do campo.`, 'phase');
-        } else {
-          nextTurnValue = recipientTeam;
-          nextStatusValue = `Tempo esgotado! Reajuste tático dos 15 minutos (${nextGameTimeValue}').`;
-          addGameLog(`Intervalo Tático dos ${nextGameTimeValue} minutos! Retornando à fase de Preparação Tática.`, 'phase');
-        }
-      } else {
-        nextTurnValue = recipientTeam;
-        nextStatusValue = `Rodada finalizada! Iniciando nova rodada (${nextGameTimeValue}'). Posse do time ${recipientTeam === 'HOME' ? 'Casa' : 'Visitante'}.`;
-      }
-
+      nextPhaseValue = GamePhase.PREPARATION;
+      nextStatusValue = `Fim da rodada! Retornando à fase de Preparação Tática.`;
+      
       nextHomeFlicks = 3;
       nextAwayFlicks = 3;
       homeFlicksRemainingRef.current = 3;
       awayFlicksRemainingRef.current = 3;
       setHomeFlicksRemaining(3);
       setAwayFlicksRemaining(3);
+      setHomeReady(false);
+      setAwayReady(false);
     } else {
       nextTurnValue = recipientTeam;
       nextStatusValue = foulMsg;
@@ -1617,7 +1563,7 @@ export const useGameState = () => {
         awayPlayersRef.current,
         nextTurnValue,
         nextScoresValue,
-        nextGameTimeValue,
+        gameTimeRef.current,
         nextHomeFlicks,
         nextAwayFlicks,
         nextPhaseValue,
@@ -1627,6 +1573,135 @@ export const useGameState = () => {
   }, [
     isMultiplayer, roomId, myRole, syncGameStateToFirebase, homePlayers, awayPlayers, gameTime, phase, scores, actionStatus
   ]);
+
+  // Handle Ball Stopped
+  const handleHalfTime = useCallback(() => {
+    console.log("%c[Game Loop] ⏰ HALF-TIME reached! Pausing game, resetting ball to center.", "color: #d35400; font-weight: bold;");
+    SoundManager.playRefereeWhistle('half');
+    
+    const freshBall: BallState = {
+      position: [0, 0.11, 0],
+      velocity: [0, 0, 0],
+      possession: 'AWAY',
+      lastTouchedByPlayerId: null,
+      isKickoff: true,
+      speedMultiplier: 1
+    };
+
+    const nextStatus = isMultiplayer
+      ? 'Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff do Visitante (AWAY).'
+      : 'Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff da IA.';
+
+    addGameLog(`Fim do Primeiro Tempo! Intervalo Tático. O segundo tempo inicia com posse e kickoff do Visitante/IA no centro do campo.`, 'phase');
+
+    flushSync(() => {
+      setBall(freshBall);
+      setTurn('AWAY');
+      setPhase(GamePhase.PREPARATION);
+      setActionStatus(nextStatus);
+      setHomeFlicksRemaining(3);
+      setAwayFlicksRemaining(3);
+      homeFlicksRemainingRef.current = 3;
+      awayFlicksRemainingRef.current = 3;
+      setHomeReady(false);
+      setAwayReady(false);
+    });
+
+    if (isMultiplayer && roomId) {
+      syncGameStateToFirebase(
+        freshBall,
+        homePlayersRef.current,
+        awayPlayersRef.current,
+        'AWAY',
+        scoresRef.current,
+        45,
+        3,
+        3,
+        GamePhase.PREPARATION,
+        nextStatus
+      );
+    }
+  }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog]);
+
+  const handleFullTime = useCallback(() => {
+    console.log("%c[Game Loop] ⏰ FULL-TIME reached! GAME OVER.", "color: #c0392b; font-weight: bold;");
+    SoundManager.playRefereeWhistle('full');
+
+    const nextScores = scoresRef.current;
+    let nextStatus = '';
+    if (nextScores.home > nextScores.away) {
+      nextStatus = `Fim de jogo! Vitória da Casa por ${nextScores.home}x${nextScores.away}!`;
+    } else if (nextScores.away > nextScores.home) {
+      nextStatus = `Fim de jogo! Vitória do Visitante por ${nextScores.away}x${nextScores.home}!`;
+    } else {
+      nextStatus = `Fim de jogo! Empate dramático de ${nextScores.home}x${nextScores.away}!`;
+    }
+
+    addGameLog(`Fim de Jogo! Placar Final: Casa ${nextScores.home} x ${nextScores.away} Visitante/IA.`, 'phase');
+
+    const freshBall: BallState = {
+      ...ballRef.current,
+      velocity: [0, 0, 0]
+    };
+
+    flushSync(() => {
+      setBall(freshBall);
+      setPhase(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+    });
+
+    if (isMultiplayer && roomId) {
+      syncGameStateToFirebase(
+        freshBall,
+        homePlayersRef.current,
+        awayPlayersRef.current,
+        turnRef.current,
+        nextScores,
+        90,
+        homeFlicksRemainingRef.current,
+        awayFlicksRemainingRef.current,
+        GamePhase.GAME_OVER,
+        nextStatus
+      );
+    }
+  }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog]);
+
+  // Real-time ticking effect while ball is moving
+  useEffect(() => {
+    if (phase !== GamePhase.ACTION) return;
+
+    const ballMoving = Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05;
+    if (!ballMoving) return;
+
+    const interval = setInterval(() => {
+      const isMaster = !isMultiplayer || myRole === 'HOME';
+      
+      setGameTimeSeconds(prev => {
+        const nextSec = prev + 1;
+        gameTimeSecondsRef.current = nextSec;
+
+        const nextMin = Math.floor((nextSec / matchDurationRef.current) * 90);
+        setGameTime(nextMin);
+        gameTimeRef.current = nextMin;
+
+        const halfTimeLimit = Math.floor(matchDurationRef.current / 2);
+        
+        if (!isMultiplayer || myRole === 'HOME') {
+          if (nextSec >= matchDurationRef.current) {
+            clearInterval(interval);
+            setTimeout(() => handleFullTime(), 0);
+          } else if (nextSec === halfTimeLimit && prev < halfTimeLimit) {
+            clearInterval(interval);
+            setTimeout(() => handleHalfTime(), 0);
+          }
+        }
+
+        return nextSec;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase, ball.velocity, isMultiplayer, myRole, handleHalfTime, handleFullTime]);
 
   // Handle Ball Stopped
   const handleBallStopped = useCallback((stoppedPosition: [number, number, number]) => {
@@ -1660,83 +1735,73 @@ export const useGameState = () => {
       return;
     }
 
-    const isRoundOver = currentHomeFlicks === 0 && currentAwayFlicks === 0;
-    console.log(
-      `%c[Game Loop] Round Over Check: Home Flicks=${currentHomeFlicks}, Away Flicks=${currentAwayFlicks} ➔ isRoundOver=${isRoundOver}`,
-      "color: #16a085; font-weight: bold;"
-    );
-
     let nextHomeFlicks = currentHomeFlicks;
     let nextAwayFlicks = currentAwayFlicks;
     let nextTurnValue = turnRef.current;
-    let nextGameTimeValue = gameTimeRef.current;
+    let nextGameTimeValue = Math.floor((gameTimeSecondsRef.current / matchDurationRef.current) * 90);
     let nextPhaseValue = phaseRef.current;
     let nextStatusValue = actionStatus;
     let nextScoresValue = scoresRef.current;
 
-    if (isRoundOver) {
-      nextGameTimeValue = gameTimeRef.current + 5;
-      
-      console.log(
-        `%c[Game Loop] 🔁 ROUND COMPLETED! Both teams used all 3 clicks. Time advanced to ${nextGameTimeValue}'. Flicks reset to 3.`,
-        "color: #e67e22; font-weight: bold; background: #fdebd0; padding: 4px 8px; border: 2px solid #e67e22; border-radius: 5px;"
-      );
-
-      if (nextGameTimeValue >= 90) {
-        nextPhaseValue = GamePhase.GAME_OVER;
-        
-        if (nextScoresValue.home > nextScoresValue.away) {
-          nextStatusValue = `Fim de jogo! Vitória da Casa por ${nextScoresValue.home}x${nextScoresValue.away}!`;
-        } else if (nextScoresValue.away > nextScoresValue.home) {
-          nextStatusValue = `Fim de jogo! Vitória do Visitante por ${nextScoresValue.away}x${nextScoresValue.home}!`;
-        } else {
-          nextStatusValue = `Fim de jogo! Empate dramático de ${nextScoresValue.home}x${nextScoresValue.away}!`;
-        }
-      } else if (nextGameTimeValue % 15 === 0) {
-        nextPhaseValue = GamePhase.PREPARATION;
-        if (nextGameTimeValue === 45) {
-          nextTurnValue = 'AWAY';
-          updatedBall.position = [0, 0.11, 0];
-          updatedBall.velocity = [0, 0, 0];
-          updatedBall.possession = 'AWAY';
-          updatedBall.isKickoff = true;
-          nextStatusValue = isMultiplayer 
-            ? `Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff do Visitante (AWAY).`
-            : `Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff da IA.`;
-          addGameLog(`Fim do Primeiro Tempo (45')! Intervalo Tático. O segundo tempo inicia com posse e kickoff do Visitante/IA no centro do campo.`, 'phase');
-        } else {
-          nextTurnValue = opponentTeam;
-          nextStatusValue = `Tempo esgotado! Reajuste tático dos 15 minutos (${nextGameTimeValue}').`;
-          addGameLog(`Intervalo Tático dos ${nextGameTimeValue} minutos! Retornando à fase de Preparação Tática.`, 'phase');
-        }
-      } else {
-        nextTurnValue = opponentTeam;
-        nextStatusValue = `Rodada finalizada! Iniciando nova rodada (${nextGameTimeValue}'). Posse do time ${opponentTeam === 'HOME' ? 'Casa' : 'Visitante'}.`;
-        addGameLog(`Rodada finalizada! Nova rodada iniciada (${nextGameTimeValue}'). Posse com ${opponentTeam === 'HOME' ? 'Casa' : 'Visitante/IA'}. Flicks resetados para 3/3.`, 'phase');
-      }
-
-      nextHomeFlicks = 3;
-      nextAwayFlicks = 3;
-      homeFlicksRemainingRef.current = 3;
-      awayFlicksRemainingRef.current = 3;
-    } else {
-      const opponentFlicks = opponentTeam === 'HOME' ? currentHomeFlicks : currentAwayFlicks;
-
-      if (opponentFlicks > 0) {
-        nextTurnValue = opponentTeam;
-        console.log(`%c[Game Loop] Alternating turn to opponent: ${nextTurnValue}`, "color: #f1c40f; font-weight: bold;");
-        addGameLog(`Alternância de Turno: Vez do time ${nextTurnValue === 'HOME' ? 'Casa' : 'Visitante/IA'}.`, 'phase');
-      } else {
-        // Keep turn with the current player
-        nextTurnValue = turnRef.current;
-        console.log(`%c[Game Loop] Opponent (${opponentTeam}) has 0 flicks remaining. Keeping turn with active player: ${nextTurnValue}`, "color: #e67e22; font-weight: bold;");
-        addGameLog(`Turno mantido com o time ${nextTurnValue === 'HOME' ? 'Casa' : 'Visitante/IA'} (oponente sem petelecos).`, 'phase');
-      }
+    // Se a jogada foi kickoff:
+    if (wasKickoffRef.current) {
+      console.log("%c[Game Loop] Kickoff play finished. Passing possession and turn to opponent.", "color: #2ecc71; font-weight: bold;");
+      nextTurnValue = opponentTeam;
+      updatedBall.possession = opponentTeam;
+      updatedBall.isKickoff = false;
+      wasKickoffRef.current = false;
       
       if (isMultiplayer && myRoleRef.current) {
         nextStatusValue = nextTurnValue === myRoleRef.current ? 'Sua vez! Dê o peteleco na bola.' : 'Turno do adversário. Aguarde...';
       } else {
         nextStatusValue = nextTurnValue === 'HOME' ? 'Sua vez! Dê o peteleco na bola.' : 'A IA está preparando o contra-ataque...';
+      }
+      
+      addGameLog(`Saída de bola finalizada. Vez do time ${nextTurnValue === 'HOME' ? 'Casa' : 'Visitante/IA'}.`, 'phase');
+    } else {
+      // Jogada normal
+      const isRoundOver = currentHomeFlicks === 0 && currentAwayFlicks === 0;
+      console.log(
+        `%c[Game Loop] Round Over Check: Home Flicks=${currentHomeFlicks}, Away Flicks=${currentAwayFlicks} ➔ isRoundOver=${isRoundOver}`,
+        "color: #16a085; font-weight: bold;"
+      );
+
+      if (isRoundOver) {
+        console.log(
+          `%c[Game Loop] 🔁 ROUND COMPLETED! Both teams used all 3 clicks. Resetting flicks to 3 and entering PREPARATION.`,
+          "color: #e67e22; font-weight: bold; background: #fdebd0; padding: 4px 8px; border: 2px solid #e67e22; border-radius: 5px;"
+        );
+
+        nextPhaseValue = GamePhase.PREPARATION;
+        nextTurnValue = opponentTeam;
+        updatedBall.possession = opponentTeam;
+        nextStatusValue = `Rodada finalizada! Preparação Tática liberada. Flicks reabastecidos para 3/3. Vez de ${opponentTeam === 'HOME' ? 'Casa' : 'Visitante/IA'}.`;
+        
+        addGameLog(`Rodada finalizada! Ambos os times esgotaram seus petelecos. Preparação Tática liberada. Vez do time ${opponentTeam === 'HOME' ? 'Casa' : 'Visitante/IA'}.`, 'phase');
+
+        nextHomeFlicks = 3;
+        nextAwayFlicks = 3;
+        homeFlicksRemainingRef.current = 3;
+        awayFlicksRemainingRef.current = 3;
+      } else {
+        const opponentFlicks = opponentTeam === 'HOME' ? currentHomeFlicks : currentAwayFlicks;
+
+        if (opponentFlicks > 0) {
+          nextTurnValue = opponentTeam;
+          console.log(`%c[Game Loop] Alternating turn to opponent: ${nextTurnValue}`, "color: #f1c40f; font-weight: bold;");
+          addGameLog(`Alternância de Turno: Vez do time ${nextTurnValue === 'HOME' ? 'Casa' : 'Visitante/IA'}.`, 'phase');
+        } else {
+          // Keep turn with the current player
+          nextTurnValue = turnRef.current;
+          console.log(`%c[Game Loop] Opponent (${opponentTeam}) has 0 flicks remaining. Keeping turn with active player: ${nextTurnValue}`, "color: #e67e22; font-weight: bold;");
+          addGameLog(`Turno mantido com o time ${nextTurnValue === 'HOME' ? 'Casa' : 'Visitante/IA'} (oponente sem petelecos).`, 'phase');
+        }
+        
+        if (isMultiplayer && myRoleRef.current) {
+          nextStatusValue = nextTurnValue === myRoleRef.current ? 'Sua vez! Dê o peteleco na bola.' : 'Turno do adversário. Aguarde...';
+        } else {
+          nextStatusValue = nextTurnValue === 'HOME' ? 'Sua vez! Dê o peteleco na bola.' : 'A IA está preparando o contra-ataque...';
+        }
       }
     }
 
@@ -1767,7 +1832,7 @@ export const useGameState = () => {
     }
   }, [
     homePlayers, awayPlayers, gameTime, phase, scores, isMultiplayer, actionStatus,
-    homeFlicksRemaining, awayFlicksRemaining, turn, myRole, syncGameStateToFirebase
+    homeFlicksRemaining, awayFlicksRemaining, turn, myRole, syncGameStateToFirebase, addGameLog
   ]);
 
   // Goal scorer logic
@@ -2035,6 +2100,31 @@ export const useGameState = () => {
     setAwayPlayers(prev => prev.map(p => p.number === 1 ? { ...p, position: [awayX, p.position[1], p.position[2]] } : p));
   }, []);
 
+  const incrementGoalkeeperSaves = useCallback((team: Team) => {
+    const isHome = team === 'HOME';
+    const setPlayers = isHome ? setHomePlayers : setAwayPlayers;
+    const playersRef = isHome ? homePlayersRef : awayPlayersRef;
+    
+    setPlayers(prev => prev.map(p => {
+      if (p.number === 1) {
+        const nextSaves = (p.gkSaves ?? 0) + 1;
+        return { ...p, gkSaves: nextSaves };
+      }
+      return p;
+    }));
+
+    playersRef.current = playersRef.current.map(p => {
+      if (p.number === 1) {
+        const nextSaves = (p.gkSaves ?? 0) + 1;
+        return { ...p, gkSaves: nextSaves };
+      }
+      return p;
+    });
+
+    const currentSaves = playersRef.current.find(p => p.number === 1)?.gkSaves ?? 0;
+    addGameLog(`Defesa do goleiro do Time ${isHome ? 'Casa' : 'IA'}! Total: ${currentSaves} defesas (${currentSaves}% mais lento).`, 'collision');
+  }, [addGameLog]);
+
   // Stable ref so the AI setTimeout can call confirmCaptainMove
   // without a stale closure problem
   const confirmCaptainMoveRef = useRef<(() => void) | null>(null);
@@ -2067,10 +2157,10 @@ export const useGameState = () => {
   };
 
   // --- MULTIPLAYER ROOM HELPERS ---
-  const handleCreateRoom = async (name: string, pass?: string) => {
+  const handleCreateRoom = async (name: string, pass?: string, duration: number = 180) => {
     try {
       isLeavingRef.current = false;
-      const id = await createMultiplayerRoom(name, pass);
+      const id = await createMultiplayerRoom(name, pass, duration);
       setRoomId(id);
       setMyRole('HOME');
       setIsMultiplayer(true);
@@ -2079,6 +2169,10 @@ export const useGameState = () => {
       setBall({ ...INITIAL_BALL, isKickoff: true });
       setPhase(GamePhase.MENU);
       setActionStatus('Sala criada! Aguardando oponente...');
+      setMatchDuration(duration);
+      matchDurationRef.current = duration;
+      setGameTimeSeconds(0);
+      gameTimeSecondsRef.current = 0;
       
       if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
     } catch (err) {
@@ -2243,12 +2337,17 @@ export const useGameState = () => {
     triggerFoul,
     resetMatch,
     gameTime,
+    matchDuration,
+    setMatchDuration,
+    gameTimeSeconds,
+    setGameTimeSeconds,
     homeFlicksRemaining,
     awayFlicksRemaining,
     captainMoveMode,
     confirmCaptainMove,
     handleBallStopped,
     updateGoalkeeperPositions,
+    incrementGoalkeeperSaves,
     isCameraCentered,
     setIsCameraCentered,
     recenterTrigger,
@@ -2259,6 +2358,9 @@ export const useGameState = () => {
     addGameLog,
     lastGoalScorer,
     consecutiveGoalsCount,
+    showRulesModal,
+    setShowRulesModal,
+    setHasSeenRules,
 
     // Firebase Multiplayer exports
     activeUser,

@@ -59,7 +59,7 @@ const HUDPreparationPanel: React.FC = () => {
   };
 
   return (
-    <div className="absolute bottom-0 left-0 w-full p-3 md:p-6 z-15 flex flex-col landscape:flex-row md:flex-row justify-between items-end gap-3 md:gap-4 pointer-events-none">
+    <div className="absolute bottom-0 left-0 w-full p-3 md:p-6 z-30 flex flex-col landscape:flex-row md:flex-row justify-between items-end gap-3 md:gap-4 pointer-events-none">
       {/* Selected Player Scale Panel */}
       {selectedPlayer && (
         <div className="hud-player-card pointer-events-auto w-[290px] xs:w-[320px] md:max-w-md bg-zinc-900/90 backdrop-blur-lg border border-zinc-800 rounded-2xl md:rounded-3xl p-2.5 xs:p-3.5 md:p-5 shadow-2xl transition-all duration-300 animate-scaleUp">

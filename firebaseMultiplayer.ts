@@ -18,6 +18,7 @@ export interface Room {
   password?: string;
   status: 'waiting' | 'preparation' | 'playing' | 'ended';
   createdAt: number;
+  matchDuration?: number; // in seconds
   players: {
     home: RoomPlayer;
     away?: RoomPlayer;
@@ -30,6 +31,7 @@ export interface Room {
     turn: Team;
     scores: { home: number; away: number };
     gameTime: number;
+    gameTimeSeconds?: number; // in seconds
     homeFlicksRemaining: number;
     awayFlicksRemaining: number;
     phase: GamePhase;
@@ -174,7 +176,7 @@ export const updateLeaderboardAndHistory = async (
 };
 
 // --- ROOM / MATCHMAKING FUNCTIONS ---
-export const createMultiplayerRoom = async (name: string, password?: string): Promise<string> => {
+export const createMultiplayerRoom = async (name: string, password?: string, matchDuration: number = 180): Promise<string> => {
   const user = auth.currentUser;
   if (!user) throw new Error('NOT_AUTHENTICATED');
   
@@ -187,6 +189,7 @@ export const createMultiplayerRoom = async (name: string, password?: string): Pr
     isClosed: !!password,
     status: 'waiting',
     createdAt: Date.now(),
+    matchDuration,
     players: {
       home: {
         uid: user.uid,

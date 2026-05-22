@@ -21,7 +21,13 @@ import {
   Maximize2, 
   Info,
   Lock,
-  Loader2
+  Loader2,
+  Settings,
+  Volume2,
+  VolumeX,
+  Zap,
+  Users,
+  Video
 } from 'lucide-react';
 
 interface LobbyMenuProps {
@@ -147,9 +153,17 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
     isMultiplayer, 
     roomId, 
     currentRoom, 
-    resetMatch 
+    resetMatch,
+    cameraMode,
+    changeCameraMode,
+    setShowRulesModal
   } = useGameStateContext();
   const isMobile = useIsMobile();
+
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
+  const [isMuted, setIsMuted] = useState(SoundManager.getMuted());
+  const [sfxVolume, setSfxVolume] = useState(SoundManager.getSFXVolume());
+  const [crowdVolume, setCrowdVolume] = useState(SoundManager.getCrowdVolume());
 
   const currentKitType = userProfile?.selectedKit || 'home';
   const currentKit = currentKitType === 'home'
@@ -163,7 +177,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
 
   // Tab navigation in menu
   const [currentMenuTab, setCurrentMenuTab] = useState<'solo' | 'multi' | 'tournament' | 'ranking' | 'history'>('solo');
-  const [showInstructions, setShowInstructions] = useState(false);
+
 
   // Restricted Access Login Modal states
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -227,7 +241,6 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             <h1 className="text-[10px] xs:text-xs font-black italic tracking-tighter uppercase bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
               TABLEBALL
             </h1>
-            <span className="text-[8px] font-bold text-zinc-600 tracking-wide">v0.3.0</span>
           </div>
 
           {/* Right: Auth Profile, Rules, Fullscreen, Logout */}
@@ -350,12 +363,13 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 { id: 'history', label: 'HISTÓRICO', icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-405' }
               ].map((tab) => {
                 const Icon = tab.icon;
-                const isSelected = currentMenuTab === tab.id;
+                const isSelected = currentMenuTab === tab.id && !showSettingsPopup;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => {
                       SoundManager.playUIClick();
+                      setShowSettingsPopup(false);
                       if (tab.id !== 'solo' && !activeUser) {
                         handleLoginAttempt(tab.id as any);
                       } else {
@@ -375,36 +389,43 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   </button>
                 );
               })}
-            </div>
 
-            {/* Rules Button */}
-            <button 
-              onClick={() => {
-                SoundManager.playUIClick();
-                setShowInstructions(!showInstructions);
-              }}
-              className="text-[6.5px] font-black text-zinc-500 hover:text-cyan-400 uppercase tracking-widest transition-colors py-1 border-t border-zinc-850 w-full text-center"
-            >
-              Regras
-            </button>
+              {/* Regras Button */}
+              <button
+                onClick={() => {
+                  SoundManager.playUIClick();
+                  setShowSettingsPopup(false);
+                  setShowRulesModal(true);
+                }}
+                className="py-1.5 px-0.5 rounded-lg border border-transparent flex flex-col items-center justify-center gap-0.5 text-[7px] font-black tracking-wider transition-all duration-300 hover:scale-102 w-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/40"
+              >
+                <Info size={12} className="w-3 h-3" />
+                <span className="text-[6.5px] font-black tracking-wider leading-none text-center">REGRAS</span>
+              </button>
+
+              {/* Ajustes Button */}
+              <button
+                onClick={() => {
+                  SoundManager.playUIClick();
+                  setShowSettingsPopup(!showSettingsPopup);
+                }}
+                className={`
+                  py-1.5 px-0.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 text-[7px] font-black tracking-wider transition-all duration-300 hover:scale-102 w-full
+                  ${showSettingsPopup 
+                    ? 'bg-zinc-500/20 border-zinc-500/40 text-zinc-300 shadow-[0_0_12px_rgba(0,0,0,0.35)]' 
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/40'
+                  }
+                `}
+              >
+                <Settings size={12} className="w-3 h-3" />
+                <span className="text-[6.5px] font-black tracking-wider leading-none text-center">AJUSTES</span>
+              </button>
+            </div>
           </div>
 
           {/* 2. RIGHT CONTENT AREA */}
           <div className="flex-grow h-full bg-zinc-950/40 border border-zinc-900 rounded-2xl p-2.5 backdrop-blur-md overflow-hidden flex flex-col justify-start items-stretch relative">
-            
-            {/* Rules Modal (Mobile overlay inside content pane) */}
-            {showInstructions && (
-              <div className="absolute inset-1 p-2 text-left rounded-xl bg-zinc-950/98 border border-cyan-500/30 text-zinc-300 text-[8px] leading-relaxed space-y-1 shadow-2xl z-50 animate-scaleUp overflow-y-auto pointer-events-auto">
-                <div className="flex justify-between items-center border-b border-zinc-800 pb-0.5">
-                  <span className="font-black text-cyan-400 uppercase tracking-widest text-[8px]">Instruções de Jogo</span>
-                  <button onClick={() => setShowInstructions(false)} className="text-zinc-500 hover:text-zinc-300 text-[8px] font-black uppercase">Fechar</button>
-                </div>
-                <p>1. <strong>Preparação Secreta:</strong> Posicione seus jogadores nos slots verdes do campo. Na sua vez de programar, toque nos pinos para rotacionar a seta direcionadora e definir a ação (Passe, Cruzamento, Chute ou Desarme).</p>
-                <p>2. <strong>O Peteleco:</strong> No seu turno active de jogo, clique na bola branca, arraste para trás (estilo estilingue) e solte para disparar a bola.</p>
-                <p>3. <strong>Deflexões:</strong> Se a bola atingir seu próprio pino, ele dispara automaticamente a bola na direção programada pela seta, possibilitando tabelas incríveis!</p>
-                <p>4. <strong>Auto-Resgate por IA:</strong> Em partidas online, se o seu oponente cair ou perder a conexão no meio do jogo, uma IA assumirá o controle do time dele para que você continue e garanta seus pontos!</p>
-              </div>
-            )}
+
 
             {/* Render Active Tab content container with no extra outer scrollbar */}
             <div className="w-full h-full overflow-y-auto pr-0.5 flex flex-col justify-start items-stretch">
@@ -413,17 +434,148 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           </div>
         </div>
 
-        {showLoginModal && (
-          <LoginModal 
-            onClose={() => setShowLoginModal(false)} 
-            onSuccess={handleLoginSuccess}
-          />
+        {showSettingsPopup && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn p-4">
+            <div className="w-full max-w-xs bg-zinc-950/95 border border-zinc-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between select-none animate-scaleUp pointer-events-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5 mb-3 w-full">
+                <span className="text-xs font-black tracking-widest text-cyan-400 uppercase flex items-center gap-1.5">
+                  <Settings size={13} />
+                  AJUSTES DO JOGO
+                </span>
+                <button
+                  onClick={() => {
+                    SoundManager.playUIClick();
+                    const newMute = SoundManager.toggleMute();
+                    setIsMuted(newMute);
+                  }}
+                  className="hover:text-cyan-400 active:scale-90 transition-all duration-200"
+                >
+                  {isMuted ? (
+                    <VolumeX size={16} className="text-zinc-500 hover:text-cyan-400 transition-colors" />
+                  ) : (
+                    <Volume2 size={16} className="text-cyan-400 hover:text-cyan-300 transition-colors" />
+                  )}
+                </button>
+              </div>
+
+              {/* Sound Settings */}
+              <div className="flex flex-col gap-3 w-full">
+                {/* SFX volume */}
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                    <div className="flex items-center gap-1.5">
+                      <Zap size={11} className="text-cyan-400" />
+                      <span>Efeitos (SFX)</span>
+                    </div>
+                    <span>{isMuted ? 0 : Math.round(sfxVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : sfxVolume}
+                    onChange={(e) => {
+                      const newVol = parseFloat(e.target.value);
+                      SoundManager.setSFXVolume(newVol);
+                      setSfxVolume(newVol);
+                      if (newVol > 0 && isMuted) {
+                        SoundManager.setMuted(false);
+                        setIsMuted(false);
+                      }
+                    }}
+                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
+                    style={{
+                      background: `linear-gradient(to right, #00d2ff 0%, #00d2ff ${(isMuted ? 0 : sfxVolume) * 100}%, #27272a ${(isMuted ? 0 : sfxVolume) * 100}%, #27272a 100%)`
+                    }}
+                  />
+                </div>
+
+                {/* Crowd volume */}
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                    <div className="flex items-center gap-1.5">
+                      <Users size={11} className="text-cyan-400" />
+                      <span>Torcida</span>
+                    </div>
+                    <span>{isMuted ? 0 : Math.round(crowdVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={isMuted ? 0 : crowdVolume}
+                    onChange={(e) => {
+                      const newVol = parseFloat(e.target.value);
+                      SoundManager.setCrowdVolume(newVol);
+                      setCrowdVolume(newVol);
+                      if (newVol > 0 && isMuted) {
+                        SoundManager.setMuted(false);
+                        setIsMuted(false);
+                      }
+                    }}
+                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
+                    style={{
+                      background: `linear-gradient(to right, #00d2ff 0%, #00d2ff ${(isMuted ? 0 : crowdVolume) * 100}%, #27272a ${(isMuted ? 0 : crowdVolume) * 100}%, #27272a 100%)`
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Camera Mode */}
+              <div className="flex flex-col gap-2 w-full border-t border-zinc-800/80 pt-3 mt-3">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                  <div className="flex items-center gap-1.5">
+                    <Video size={11} className="text-cyan-400" />
+                    <span>Modo de Câmera</span>
+                  </div>
+                </div>
+                
+                <div className="flex bg-zinc-900/95 border border-zinc-800/60 p-0.5 rounded-lg w-full relative">
+                  <button
+                    onClick={() => changeCameraMode('dynamic')}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      cameraMode === 'dynamic'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Seguir Bola
+                  </button>
+                  <button
+                    onClick={() => changeCameraMode('fixed')}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      cameraMode === 'fixed'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Câmera Livre
+                  </button>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  SoundManager.playUIClick();
+                  setShowSettingsPopup(false);
+                }}
+                className="w-full mt-4 py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-805 text-zinc-300 font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
+              >
+                Confirmar e Fechar
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Floating Version & Branding in Bottom-Right Corner (Mobile) */}
-        <div className="absolute bottom-3 right-4 z-20 pointer-events-none select-none flex flex-col items-end gap-[1px] text-[5.5px] font-extrabold text-zinc-600 uppercase tracking-wider leading-none text-right">
-          <span>v0.3.0</span>
-          <span className="text-[4.5px] text-zinc-700 tracking-tight">gutocastiglioni</span>
+        <div className="absolute bottom-3.5 right-4 z-20 pointer-events-none select-none flex items-center gap-1.5 text-[10.5px] font-bold text-zinc-500 uppercase tracking-wider leading-none">
+          <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
+          <span className="text-zinc-800 font-black">&bull;</span>
+          <span className="text-zinc-400 font-black">v0.3.1</span>
         </div>
       </div>
     );
@@ -578,22 +730,25 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           </div>
 
           {/* TAB NAVIGATION BAR */}
-          <div className="w-full grid grid-cols-5 gap-1.5 bg-zinc-950/80 border border-zinc-800/60 p-1.5 rounded-2xl shadow-inner">
+          <div className="w-full grid grid-cols-6 gap-1.5 bg-zinc-950/80 border border-zinc-800/60 p-1.5 rounded-2xl shadow-inner">
             {[
               { id: 'solo', label: 'MODO SOLO', icon: Target, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' },
               { id: 'multi', label: 'MULTIPLAYER', icon: Globe, activeColor: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' },
               { id: 'tournament', label: 'MATA-MATA', icon: Trophy, activeColor: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' },
               { id: 'ranking', label: 'RANKING', icon: Award, activeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-400' },
-              { id: 'history', label: 'HISTÓRICO', icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-450' }
+              { id: 'history', label: 'HISTÓRICO', icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-450' },
+              { id: 'rules', label: 'REGRAS', icon: Info, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' }
             ].map((tab) => {
               const Icon = tab.icon;
-              const isSelected = currentMenuTab === tab.id;
+              const isSelected = tab.id === 'rules' ? false : currentMenuTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => {
                     SoundManager.playUIClick();
-                    if (tab.id !== 'solo' && !activeUser) {
+                    if (tab.id === 'rules') {
+                      setShowRulesModal(true);
+                    } else if (tab.id !== 'solo' && !activeUser) {
                       handleLoginAttempt(tab.id as any);
                     } else {
                       setCurrentMenuTab(tab.id as any);
@@ -620,33 +775,11 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           </div>
 
           {/* Instruction Toggle & Footer Merged for Perfect Viewport Proportion */}
-          <div className="w-full pt-3 border-t border-zinc-900 flex justify-between items-center text-[10px] font-bold text-zinc-500 px-2 mt-2 select-none relative">
-            <button 
-              onClick={() => {
-                SoundManager.playUIClick();
-                setShowInstructions(!showInstructions);
-              }}
-              className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors uppercase tracking-wider pointer-events-auto"
-            >
-              <Info size={12} />
-              {showInstructions ? 'Ocultar Regras' : 'Regras de Jogo'}
-            </button>
+          <div className="w-full pt-3 border-t border-zinc-900 flex justify-end items-center text-[10px] font-bold text-zinc-500 px-2 mt-2 select-none relative">
             
-            {showInstructions && (
-              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-[92%] max-w-lg p-4 text-left rounded-2xl bg-zinc-950/98 border border-cyan-500/30 text-zinc-300 text-xs leading-relaxed space-y-2 shadow-2xl z-50 animate-scaleUp max-h-40 overflow-y-auto pointer-events-auto">
-                <div className="flex justify-between items-center border-b border-zinc-800 pb-1.5">
-                  <span className="font-black text-cyan-400 uppercase tracking-widest text-[10px]">Instruções de Jogo</span>
-                  <button onClick={() => setShowInstructions(false)} className="text-zinc-500 hover:text-zinc-300 text-[10px] font-black uppercase">Fechar</button>
-                </div>
-                <p>1. <strong>Preparação Secreta:</strong> Posicione seus jogadores nos slots verdes do campo. Na sua vez de programar, toque nos pinos para rotacionar a seta e definir a ação (Passe, Cruzamento, Chute ou Desarme).</p>
-                <p>2. <strong>O Peteleco:</strong> No seu turno activo de jogo, clique na bola branca, arraste para trás (estilo estilingue) e solte para disparar a bola.</p>
-                <p>3. <strong>Deflexões:</strong> Se a bola atingir seu próprio pino, ele dispara automaticamente a bola na direção programada pela seta, possibilitando tabelas incríveis!</p>
-                <p>4. <strong>Auto-Resgate por IA:</strong> Em partidas online, se o seu oponente cair ou perder a conexão no meio do jogo, uma IA assumirá o controle do time dele para que você continue e garanta seus pontos!</p>
-              </div>
-            )}
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v0.3.0</span>
+              <span>v0.3.1</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -758,7 +891,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               Cancelar e Excluir Sala
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-600 uppercase tracking-widest select-none">
-              <span>v0.3.0</span>
+              <span>v0.3.1</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>

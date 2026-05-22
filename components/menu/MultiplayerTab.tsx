@@ -10,6 +10,7 @@ const MultiplayerTab: React.FC = () => {
   // Create Room modal/form state
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomPassword, setNewRoomPassword] = useState('');
+  const [roomDuration, setRoomDuration] = useState(180);
   const [showCreateRoomForm, setShowCreateRoomForm] = useState(false);
 
   // Password Prompt for joining closed rooms
@@ -29,7 +30,7 @@ const MultiplayerTab: React.FC = () => {
         </div>
         <button
           onClick={() => setShowCreateRoomForm(!showCreateRoomForm)}
-          className="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[9.5px] sm:text-xs font-black tracking-wider flex items-center gap-1 transition-all hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20"
+          className="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-650 hover:bg-indigo-500 text-white rounded-xl text-[9.5px] sm:text-xs font-black tracking-wider flex items-center gap-1 transition-all hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20"
         >
           <PlusCircle size={12} />
           NOVA SALA
@@ -66,13 +67,41 @@ const MultiplayerTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="space-y-1.5">
+            <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block">Duração da Partida (Tempo de Bola Rolando)</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 60, label: '1 MIN', desc: 'Rápida' },
+                { id: 180, label: '3 MIN', desc: 'Padrão' },
+                { id: 300, label: '5 MIN', desc: 'Guerra Tática' }
+              ].map((timeOpt) => (
+                <button
+                  key={timeOpt.id}
+                  type="button"
+                  onClick={() => setRoomDuration(timeOpt.id)}
+                  className={`
+                    py-1.5 rounded-xl border text-[10px] font-black transition-all flex flex-col items-center justify-center
+                    ${roomDuration === timeOpt.id 
+                      ? 'border-indigo-500/40 text-indigo-400 bg-indigo-950/20 ring-1 ring-white/5 shadow-md shadow-indigo-500/10' 
+                      : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
+                    }
+                  `}
+                >
+                  <span>{timeOpt.label}</span>
+                  <span className="text-[7px] opacity-60 font-medium">{timeOpt.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
             <button
               onClick={() => {
-                createRoom(newRoomName, newRoomPassword);
+                createRoom(newRoomName, newRoomPassword, roomDuration);
                 setShowCreateRoomForm(false);
                 setNewRoomName('');
                 setNewRoomPassword('');
+                setRoomDuration(180);
               }}
               className="flex-grow py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-widest uppercase transition-all shadow-md"
             >

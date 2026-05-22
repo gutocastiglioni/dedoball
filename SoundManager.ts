@@ -496,7 +496,7 @@ class SoundManager {
   /**
    * Synthesizes a referee whistle with a gorgeous natural modulating LFO warble!
    */
-  public playRefereeWhistle = async (type: 'kickoff' | 'foul' | 'goal' | 'gameover'): Promise<void> => {
+  public playRefereeWhistle = async (type: 'kickoff' | 'foul' | 'goal' | 'gameover' | 'half' | 'full'): Promise<void> => {
     if (!(await this.resumeContext()) || !this.ctx || !this.masterGain) return;
 
     const now = this.ctx.currentTime;
@@ -562,12 +562,17 @@ class SoundManager {
       playSingleBlow(now + 0.3, 0.25, 0.4);
       playSingleBlow(now + 0.6, 0.9, 0.45);
       console.log('%c[Juiz] ⚽ APITO! GOL CONFIRMADO!', 'color: #e74c3c; font-weight: bold;');
-    } else if (type === 'gameover') {
+    } else if (type === 'gameover' || type === 'full') {
       // 3 long structured blows representing final whistle
       playSingleBlow(now, 0.65, 0.38);
       playSingleBlow(now + 0.8, 0.65, 0.38);
       playSingleBlow(now + 1.6, 1.25, 0.45);
       console.log('%c[Juiz] 🛑 APITO FINAL! Fim de Partida!', 'color: #9b59b6; font-weight: bold;');
+    } else if (type === 'half') {
+      // 2 medium blows representing halftime
+      playSingleBlow(now, 0.5, 0.38);
+      playSingleBlow(now + 0.65, 0.5, 0.38);
+      console.log('%c[Juiz] ⏸️ APITO! Fim do Primeiro Tempo!', 'color: #3498db; font-weight: bold;');
     }
   };
 
