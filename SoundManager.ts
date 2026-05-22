@@ -208,6 +208,31 @@ class SoundManager {
   };
 
   /**
+   * Synthesize a premium high-pitched warning beep (timer tick for low turn time)
+   */
+  public playTimerTick = async (isUrgent: boolean = false): Promise<void> => {
+    if (!(await this.resumeContext()) || !this.ctx || !this.masterGain) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    const freq = isUrgent ? 1600 : 1000;
+    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+    const volume = isUrgent ? 0.08 : 0.04;
+    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+    const duration = isUrgent ? 0.085 : 0.055;
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start();
+    osc.stop(this.ctx.currentTime + duration + 0.01);
+  };
+
+  /**
    * Synthesizes a kick (chute) sound
    * Frequency sweep + noise click. Volume depends on kick force.
    */

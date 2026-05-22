@@ -211,6 +211,7 @@ export const useGameState = () => {
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [disconnectCountdown, setDisconnectCountdown] = useState(15);
   const [prepTimer, setPrepTimer] = useState<number | null>(null);
+  const [turnTimer, setTurnTimer] = useState<number | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
 
@@ -264,6 +265,7 @@ export const useGameState = () => {
   const matchDurationRef = useRef(matchDuration);
   const gameTimeSecondsRef = useRef(gameTimeSeconds);
   const wasKickoffRef = useRef(false);
+  const turnTimerRef = useRef<number | null>(null);
 
   const setTurnSync = useCallback((newTurn: Team) => {
     turnRef.current = newTurn;
@@ -385,6 +387,10 @@ export const useGameState = () => {
   useEffect(() => {
     myRoleRef.current = myRole;
   }, [myRole]);
+
+  useEffect(() => {
+    turnTimerRef.current = turnTimer;
+  }, [turnTimer]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -827,6 +833,101 @@ export const useGameState = () => {
     });
   }, [isMultiplayer, roomId, myRole, addGameLog, phase, homeReady, awayReady]);
 
+  // Derrota por Inatividade (Timeout de peteleco na fase de ação ativa) - Multiplayer Apenas
+  const triggerActiveTurnTimeout = useCallback((timedOutTeam: Team) => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    console.log(`%c[Game Loop] ⏰ Active Turn Timeout triggered for team: ${timedOutTeam}`, "color: #c0392b; font-weight: bold;");
+
+    const currentScores = scoresRef.current;
+    let finalScores = { home: 0, away: 0 };
+    let nextStatus = '';
+
+    if (timedOutTeam === 'HOME') {
+      finalScores = {
+        home: 0,
+        away: Math.max(3, currentScores.away)
+      };
+      nextStatus = 'Derrota por Timeout do Time Casa! Jogador inativo.';
+      addGameLog('Fim de jogo por Estouro de Tempo (Timeout)! O time Casa perdeu por inatividade.', 'phase');
+    } else {
+      finalScores = {
+        home: Math.max(3, currentScores.home),
+        away: 0
+      };
+      nextStatus = 'Derrota por Timeout do Time Visitante! Jogador inativo.';
+      addGameLog('Fim de jogo por Estouro de Tempo (Timeout)! O time Visitante perdeu por inatividade.', 'phase');
+    }
+
+    SoundManager.playRefereeWhistle('full');
+
+    // 1. Transition locally to GAME_OVER phase
+    flushSync(() => {
+      setScoresSync(finalScores);
+      setPhaseSync(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+      setOpponentDisconnected(false);
+      setPrepTimer(null);
+      setTurnTimer(null);
+    });
+
+    // 2. Update Firebase room state to GAME_OVER and ended status
+    const roomRef = ref(db, `rooms/${roomId}`);
+    update(roomRef, { 
+      status: 'ended',
+      'gameState/phase': GamePhase.GAME_OVER,
+      'gameState/scores': finalScores,
+      'gameState/actionStatus': nextStatus
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog]);
+
+  // Real-time ticking effect for active player turn timer (30s) - Multiplayer Only
+  useEffect(() => {
+    if (!isMultiplayer || phase !== GamePhase.ACTION) {
+      setTurnTimer(null);
+      return;
+    }
+
+    const ballMoving = Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05;
+    if (ballMoving) {
+      setTurnTimer(null);
+      return;
+    }
+
+    // Pause turn timer if opponent is disconnected in multiplayer
+    if (opponentDisconnected) {
+      return;
+    }
+
+    // Initialize timer to 30s when it's null and ball is stopped
+    setTurnTimer(prev => (prev === null ? 30 : prev));
+
+    const interval = setInterval(() => {
+      setTurnTimer(prev => {
+        if (prev === null) return 30;
+        if (prev <= 1) {
+          clearInterval(interval);
+          
+          // Timeout reached! Only the active player triggers the defeat state in DB
+          if (turn === myRole) {
+            triggerActiveTurnTimeout(turn);
+          }
+          
+          return 0;
+        }
+
+        // Play warning tick sound when timer is low (<= 5s)
+        const nextVal = prev - 1;
+        if (nextVal <= 5) {
+          SoundManager.playTimerTick(nextVal <= 2);
+        }
+
+        return nextVal;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase, ball.velocity[0], ball.velocity[2], turn, isMultiplayer, myRole, opponentDisconnected, triggerActiveTurnTimeout]);
+
   // Gerenciamento dinâmico dos timers de Preparação Tática e Capitão
   useEffect(() => {
     if (!isMultiplayer || !myRole) {
@@ -1142,8 +1243,20 @@ export const useGameState = () => {
   const setupIAPreparation = useCallback(() => {
     const availableNonGkSlots = ALL_SLOTS.filter(s => s.lineType !== 'GK' && s.team === 'AWAY');
     const gkSlot = ALL_SLOTS.find(s => s.id === 'away-gk')!;
-    const shuffledSlots = [...availableNonGkSlots].sort(() => Math.random() - 0.5);
-    const selectedSlotIds = shuffledSlots.slice(0, 10).map(s => s.id);
+    
+    // Separate attacking slots (lineType === 'ATT' or z < -6.0) and other slots
+    const attSlots = availableNonGkSlots.filter(s => s.lineType === 'ATT' || (s.position[2] < -6.0 && s.team === 'AWAY'));
+    const otherSlots = availableNonGkSlots.filter(s => !(s.lineType === 'ATT' || (s.position[2] < -6.0 && s.team === 'AWAY')));
+    
+    const shuffledAtt = [...attSlots].sort(() => Math.random() - 0.5);
+    const shuffledOther = [...otherSlots].sort(() => Math.random() - 0.5);
+    
+    // Pick at most 3 from attacking slots, and the rest from other slots to make 10 total
+    const numAttToPick = Math.min(3, shuffledAtt.length, Math.floor(Math.random() * 4));
+    const pickedAtt = shuffledAtt.slice(0, numAttToPick);
+    const pickedOther = shuffledOther.slice(0, 10 - numAttToPick);
+    
+    const selectedSlotIds = [...pickedAtt, ...pickedOther].sort(() => Math.random() - 0.5).map(s => s.id);
 
     setAwayPlayers(prev => {
       let tackleCount = 0;
@@ -1255,6 +1368,33 @@ export const useGameState = () => {
       const isOccupied = teamPlayers.some(p => p.slotId === slotId && p.id !== playerId);
       if (isOccupied) return;
 
+      // Check if placing the captain here exceeds the 3 attacking players limit
+      const simulatedPlayers = teamPlayers.map(p =>
+        p.id === playerId ? { ...p, slotId, position: targetSlot.position } : p
+      );
+      const attCount = simulatedPlayers.filter(p => {
+        if (p.number === 1) return false; // exclude GK
+        if (!p.slotId) return false;
+        const slot = ALL_SLOTS.find(s => s.id === p.slotId);
+        if (!slot) return false;
+        if (concedingTeam === 'HOME') {
+          return slot.lineType === 'ATT' || (slot.position[2] > 6.0 && slot.team === 'HOME');
+        } else {
+          return slot.lineType === 'ATT' || (slot.position[2] < -6.0 && slot.team === 'AWAY');
+        }
+      }).length;
+
+      if (attCount > 3) {
+        if (!isMultiplayer || myRole === concedingTeam) {
+          setSystemMessage({
+            title: 'Limite de Atacantes Excedido',
+            message: 'A regra do jogo permite no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra adversária). Posicione seu Capitão fora do ataque.',
+            type: 'warning'
+          });
+        }
+        return;
+      }
+
       const setPlayers = concedingTeam === 'HOME' ? setHomePlayers : setAwayPlayers;
       setPlayers(prev => prev.map(p =>
         p.id === playerId ? { ...p, slotId, position: targetSlot.position } : p
@@ -1298,7 +1438,7 @@ export const useGameState = () => {
       const isDefensiveSlot = (slotPos: [number, number, number]) =>
         isHome ? slotPos[2] < 0 : slotPos[2] > 0;
 
-      return prev.map(p => {
+      const simulatedPlayers = prev.map(p => {
         if (p.id === playerId) {
           // If this player was SHOOT and is being placed in the defensive half, downgrade to CROSS.
           const safeActionType =
@@ -1328,6 +1468,32 @@ export const useGameState = () => {
         }
         return p;
       });
+
+      // Check if simulated player positions exceed the 3 attacking players limit
+      const attCount = simulatedPlayers.filter(p => {
+        if (p.number === 1) return false; // exclude GK
+        if (!p.slotId) return false;
+        const slot = ALL_SLOTS.find(s => s.id === p.slotId);
+        if (!slot) return false;
+        if (isHome) {
+          return slot.lineType === 'ATT' || (slot.position[2] > 6.0 && slot.team === 'HOME');
+        } else {
+          return slot.lineType === 'ATT' || (slot.position[2] < -6.0 && slot.team === 'AWAY');
+        }
+      }).length;
+
+      if (attCount > 3) {
+        if (isHome) {
+          setSystemMessage({
+            title: 'Limite de Atacantes Excedido',
+            message: 'A regra do jogo permite no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra adversária). Mova um atacante para trás antes de posicionar outro jogador no ataque.',
+            type: 'warning'
+          });
+        }
+        return prev; // Block placement, keep original state
+      }
+
+      return simulatedPlayers;
     });
   };
 
@@ -2450,6 +2616,7 @@ export const useGameState = () => {
     setSelectedPlayerId(null);
     setGameTime(0);
     setHomeFlicksRemaining(3);
+    setTurnTimer(null);
     setAwayFlicksRemaining(3);
     setIsMultiplayer(false);
     setRoomId(null);
@@ -2670,6 +2837,7 @@ export const useGameState = () => {
     systemMessage,
     setSystemMessage,
     prepTimer,
+    turnTimer,
 
     // Firebase Multiplayer exports
     activeUser,

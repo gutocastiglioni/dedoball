@@ -432,7 +432,7 @@ const SceneContent: React.FC<SceneProps> = ({
   }, [phase]);
   
   // Touch/Drag to Rotate States and Listeners
-  const { updatePlayerAngle, isMultiplayer, myRole, captainMoveMode } = useGameStateContext();
+  const { updatePlayerAngle, isMultiplayer, myRole, captainMoveMode, addGameLog } = useGameStateContext();
   const [rotatingPlayerId, setRotatingPlayerId] = useState<string | null>(null);
   const [rotationTarget, setRotationTarget] = useState<THREE.Vector3 | null>(null);
   const { camera, raycaster, pointer } = useThree();
@@ -901,6 +901,8 @@ const SceneContent: React.FC<SceneProps> = ({
       let collisionWall = false;
       let collisionGoalpost = false;
       let collisionGround = false;
+      let isGkDefense = false;
+      let isGkEstouro = false;
 
       for (let step = 0; step < subSteps; step++) {
         const stepResult = updateBallPhysics(
@@ -947,6 +949,14 @@ const SceneContent: React.FC<SceneProps> = ({
           tackleTeam = stepResult.tackleTeam;
         }
 
+        if (stepResult.isGkDefense) {
+          isGkDefense = true;
+        }
+
+        if (stepResult.isGkEstouro) {
+          isGkEstouro = true;
+        }
+
         // Break early if goal or tackle happens mid-frame
         if (stepResult.isGoal || stepResult.isTackle) {
           break;
@@ -963,7 +973,9 @@ const SceneContent: React.FC<SceneProps> = ({
         tackleTeam,
         collisionWall,
         collisionGoalpost,
-        collisionGround
+        collisionGround,
+        isGkDefense,
+        isGkEstouro
       };
 
       // Handle collision events
@@ -980,6 +992,20 @@ const SceneContent: React.FC<SceneProps> = ({
           const gkTeam = result.collisionPlayerId.startsWith('home') ? 'HOME' : 'AWAY';
           if (incrementGoalkeeperSaves) {
             incrementGoalkeeperSaves(gkTeam);
+          }
+
+          if (result.isGkEstouro) {
+            setActionStatus(
+              gkTeam === 'HOME'
+                ? 'Estouro! Seu goleiro isolou a bola para o campo de ataque!'
+                : 'Estouro! O goleiro adversário deu um chutão para frente!'
+            );
+            if (addGameLog) {
+              addGameLog(
+                `🚀 Estouro! O goleiro do Time ${gkTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} deu um chutão isolando a bola para o ataque!`,
+                'collision'
+              );
+            }
           }
         } else {
           SoundManager.playRebound(speed);
@@ -1080,18 +1106,33 @@ const SceneContent: React.FC<SceneProps> = ({
         return;
       }
 
-      // Handle Tackle (Desarme)
+      // Handle Tackle (Desarme) & GK Defense
       if (result.isTackle && result.tackleTeam) {
-        console.log(`%c[Physics Engine] Tackle detected! Team: ${result.tackleTeam}`, "color: #9b59b6; font-weight: bold;");
+        console.log(`%c[Physics Engine] Tackle/GK Defense detected! Team: ${result.tackleTeam}`, "color: #9b59b6; font-weight: bold;");
         ballStateRef.current = { ...result.nextBall, velocity: [0, 0, 0], speedMultiplier: 1 };
         setBall({ ...result.nextBall, velocity: [0, 0, 0], speedMultiplier: 1 });
         hasProcessedStopRef.current = true; // Stop processed via tackle
         changePossession(result.tackleTeam, result.nextBall.position);
-        setActionStatus(
-          result.tackleTeam === 'HOME'
-            ? 'Interceptado! Seu desarme parou a jogada.'
-            : 'Interceptado! O desarme da IA parou a jogada.'
-        );
+        
+        if (result.isGkDefense) {
+          setActionStatus(
+            result.tackleTeam === 'HOME'
+              ? 'Defesaça! Seu goleiro defendeu a bola e garantiu a posse.'
+              : 'Defesaça! O goleiro adversário segurou a bola e retomou a posse.'
+          );
+          if (addGameLog) {
+            addGameLog(
+              `🧤 Defesaça! O goleiro do Time ${result.tackleTeam === 'HOME' ? 'Casa' : 'Visitante/IA'} fez uma defesa espetacular e segurou a bola!`,
+              'tackle'
+            );
+          }
+        } else {
+          setActionStatus(
+            result.tackleTeam === 'HOME'
+              ? 'Interceptado! Seu desarme parou a jogada.'
+              : 'Interceptado! O desarme da IA parou a jogada.'
+          );
+        }
         return;
       }
     } else {

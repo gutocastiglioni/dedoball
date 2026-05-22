@@ -8,6 +8,8 @@ const HUDActionOverlay: React.FC = () => {
     myRole,
     actionStatus,
     isIAThinking,
+    isMultiplayer,
+    turnTimer,
   } = useGameStateContext();
 
   const isFoul = actionStatus.startsWith('Falta!');
@@ -36,6 +38,60 @@ const HUDActionOverlay: React.FC = () => {
               🎯 Clique na bola, puxe para trás (estilingue) e solte para dar o peteleco!
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Premium Active Turn Timer Progress Bar - Multiplayer only */}
+      {isMultiplayer && turnTimer !== null && (
+        <div className="pointer-events-auto w-full bg-zinc-950/95 backdrop-blur-xl border border-zinc-800/80 rounded-xl md:rounded-2xl p-3 md:p-4 shadow-2xl flex flex-col gap-2 transition-all duration-300 animate-scaleUp">
+          <div className="flex justify-between items-center text-[10px] md:text-xs font-bold">
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                turnTimer <= 5 
+                  ? 'bg-rose-500 animate-ping shadow-[0_0_8px_rgba(244,63,94,0.8)]' 
+                  : turn === 'HOME' 
+                    ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]' 
+                    : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]'
+              }`} />
+              <span className="text-zinc-400 tracking-wider font-semibold">
+                TEMPO DO SEU PETELECO ({turn === 'HOME' ? 'CASA' : 'VISITANTE'})
+              </span>
+            </div>
+            <span className={`font-black text-xs md:text-sm tabular-nums tracking-wide px-2 py-0.5 rounded-md ${
+              turnTimer <= 5 
+                ? 'text-rose-400 bg-rose-950/40 border border-rose-500/20 scale-105 animate-pulse' 
+                : turn === 'HOME' 
+                  ? 'text-cyan-400 bg-cyan-950/40 border border-cyan-500/20' 
+                  : 'text-orange-400 bg-orange-950/40 border border-orange-500/20'
+            }`}>
+              {turnTimer}s
+            </span>
+          </div>
+          
+          <div className="w-full h-3 bg-zinc-950/90 rounded-full overflow-hidden border border-zinc-800/80 p-[1.5px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
+            <div 
+              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                turnTimer <= 5 
+                  ? 'bg-gradient-to-r from-rose-600 via-red-500 to-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.8)] animate-pulse' 
+                  : turn === 'HOME'
+                    ? 'bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]' 
+                    : 'bg-gradient-to-r from-orange-600 via-amber-500 to-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.4)]'
+              }`}
+              style={{ width: `${(turnTimer / 30) * 100}%` }}
+            />
+          </div>
+
+          <p className="text-[9px] md:text-[10px] text-center font-medium tracking-wide">
+            {turn === myRole ? (
+              turnTimer <= 5 ? (
+                <span className="text-rose-400 font-black animate-pulse">⏰ SEU TURNO ESTÁ ACABANDO! JOGUE LOGO!</span>
+              ) : (
+                <span className="text-zinc-400">É a sua vez! Faça o seu peteleco antes do estouro do tempo.</span>
+              )
+            ) : (
+              <span className="text-zinc-500 font-semibold italic">Aguardando o peteleco do oponente...</span>
+            )}
+          </p>
         </div>
       )}
 

@@ -18,6 +18,8 @@ export interface PhysicsResult {
   collisionWall: boolean;
   collisionGoalpost: boolean;
   collisionGround: boolean;
+  isGkDefense?: boolean;
+  isGkEstouro?: boolean;
 }
 
 export const updateBallPhysics = (
@@ -40,6 +42,8 @@ export const updateBallPhysics = (
   let collisionWall = false;
   let collisionGoalpost = false;
   let collisionGround = false;
+  let isGkDefense = false;
+  let isGkEstouro = false;
 
   // 1. Apply Gravity if in the air
   if (y > GROUND_Y) {
@@ -244,48 +248,120 @@ export const updateBallPhysics = (
         // This prevents infinite loop traps between the GK and nearby defenders.
         const isGK = p.id.endsWith('-p1');
         if (isGK) {
-          // Home GK is at z ≈ -7.2 → must send ball toward +Z (AWAY half)
-          // Away GK is at z ≈  7.2 → must send ball toward -Z (HOME half)
-          const forwardZ = p.team === 'HOME' ? 1 : -1;
+          const isOpponentPlay = p.team !== turn;
+          const roll = Math.random();
 
-          // 5 spread angles: 0°, ±20°, ±40° relative to the straight-ahead axis
+          let triggerDefense = false;
+          let triggerEstouro = false;
+
+          if (isOpponentPlay) {
+            if (roll < 0.25) {
+              triggerDefense = true;
+            } else if (roll < 0.50) {
+              triggerEstouro = true;
+            }
+          } else {
+            // Own play: 40% chance of Estouro, 0% of Defense
+            if (roll < 0.40) {
+              triggerEstouro = true;
+            }
+          }
+
+          const forwardZ = p.team === 'HOME' ? 1 : -1;
           const spreadOptions = [0, 20, -20, 40, -40].map(deg => deg * Math.PI / 180);
           const chosenSpread = spreadOptions[Math.floor(Math.random() * spreadOptions.length)];
-
-          // Base forward angle (0 = straight ahead toward opposite goal)
           const baseAngle = forwardZ === 1 ? 0 : Math.PI;
           const angle = baseAngle + chosenSpread;
 
-          // Accumulate +3% per GK touch (capped at 4x) — same rule as field players
-          nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
+          if (triggerDefense) {
+            // Defense functions identical to linear player block (blocking)
+            isTackle = true;
+            tackleTeam = p.team;
+            isGkDefense = true;
 
-          // Randomly pick deflection style: PASS (fast ground), CROSS (lob), SHOOT (power)
-          const styleRoll = Math.random();
-          if (styleRoll < 0.4) {
-            // PASS: fast, low
-            vx = Math.sin(angle) * 21.25 * nextSpeedMult;
-            vz = Math.cos(angle) * 21.25 * nextSpeedMult;
-            vy = 0.0;
+            vx = 0;
+            vy = 0;
+            vz = 0;
+
+            // Push slightly out of the goalkeeper at the collision contact point (where he saves)
+            const nx = dist > 0.01 ? dx / dist : 1;
+            const nz = dist > 0.01 ? dz / dist : 0;
+            x = px + nx * (COLLISION_DIST + 0.01);
+            z = pz + nz * (COLLISION_DIST + 0.01);
             y = GROUND_Y;
-          } else if (styleRoll < 0.7) {
-            // CROSS: lobbed
-            vx = Math.sin(angle) * 9.0 * nextSpeedMult;
-            vz = Math.cos(angle) * 9.0 * nextSpeedMult;
-            vy = 5.0;
+
+            collisionPlayerId = p.id;
+            collisionType = p.team === turn ? 'TEAMMATE' : 'OPPONENT';
+            break;
+          } else if (triggerEstouro) {
+            isGkEstouro = true;
+            nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
+
+            // High ball (Majestic lob) landing near opponent attacking area (between midfield Z=0 and box Z=4.8)
+            // Magnitude of landing Z is between 2.0 and 4.2
+            const minZ = 2.0;
+            const maxZ = 4.2;
+            const targetZMag = minZ + Math.random() * (maxZ - minZ);
+            const z_target = forwardZ * targetZMag;
+
+            // Calculate distance D needed along chosen angle to hit z_target
+            const D = Math.abs(z_target - pz) / Math.cos(chosenSpread);
+
+            // Vertical launch velocity for a beautiful high curve
+            const vy_launch = 6.5;
+
+            // Flight time calculated from 7.5 * t^2 - vy_launch * t - 0.09 = 0
+            const t_flight = (vy_launch + Math.sqrt(vy_launch * vy_launch + 2.7)) / 15;
+
+            // Required horizontal speed to reach distance D
+            const V_h = D / t_flight;
+
+            vx = Math.sin(angle) * V_h;
+            vz = Math.cos(angle) * V_h;
+            vy = vy_launch;
             y = 0.2;
+
+            x = px + Math.sin(angle) * 0.38;
+            z = pz + Math.cos(angle) * 0.38;
+
+            console.log(`%c[GK Estouro] ${p.id} (${p.team}) targetZ=${z_target.toFixed(2)} D=${D.toFixed(2)}m | vx=${vx.toFixed(2)} vz=${vz.toFixed(2)}`, 'color: #f39c12; font-weight: bold;');
+            collisionPlayerId = p.id;
+            collisionType = p.team === turn ? 'TEAMMATE' : 'OPPONENT';
+            break;
           } else {
-            // SHOOT: powerful ground shot
-            vx = Math.sin(angle) * 28.0 * nextSpeedMult;
-            vz = Math.cos(angle) * 28.0 * nextSpeedMult;
-            vy = 1.5;
-            y = 0.2;
+            // Standard deflection style: PASS (fast ground), CROSS (lob), SHOOT (power)
+            // Accumulate +3% per GK touch (capped at 4x) — same rule as field players
+            nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
+
+            const styleRoll = Math.random();
+            if (styleRoll < 0.4) {
+              // PASS: fast, low
+              vx = Math.sin(angle) * 21.25 * nextSpeedMult;
+              vz = Math.cos(angle) * 21.25 * nextSpeedMult;
+              vy = 0.0;
+              y = GROUND_Y;
+            } else if (styleRoll < 0.7) {
+              // CROSS: lobbed
+              vx = Math.sin(angle) * 9.0 * nextSpeedMult;
+              vz = Math.cos(angle) * 9.0 * nextSpeedMult;
+              vy = 5.0;
+              y = 0.2;
+            } else {
+              // SHOOT: powerful ground shot
+              vx = Math.sin(angle) * 28.0 * nextSpeedMult;
+              vz = Math.cos(angle) * 28.0 * nextSpeedMult;
+              vy = 1.5;
+              y = 0.2;
+            }
+
+            x = px + Math.sin(angle) * 0.38;
+            z = pz + Math.cos(angle) * 0.38;
+
+            console.log(`%c[GK Deflection] ${p.id} (${p.team}) spread ${(chosenSpread * 180 / Math.PI).toFixed(0)}° | SpeedMult: ${nextSpeedMult.toFixed(2)}x | vx=${vx.toFixed(2)} vz=${vz.toFixed(2)}`, 'color: #00d2ff; font-weight: bold;');
+            collisionPlayerId = p.id;
+            collisionType = p.team === turn ? 'TEAMMATE' : 'OPPONENT';
+            break;
           }
-
-          x = px + Math.sin(angle) * 0.38;
-          z = pz + Math.cos(angle) * 0.38;
-
-          console.log(`%c[GK Deflection] ${p.id} (${p.team}) spread ${(chosenSpread * 180 / Math.PI).toFixed(0)}° | SpeedMult: ${nextSpeedMult.toFixed(2)}x | vx=${vx.toFixed(2)} vz=${vz.toFixed(2)}`, 'color: #00d2ff; font-weight: bold;');
-          break;
         }
         // ── END GOALKEEPER REFLECTION ────────────────────────────────────────────
 
@@ -371,6 +447,8 @@ export const updateBallPhysics = (
     tackleTeam,
     collisionWall,
     collisionGoalpost,
-    collisionGround
+    collisionGround,
+    isGkDefense,
+    isGkEstouro
   };
 };

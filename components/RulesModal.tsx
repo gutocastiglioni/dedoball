@@ -167,19 +167,23 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🛡️ <strong>Preparação Tática:</strong> Durante a fase de preparação, você pode arrastar e soltar seus pinos de botão nos slots verdes brilhantes para montar sua muralha tática.
+              🛡️ <strong>Preparação Tática:</strong> No início da partida e em resets gerais, você tem um tempo limite de **2 minutos** (120 segundos) para arrastar e soltar seus pinos de botão nos slots verdes brilhantes e montar sua muralha tática.
             </p>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-350 text-[11px] leading-snug flex items-start gap-2">
+              <span className="text-amber-400 font-extrabold mt-0.5">⚠️</span>
+              <span><strong>LIMITE DE ATAQUE:</strong> É permitido posicionar **no máximo 3 jogadores de linha** na zona de ataque (somando a linha de ataque e a linha extra no campo do adversário). Isso evita o acúmulo excessivo de atacantes ("swarms") e ricochetes que prejudicam o goleiro!</span>
+            </div>
             <p>
-              ⚽ <strong>Regras após sofrer gols:</strong>
+              ⚽ <strong>Regras após sofrer gols (Multiplayer):</strong>
             </p>
             <ul className="space-y-2 pl-2 text-[11px] md:text-xs">
               <li className="flex gap-2 items-start">
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px]">1 GOL</span>
-                <span>Se você sofrer apenas um gol, ganha o direito de mover **apenas o seu Capitão** (indicado pelo diamante brilhante no momento da seleção) para qualquer slot livre do seu campo para reajuste defensivo imediato.</span>
+                <span>Se você sofrer apenas um gol, ganha o direito de mover **apenas o seu Capitão** (indicado pelo diamante brilhante, com cronômetro de **30 segundos** de tempo limite) para qualquer slot livre do seu campo para reajuste defensivo imediato.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-black text-[9px]">2 GOLS CONSECUTIVOS</span>
-                <span>Se o mesmo time sofrer dois gols seguidos sem reagir, a tática quebrou! **Ambos os jogadores** ganham o direito de reorganizar seus **times inteiros** livremente no campo.</span>
+                <span>Se o mesmo time sofrer dois gols seguidos sem reagir, a tática quebrou! **Ambos os jogadores** ganham o direito de reorganizar seus **times inteiros** livremente no campo (com cronômetro de **2 minutos**).</span>
               </li>
             </ul>
           </div>
@@ -219,20 +223,20 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🛑 <strong>Pausas Táticas:</strong> O jogo entrará em pausa automática para permitir a reorganização e reajuste posicional das equipes em 3 momentos específicos:
+              🛑 <strong>Pausas Táticas (Restrições de Tempo):</strong> O jogo entrará em pausa automática para permitir a reorganização e reajuste posicional das equipes (com cronômetro de **2 minutos** ou 120 segundos para confirmação) em 3 momentos específicos:
             </p>
             <ul className="space-y-2.5 pl-2 text-[11px] md:text-xs">
               <li className="flex gap-2 items-start">
                 <span className="text-cyan-400 font-extrabold">1.</span>
-                <span><strong>Petelecos Esgotados:</strong> Assim que ambos os jogadores completam sua sequência máxima de 3 flicks consecutivos, o jogo para para um novo reset e organização tática geral.</span>
+                <span><strong>Petelecos Esgotados:</strong> Assim que ambos os jogadores completam sua sequência máxima de 3 flicks consecutivos, o jogo para para um novo reset e organização tática geral (tempo limite de **2 minutos**).</span>
               </li>
               <li className="flex gap-2 items-start">
                 <span className="text-amber-400 font-extrabold">2.</span>
-                <span><strong>Halftime (Intervalo):</strong> Pausa clássica na metade da partida onde as equipes trocam de lado e podem redefinir toda a postura tática de campo.</span>
+                <span><strong>Halftime (Intervalo):</strong> Pausa clássica na metade da partida onde as equipes trocam de lado e podem redefinir toda a postura tática de campo (tempo limite de **2 minutos**).</span>
               </li>
               <li className="flex gap-2 items-start">
                 <span className="text-rose-400 font-extrabold">3.</span>
-                <span><strong>Após 2 Gols Seguidos:</strong> O jogo para obrigatoriamente para permitir que o time castigado reorganize completamente suas linhas e evite goleadas desastrosas.</span>
+                <span><strong>Após 2 Gols Seguidos:</strong> O jogo para obrigatoriamente para permitir que o time castigado reorganize completamente suas linhas e evite goleadas desastrosas (tempo limite de **2 minutos**).</span>
               </li>
             </ul>
           </div>
@@ -246,35 +250,58 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
       color: "from-orange-500 to-amber-600",
       content: (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 items-center justify-center">
+          <div className="grid grid-cols-3 gap-3 items-center justify-center">
             {/* Visual speed multipliers */}
-            <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-3 rounded-2xl border border-zinc-800">
+            <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-cyan-400 font-black animate-pulse">
-                <Zap size={14} className="text-cyan-400" />
-                <span className="text-xs">+ por Hit</span>
+                <Zap size={13} className="text-cyan-400" />
+                <span className="text-[10px] md:text-xs">+ por Toque</span>
               </div>
-              <span className="text-[8px] font-black text-zinc-550 uppercase tracking-widest text-center">Velocidade da Bola</span>
+              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">Supervelocidade</span>
+            </div>
+
+            {/* Visual goalkeeper abilities */}
+            <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
+              <div className="flex items-center gap-1 text-emerald-400 font-black">
+                <BookOpen size={13} className="text-emerald-400" />
+                <span className="text-[10px] md:text-xs">Defesa / Estouro</span>
+              </div>
+              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">Habilidades Especiais</span>
             </div>
 
             {/* Visual goalkeeper fatigue */}
-            <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-3 rounded-2xl border border-zinc-800">
+            <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-rose-400 font-black">
-                <ShieldAlert size={14} className="text-rose-400 animate-bounce" />
-                <span className="text-xs">- por Defesa</span>
+                <ShieldAlert size={13} className="text-rose-400 animate-bounce" />
+                <span className="text-[10px] md:text-xs">- por Defesa</span>
               </div>
-              <span className="text-[8px] font-black text-zinc-550 uppercase tracking-widest text-center">Reação do Goleiro</span>
+              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">Cansaço (Fadiga)</span>
             </div>
           </div>
 
-          <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
+          <div className="space-y-2.5 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🔥 <strong>Supervelocidade da Bola:</strong> A bola ganha **aceleração acumulada** a cada toque consecutivo feito pelos jogadores (sequência de hits). Tabelas rápidas transformam a bola em um verdadeiro foguete!
+              🔥 <strong>Supervelocidade & Fadiga:</strong> A bola ganha **aceleração acumulada** a cada toque consecutivo feito pelos jogadores, enquanto o Goleiro perde **velocidade de reação** a cada defesa realizada. Ambos resetam assim que a bola parar!
             </p>
-            <p>
-              🧤 <strong>Fadiga do Goleiro:</strong> Os goleiros não são máquinas! A cada defesa ou Save efetuado pelo goleiro individualmente, ele cansa e perde **velocidade de reação** na resposta daquele lance.
-            </p>
-            <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-350 text-[11px] leading-snug">
-              🔄 <strong>RESET AUTOMÁTICO:</strong> Fique tranquilo! Ambos os valores (a supervelocidade da bola e a fadiga do goleiro) **são resetados instantaneamente ao valor padrão** assim que a bola parar completamente no campo.
+
+            <div className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2.5">
+              <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                <BookOpen size={12} /> Habilidades do Goleiro (Evitando o Swarming)
+              </h4>
+              <ul className="space-y-2 text-[11px] md:text-xs leading-snug">
+                <li className="flex gap-2 items-start">
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">Defesa</span>
+                  <span>Em ataques oponentes, o goleiro tem chance de **segurar/bloquear a bola completamente** (igual a um pino de Desarme), parando a jogada do rival e garantindo a posse sob seu controle para fazer um passe limpo e controlado!</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">Estouro</span>
+                  <span>O goleiro tem chance de **isolar a bola para o campo de ataque adversário** (Chutão), aliviando o sufoco com um balão alto e curvo que aterrissa estrategicamente entre o meio-campo e a grande área do rival!</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">Recuo Seguro</span>
+                  <span>Ao tocar a bola intencionalmente para o seu próprio goleiro (recuo), ele **nunca** fará o bloqueio de Defesa (para não paralisar o seu ataque), mas a chance de **Estouro (Chutão)** para longe sobe significativamente!</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
