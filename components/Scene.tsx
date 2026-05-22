@@ -1116,6 +1116,7 @@ const SceneContent: React.FC<SceneProps> = ({
                 isBlocking={p.isBlocking}
                 isSelected={isControllable && selectedPlayerId === p.id}
                 isCaptain={p.isCaptain}
+                showCaptainGlow={isCaptainMoveActive && p.team === captainMoveMode}
                 number={p.number}
                 onPointerDown={isControllable ? (e) => {
                   if (isCaptainMoveActive) {
@@ -1170,6 +1171,7 @@ const SceneContent: React.FC<SceneProps> = ({
                 isBlocking={p.isBlocking}
                 isSelected={isControllable && selectedPlayerId === p.id}
                 isCaptain={p.isCaptain}
+                showCaptainGlow={isCaptainMoveActive && p.team === captainMoveMode}
                 number={p.number}
                 onPointerDown={isControllable ? (e) => {
                   if (isCaptainMoveActive) {

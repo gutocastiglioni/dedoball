@@ -7,7 +7,7 @@ import {
   ChevronRight, 
   BookOpen, 
   Target, 
-  Crown, 
+  Diamond, 
   ShieldAlert, 
   Zap, 
   Timer, 
@@ -23,7 +23,7 @@ interface RulesModalProps {
 }
 
 const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
-  const { activeUser, setHasSeenRules } = useGameStateContext();
+  const { activeUser, setHasSeenRules, rulesAutoTriggered } = useGameStateContext();
   const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -121,8 +121,16 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                 <span><strong>DESARME:</strong> Trava a bola rigidamente para neutralizar ataques e roubar a posse.</span>
               </li>
             </ul>
-            <div className="p-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/20 text-cyan-300 text-[11px] leading-snug">
-              ⚠️ <strong>MIRA NÃO INTERFERE NA FORÇA:</strong> Os pontinhos da linha de mira servem <strong>apenas como guia visual</strong> para ajudar na precisão espacial de tabelas e chutes, e <strong>NÃO</strong> alteram a velocidade ou força do peteleco!
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-2">
+              <div className="p-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/20 text-cyan-300 text-[11px] leading-snug">
+                ⚠️ <strong>MIRA E FORÇA:</strong> Os pontinhos de mira são apenas um <strong>guia visual</strong> para ajudar na precisão espacial, e <strong>NÃO</strong> alteram a velocidade ou força do peteleco!
+              </div>
+              <div className="p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-purple-300 text-[11px] leading-snug">
+                🛡️ <strong>ATÉ 3 BLOQUEADORES:</strong> Permite configurar <strong>até 3 jogadores</strong> em DESARME. Ao travar a bola, a jogada adversária é <strong>encerrada na hora</strong>, dando a vez e a posse a você!
+              </div>
+              <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 text-amber-300 text-[11px] leading-snug">
+                ⚡ <strong>CUSTO DE PETELECOS:</strong> Cada lance comum <strong>gasta 1 peteleco</strong> (limite de 3). Porém, as saídas de jogo e pós-gol (<strong>Kickoffs</strong>) <strong>NÃO gastam petelecos</strong>!
+              </div>
             </div>
           </div>
         </div>
@@ -148,11 +156,11 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
               <div className="w-[1px] bg-zinc-800 self-stretch"></div>
 
               <div className="flex flex-col items-center gap-1 relative">
-                <Crown size={14} className="text-amber-400 absolute -top-3.5 animate-bounce" />
+                <Diamond size={14} className="text-cyan-400 absolute -top-3.5 animate-pulse drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                 <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center font-black text-[9px] text-white shadow-lg">
                   C
                 </div>
-                <span className="text-[7px] font-black text-amber-400 uppercase tracking-widest">Capitão</span>
+                <span className="text-[7px] font-black text-cyan-400 uppercase tracking-widest">Capitão</span>
               </div>
             </div>
           </div>
@@ -167,7 +175,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
             <ul className="space-y-2 pl-2 text-[11px] md:text-xs">
               <li className="flex gap-2 items-start">
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px]">1 GOL</span>
-                <span>Se você sofrer apenas um gol, ganha o direito de mover **apenas o seu Capitão** (indicado pela coroa) para qualquer slot livre do seu campo para reajuste defensivo imediato.</span>
+                <span>Se você sofrer apenas um gol, ganha o direito de mover **apenas o seu Capitão** (indicado pelo diamante brilhante no momento da seleção) para qualquer slot livre do seu campo para reajuste defensivo imediato.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-black text-[9px]">2 GOLS CONSECUTIVOS</span>
@@ -243,7 +251,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
             <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-3 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-cyan-400 font-black animate-pulse">
                 <Zap size={14} className="text-cyan-400" />
-                <span className="text-xs">+3% por Hit</span>
+                <span className="text-xs">+ por Hit</span>
               </div>
               <span className="text-[8px] font-black text-zinc-550 uppercase tracking-widest text-center">Velocidade da Bola</span>
             </div>
@@ -252,7 +260,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
             <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-3 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-rose-400 font-black">
                 <ShieldAlert size={14} className="text-rose-400 animate-bounce" />
-                <span className="text-xs">-1% por Defesa</span>
+                <span className="text-xs">- por Defesa</span>
               </div>
               <span className="text-[8px] font-black text-zinc-550 uppercase tracking-widest text-center">Reação do Goleiro</span>
             </div>
@@ -260,10 +268,10 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🔥 <strong>Supervelocidade da Bola:</strong> A bola ganha **+3% de velocidade acumulada** a cada toque consecutivo feito pelos jogadores (sequência de hits). Tabelas rápidas transformam a bola em um verdadeiro foguete!
+              🔥 <strong>Supervelocidade da Bola:</strong> A bola ganha **aceleração acumulada** a cada toque consecutivo feito pelos jogadores (sequência de hits). Tabelas rápidas transformam a bola em um verdadeiro foguete!
             </p>
             <p>
-              🧤 <strong>Fadiga do Goleiro:</strong> Os goleiros não são máquinas! A cada defesa ou Save efetuado pelo goleiro individualmente, ele cansa e perde **1% de sua velocidade máxima** na reação daquele lance.
+              🧤 <strong>Fadiga do Goleiro:</strong> Os goleiros não são máquinas! A cada defesa ou Save efetuado pelo goleiro individualmente, ele cansa e perde **velocidade de reação** na resposta daquele lance.
             </p>
             <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-350 text-[11px] leading-snug">
               🔄 <strong>RESET AUTOMÁTICO:</strong> Fique tranquilo! Ambos os valores (a supervelocidade da bola e a fadiga do goleiro) **são resetados instantaneamente ao valor padrão** assim que a bola parar completamente no campo.
@@ -395,8 +403,22 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
           {/* Buttons Navigation Row */}
           <div className="flex items-center justify-between gap-4">
             
-            {/* Show "Don't show again" checkbox only on the last page */}
-            {currentPage === 5 ? (
+            {/* Always show Back button on all pages */}
+            <button
+              onClick={handleBack}
+              disabled={currentPage === 0}
+              className={`px-4 py-2 border rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1 active:scale-98 ${
+                currentPage === 0 
+                  ? 'border-transparent text-zinc-700 bg-transparent cursor-default' 
+                  : 'border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
+              }`}
+            >
+              <ChevronLeft size={13} />
+              Voltar
+            </button>
+
+            {/* Show "Don't show again" checkbox only on the last page AND if it was auto-triggered */}
+            {currentPage === 5 && rulesAutoTriggered && (
               <label className="flex items-center gap-2 cursor-pointer select-none group pointer-events-auto">
                 <div className="relative">
                   <input 
@@ -412,19 +434,6 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                   Não mostrar novamente
                 </span>
               </label>
-            ) : (
-              <button
-                onClick={handleBack}
-                disabled={currentPage === 0}
-                className={`px-4 py-2 border rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1 active:scale-98 ${
-                  currentPage === 0 
-                    ? 'border-transparent text-zinc-700 bg-transparent cursor-default' 
-                    : 'border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
-                }`}
-              >
-                <ChevronLeft size={13} />
-                Voltar
-              </button>
             )}
 
             {/* Next / Finish button */}

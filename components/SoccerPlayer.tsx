@@ -18,6 +18,7 @@ interface SoccerPlayerProps {
   onPointerDown?: (e: any) => void;
   onClick?: (e: any) => void;
   uniformConfig?: UniformConfig;
+  showCaptainGlow?: boolean;
 }
 
 const SoccerPlayer: React.FC<SoccerPlayerProps> = ({ 
@@ -34,11 +35,16 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
   number = 10,
   onPointerDown,
   onClick,
-  uniformConfig
+  uniformConfig,
+  showCaptainGlow = false
 }) => {
   const group = useRef<THREE.Group>(null);
   const torso = useRef<THREE.Group>(null);
   const headGroup = useRef<THREE.Group>(null);
+  
+  const captainGlowRef = useRef<THREE.Group>(null);
+  const captainBeamRef = useRef<THREE.Mesh>(null);
+  const captainDiamondRef = useRef<THREE.Mesh>(null);
   
   // Limbs
   const leftUpperArm = useRef<THREE.Group>(null);
@@ -398,6 +404,27 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
         break;
       }
     }
+
+    // Animate captain glow elements if active
+    if (showCaptainGlow) {
+      if (captainGlowRef.current) {
+        const pulse = Math.sin(t * 5) * 0.08 + 1.08;
+        captainGlowRef.current.scale.set(pulse, 1, pulse);
+        captainGlowRef.current.rotation.y = t * 1.2;
+      }
+      if (captainBeamRef.current) {
+        const pulseBeam = Math.sin(t * 8) * 0.05 + 0.95;
+        captainBeamRef.current.scale.set(pulseBeam, 1, pulseBeam);
+        const beamMat = captainBeamRef.current.material as THREE.MeshBasicMaterial;
+        if (beamMat) {
+          beamMat.opacity = 0.25 + Math.sin(t * 6) * 0.1;
+        }
+      }
+      if (captainDiamondRef.current) {
+        captainDiamondRef.current.rotation.y = t * 2.5;
+        captainDiamondRef.current.position.y = 1.85 + Math.sin(t * 4) * 0.08;
+      }
+    }
   });
 
   const LimbSegment = ({ 
@@ -460,10 +487,63 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
 
       {/* 3. CAPTAIN GOLD RING */}
       {isCaptain && (
-        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.36, 0.4, 32]} />
-          <meshStandardMaterial color="#f1c40f" roughness={0.1} metalness={1.0} />
-        </mesh>
+        <>
+          <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.36, 0.4, 32]} />
+            <meshStandardMaterial color="#f1c40f" roughness={0.1} metalness={1.0} />
+          </mesh>
+
+          {showCaptainGlow && (
+            <>
+              {/* Dynamic glowing floor aura and grids */}
+              <group ref={captainGlowRef}>
+                <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <ringGeometry args={[0.42, 0.55, 32]} />
+                  <meshBasicMaterial color="#f1c40f" transparent opacity={0.5} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <ringGeometry args={[0.58, 0.62, 32]} />
+                  <meshBasicMaterial color="#f39c12" transparent opacity={0.3} side={THREE.DoubleSide} />
+                </mesh>
+                {/* Rotating octagonal grid */}
+                <mesh position={[0, 0.017, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <ringGeometry args={[0.66, 0.68, 8]} />
+                  <meshBasicMaterial color="#f1c40f" transparent opacity={0.2} side={THREE.DoubleSide} />
+                </mesh>
+              </group>
+
+              {/* Holographic light cylinder spotlight */}
+              <mesh ref={captainBeamRef} position={[0, 0.6, 0]} castShadow={false} receiveShadow={false}>
+                <cylinderGeometry args={[0.38, 0.52, 1.2, 16, 1, true]} />
+                <meshBasicMaterial 
+                  color="#f1c40f" 
+                  transparent 
+                  opacity={0.25} 
+                  side={THREE.DoubleSide} 
+                  blending={THREE.AdditiveBlending}
+                  depthWrite={false}
+                />
+              </mesh>
+
+              {/* Floating, rotating premium diamond indicator over head */}
+              <mesh ref={captainDiamondRef} position={[0, 1.85, 0]}>
+                <octahedronGeometry args={[0.09, 0]} />
+                <meshStandardMaterial 
+                  color="#f1c40f" 
+                  emissive="#f1c40f" 
+                  emissiveIntensity={2.0} 
+                  roughness={0.1} 
+                  metalness={1.0} 
+                />
+              </mesh>
+              {/* Halos above head */}
+              <mesh position={[0, 1.95, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0.15, 0.18, 16]} />
+                <meshBasicMaterial color="#f1c40f" transparent opacity={0.6} />
+              </mesh>
+            </>
+          )}
+        </>
       )}
 
       {/* 4. BUTTON WOODEN BASE */}

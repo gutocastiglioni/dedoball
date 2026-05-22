@@ -46,7 +46,8 @@ const AppContent: React.FC = () => {
     changeCameraMode,
     incrementGoalkeeperSaves,
     showRulesModal,
-    setShowRulesModal
+    setShowRulesModal,
+    setRulesAutoTriggered
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -440,7 +441,10 @@ const AppContent: React.FC = () => {
 
       {/* Premium Global Rules & Tutorial Modal */}
       {showRulesModal && (
-        <RulesModal onClose={() => setShowRulesModal(false)} />
+        <RulesModal onClose={() => {
+          setShowRulesModal(false);
+          setRulesAutoTriggered(false);
+        }} />
       )}
 
       {/* Profile & Kit Customizer Modal Overlay */}

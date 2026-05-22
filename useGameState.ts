@@ -224,6 +224,7 @@ export const useGameState = () => {
   const [captainMoveMode, setCaptainMoveMode] = useState<Team | null>(null);
 
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [rulesAutoTriggered, setRulesAutoTriggered] = useState(false);
 
   const setHasSeenRules = useCallback(async () => {
     localStorage.setItem('tableball_has_seen_rules', 'true');
@@ -940,6 +941,7 @@ export const useGameState = () => {
     const localHasSeen = localStorage.getItem('tableball_has_seen_rules') === 'true';
     const dbHasSeen = userProfile?.hasSeenRules === true;
     if (!localHasSeen && !dbHasSeen) {
+      setRulesAutoTriggered(true);
       setShowRulesModal(true);
     }
   };
@@ -2361,6 +2363,8 @@ export const useGameState = () => {
     showRulesModal,
     setShowRulesModal,
     setHasSeenRules,
+    rulesAutoTriggered,
+    setRulesAutoTriggered,
 
     // Firebase Multiplayer exports
     activeUser,
