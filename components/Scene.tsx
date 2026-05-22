@@ -727,9 +727,9 @@ const SceneContent: React.FC<SceneProps> = ({
     const ballVz = ballStateRef.current.velocity[2];
     const gkBallSpeed = Math.hypot(ballVx, ballVz);
     
-    let baseGkSpeed = 7.0;
-    if (difficulty === Difficulty.EASY) baseGkSpeed = 3.5;
-    else if (difficulty === Difficulty.HARD) baseGkSpeed = 11.0;
+    let baseGkSpeed = 6.0;
+    if (difficulty === Difficulty.EASY) baseGkSpeed = 4.0;
+    else if (difficulty === Difficulty.HARD) baseGkSpeed = 8.0;
 
     // Home Goalkeeper (number 1)
     const homeGK = homePlayersRef.current.find(p => p.number === 1);
