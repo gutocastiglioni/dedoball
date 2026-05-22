@@ -263,6 +263,46 @@ export const useGameState = () => {
   const gameTimeSecondsRef = useRef(gameTimeSeconds);
   const wasKickoffRef = useRef(false);
 
+  const setTurnSync = useCallback((newTurn: Team) => {
+    turnRef.current = newTurn;
+    setTurn(newTurn);
+  }, []);
+
+  const setPhaseSync = useCallback((newPhase: GamePhase) => {
+    phaseRef.current = newPhase;
+    setPhase(newPhase);
+  }, []);
+
+  const setHomeFlicksSync = useCallback((flicks: number) => {
+    homeFlicksRemainingRef.current = flicks;
+    setHomeFlicksRemaining(flicks);
+  }, []);
+
+  const setAwayFlicksSync = useCallback((flicks: number) => {
+    awayFlicksRemainingRef.current = flicks;
+    setAwayFlicksRemaining(flicks);
+  }, []);
+
+  const setBallSync = useCallback((newBall: BallState) => {
+    ballRef.current = newBall;
+    setBall(newBall);
+  }, []);
+
+  const setScoresSync = useCallback((newScores: { home: number; away: number }) => {
+    scoresRef.current = newScores;
+    setScores(newScores);
+  }, []);
+
+  const setGameTimeSync = useCallback((newTime: number) => {
+    gameTimeRef.current = newTime;
+    setGameTime(newTime);
+  }, []);
+
+  const setGameTimeSecondsSync = useCallback((newSeconds: number) => {
+    gameTimeSecondsRef.current = newSeconds;
+    setGameTimeSeconds(newSeconds);
+  }, []);
+
   useEffect(() => {
     lastGoalScorerRef.current = lastGoalScorer;
   }, [lastGoalScorer]);
@@ -599,19 +639,18 @@ export const useGameState = () => {
         
         // Se mudou o turno, se mudou a fase, se não for meu turno, ou se houve gol/reajuste tático ou fim de jogo, forçamos o sync total
         if (turnChanged || phaseChanged || !isMyTurn || dbPhase === GamePhase.PREPARATION || dbPhase === GamePhase.GOAL_CELEBRATION || dbPhase === GamePhase.GAME_OVER) {
-          setScores(room.gameState.scores);
-          setTurn(room.gameState.turn);
-          setGameTime(room.gameState.gameTime);
+          setScoresSync(room.gameState.scores);
+          setTurnSync(room.gameState.turn);
+          setGameTimeSync(room.gameState.gameTime);
           if (room.gameState.gameTimeSeconds !== undefined) {
-            setGameTimeSeconds(room.gameState.gameTimeSeconds);
-            gameTimeSecondsRef.current = room.gameState.gameTimeSeconds;
+            setGameTimeSecondsSync(room.gameState.gameTimeSeconds);
           }
-          setHomeFlicksRemaining(room.gameState.homeFlicksRemaining);
-          setAwayFlicksRemaining(room.gameState.awayFlicksRemaining);
-          setPhase(dbPhase);
+          setHomeFlicksSync(room.gameState.homeFlicksRemaining);
+          setAwayFlicksSync(room.gameState.awayFlicksRemaining);
+          setPhaseSync(dbPhase);
           setActionStatus(room.gameState.actionStatus);
 
-          setBall(room.gameState.ball);
+          setBallSync(room.gameState.ball);
           setHomePlayers(room.gameState.homePlayers);
           setAwayPlayers(room.gameState.awayPlayers);
           if (room.gameState.lastGoalScorer !== undefined) {
@@ -1114,12 +1153,13 @@ export const useGameState = () => {
     nextHomeFlicks: number,
     nextAwayFlicks: number,
     nextPhase: GamePhase,
-    nextStatus: string
+    nextStatus: string,
+    forceSync: boolean = false
   ) => {
     if (!isMultiplayer || !roomId || !myRole) return;
     
     // In multiplayer, the master is the one who took the turn/shot
-    const isMaster = turnRef.current === myRole;
+    const isMaster = forceSync || turnRef.current === myRole;
     if (!isMaster) return;
 
     console.log(
@@ -1397,11 +1437,11 @@ export const useGameState = () => {
       };
 
       flushSync(() => {
-        setHomeFlicksRemaining(3);
-        setAwayFlicksRemaining(3);
-        setPhase(nextPhaseValue);
-        setTurn(nextTurnValue);
-        setBall(updatedBallPrep);
+        setHomeFlicksSync(3);
+        setAwayFlicksSync(3);
+        setPhaseSync(nextPhaseValue);
+        setTurnSync(nextTurnValue);
+        setBallSync(updatedBallPrep);
         setActionStatus(nextStatusValue);
         setHomeReady(false);
         setAwayReady(false);
@@ -1435,8 +1475,8 @@ export const useGameState = () => {
     }
 
     flushSync(() => {
-      setTurn(newPossession);
-      setBall(updatedBall);
+      setTurnSync(newPossession);
+      setBallSync(updatedBall);
       setActionStatus(nextStatus);
     });
 
@@ -1597,14 +1637,12 @@ export const useGameState = () => {
     addGameLog(`Fim do Primeiro Tempo! Intervalo Tático. O segundo tempo inicia com posse e kickoff do Visitante/IA no centro do campo.`, 'phase');
 
     flushSync(() => {
-      setBall(freshBall);
-      setTurn('AWAY');
-      setPhase(GamePhase.PREPARATION);
+      setBallSync(freshBall);
+      setTurnSync('AWAY');
+      setPhaseSync(GamePhase.PREPARATION);
       setActionStatus(nextStatus);
-      setHomeFlicksRemaining(3);
-      setAwayFlicksRemaining(3);
-      homeFlicksRemainingRef.current = 3;
-      awayFlicksRemainingRef.current = 3;
+      setHomeFlicksSync(3);
+      setAwayFlicksSync(3);
       setHomeReady(false);
       setAwayReady(false);
     });
@@ -1620,7 +1658,8 @@ export const useGameState = () => {
         3,
         3,
         GamePhase.PREPARATION,
-        nextStatus
+        nextStatus,
+        true
       );
     }
   }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog]);
@@ -1647,8 +1686,8 @@ export const useGameState = () => {
     };
 
     flushSync(() => {
-      setBall(freshBall);
-      setPhase(GamePhase.GAME_OVER);
+      setBallSync(freshBall);
+      setPhaseSync(GamePhase.GAME_OVER);
       setActionStatus(nextStatus);
     });
 
@@ -1663,7 +1702,8 @@ export const useGameState = () => {
         homeFlicksRemainingRef.current,
         awayFlicksRemainingRef.current,
         GamePhase.GAME_OVER,
-        nextStatus
+        nextStatus,
+        true
       );
     }
   }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog]);
@@ -1732,7 +1772,7 @@ export const useGameState = () => {
     const isMaster = !isMultiplayer || turnRef.current === myRoleRef.current;
     if (!isMaster) {
       flushSync(() => {
-        setBall(updatedBall);
+        setBallSync(updatedBall);
       });
       return;
     }
@@ -1811,13 +1851,13 @@ export const useGameState = () => {
     updatedBall.possession = nextTurnValue;
 
     flushSync(() => {
-      setBall(updatedBall);
-      setTurn(nextTurnValue);
-      setGameTime(nextGameTimeValue);
-      setPhase(nextPhaseValue);
+      setBallSync(updatedBall);
+      setTurnSync(nextTurnValue);
+      setGameTimeSync(nextGameTimeValue);
+      setPhaseSync(nextPhaseValue);
       setActionStatus(nextStatusValue);
-      setHomeFlicksRemaining(nextHomeFlicks);
-      setAwayFlicksRemaining(nextAwayFlicks);
+      setHomeFlicksSync(nextHomeFlicks);
+      setAwayFlicksSync(nextAwayFlicks);
       if (nextPhaseValue === GamePhase.PREPARATION) {
         setHomeReady(false);
         setAwayReady(false);
@@ -2097,9 +2137,9 @@ export const useGameState = () => {
     }
   }, [phase, turn, difficulty, isBallMoving, isMultiplayer]);
 
-  const updateGoalkeeperPositions = useCallback((homeX: number, awayX: number) => {
-    setHomePlayers(prev => prev.map(p => p.number === 1 ? { ...p, position: [homeX, p.position[1], p.position[2]] } : p));
-    setAwayPlayers(prev => prev.map(p => p.number === 1 ? { ...p, position: [awayX, p.position[1], p.position[2]] } : p));
+  const updateGoalkeeperPositions = useCallback((homeX: number, homeZ: number, awayX: number, awayZ: number) => {
+    setHomePlayers(prev => prev.map(p => p.number === 1 ? { ...p, position: [homeX, p.position[1], homeZ] } : p));
+    setAwayPlayers(prev => prev.map(p => p.number === 1 ? { ...p, position: [awayX, p.position[1], awayZ] } : p));
   }, []);
 
   const incrementGoalkeeperSaves = useCallback((team: Team) => {

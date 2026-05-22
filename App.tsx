@@ -13,6 +13,29 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen } from 'lucide-react';
 import SoundManager from './SoundManager';
 import RulesModal from './components/RulesModal';
+import { Canvas, useFrame } from '@react-three/fiber';
+import Pitch from './components/Pitch';
+
+const RotatingPitch: React.FC = () => {
+  const groupRef = React.useRef<any>(null);
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.45;
+    }
+  });
+
+  return (
+    <group ref={groupRef} scale={0.165} rotation={[0.42, 0, 0]}>
+      <Pitch 
+        phase="MENU" 
+        hoveredSlotId={null} 
+        setHoveredSlotId={() => {}} 
+        homePlayers={[]} 
+      />
+    </group>
+  );
+};
+
 
 
 const AppContent: React.FC = () => {
@@ -51,11 +74,25 @@ const AppContent: React.FC = () => {
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
+  const [isPortrait, setIsPortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   const [isMuted, setIsMuted] = useState(false);
   const [sfxVolume, setSfxVolume] = useState(0.5);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsPortrait(window.innerHeight > window.innerWidth);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
   const [crowdVolume, setCrowdVolume] = useState(0.5);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -170,14 +207,58 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-[#070a0e] text-zinc-100 font-['Outfit'] select-none overflow-hidden">
+      {isMobile && isPortrait && (
+        <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-6 bg-gradient-to-br from-[#0c1424] via-[#070a0e] to-[#04060a] p-6 text-center select-none">
+          {/* Pulsing Concentric Rings Container */}
+          <div className="relative w-28 h-28 flex items-center justify-center bg-cyan-950/20 rounded-full border border-cyan-500/20 shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+            <div className="absolute inset-0 rounded-full border-2 border-dashed border-cyan-500/10 animate-spin-slow"></div>
+            
+            {/* Rotating Smartphone Visual */}
+            <div className="relative w-10 h-16 border-[2.5px] border-zinc-400 rounded-lg flex items-center justify-center bg-zinc-950/60 shadow-2xl animate-phoneRotate">
+              {/* Inner screen */}
+              <div className="absolute inset-0.5 border border-zinc-700/50 rounded-[4px] bg-cyan-950/30 flex items-center justify-center">
+                <span className="text-[10px] animate-pulse">⚽</span>
+              </div>
+              {/* Home Button/Camera notch details */}
+              <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-zinc-400"></div>
+              <div className="absolute top-0.5 w-4 h-0.5 rounded bg-zinc-400"></div>
+            </div>
+          </div>
+
+          {/* Heading and subtext */}
+          <div className="flex flex-col items-center gap-2 max-w-xs">
+            <h2 className="text-2xl font-black italic tracking-tighter uppercase bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent animate-pulseGlow">
+              GIRE O CELULAR
+            </h2>
+            <p className="text-zinc-300 text-xs font-semibold leading-relaxed">
+              Tableball é jogado na horizontal para melhor campo de visão e jogabilidade.
+            </p>
+            <span className="text-[9px] text-cyan-400/80 font-black tracking-widest uppercase mt-2.5 animate-pulse">
+              Modo Paisagem Requerido
+            </span>
+          </div>
+        </div>
+      )}
+
       {showFullscreenGate && (
         <div
           className="fullscreen-gate"
           onClick={enterFullscreen}
           onTouchEnd={(e) => { e.preventDefault(); enterFullscreen(); }}
         >
-          <div className="gate-pulse">
-            <span style={{ fontSize: 38 }}>⚽</span>
+          <div className="gate-pulse relative" style={{ overflow: 'visible' }}>
+            <div className="absolute inset-0 z-0 w-full h-full flex items-center justify-center pointer-events-none">
+              <Canvas
+                camera={{ position: [0, 4.2, 5.2], fov: 40 }}
+                gl={{ antialias: true, alpha: true }}
+                style={{ width: '100%', height: '100%', background: 'transparent' }}
+              >
+                <ambientLight intensity={1.8} />
+                <directionalLight position={[3, 8, 3]} intensity={2.0} />
+                <pointLight position={[-3, 4, -3]} intensity={1.0} />
+                <RotatingPitch />
+              </Canvas>
+            </div>
           </div>
 
           <div className="flex flex-col items-center gap-2 text-center px-8">

@@ -7,11 +7,11 @@ const SoloTab: React.FC = () => {
   const { difficulty, setDifficulty, startGame, matchDuration, setMatchDuration } = useGameStateContext();
 
   return (
-    <div className="w-full max-w-xl mx-auto backdrop-blur-md bg-zinc-900/50 border border-zinc-800 shadow-2xl rounded-3xl p-6 space-y-6 animate-scaleUp">
-      <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-400">DESAFIE A INTELIGÊNCIA ARTIFICIAL</h3>
+    <div className="w-full max-w-xl mx-auto space-y-4 md:space-y-4.5 animate-scaleUp">
+      <h3 className="text-xs md:text-sm font-bold uppercase tracking-widest text-cyan-400">DESAFIE A INTELIGÊNCIA ARTIFICIAL</h3>
       
-      <div className="space-y-2.5">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-450 text-left">Dificuldade da IA</h4>
+      <div className="space-y-2">
+        <h4 className="text-[9.5px] font-black uppercase tracking-widest text-zinc-450 text-left">Dificuldade da IA</h4>
         <div className="grid grid-cols-3 gap-2.5">
           {[
             { id: Difficulty.EASY, label: 'FÁCIL', desc: 'IA com rebote instável', color: 'border-emerald-500/40 text-emerald-400 bg-emerald-950/10' },
@@ -22,7 +22,7 @@ const SoloTab: React.FC = () => {
               key={diff.id}
               onClick={() => setDifficulty(diff.id)}
               className={`
-                rounded-2xl border font-black transition-all duration-300 transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center p-4 gap-2
+                rounded-2xl border font-black transition-all duration-300 transform hover:scale-103 active:scale-97 flex flex-col items-center justify-center py-3 px-3 gap-1.5
                 ${difficulty === diff.id 
                   ? `${diff.color} ring-2 ring-white/10 shadow-lg` 
                   : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
@@ -37,8 +37,8 @@ const SoloTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-2.5">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-450 text-left">Duração do Jogo (Tempo de Bola Rolando)</h4>
+      <div className="space-y-2">
+        <h4 className="text-[9.5px] font-black uppercase tracking-widest text-zinc-450 text-left">Duração do Jogo (Tempo de Bola Rolando)</h4>
         <div className="grid grid-cols-3 gap-2.5">
           {[
             { id: 60, label: '1 MINUTO', desc: 'Partida Relâmpago' },
@@ -49,7 +49,7 @@ const SoloTab: React.FC = () => {
               key={timeOpt.id}
               onClick={() => setMatchDuration(timeOpt.id)}
               className={`
-                rounded-2xl border font-black transition-all duration-300 transform hover:scale-105 active:scale-95 flex flex-col items-center justify-center p-4 gap-2
+                rounded-2xl border font-black transition-all duration-300 transform hover:scale-103 active:scale-97 flex flex-col items-center justify-center py-3 px-3 gap-1.5
                 ${matchDuration === timeOpt.id 
                   ? 'border-cyan-500/40 text-cyan-400 bg-cyan-950/10 ring-2 ring-white/10 shadow-lg' 
                   : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
@@ -66,9 +66,9 @@ const SoloTab: React.FC = () => {
 
       <button 
         onClick={() => startGame(difficulty)}
-        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black tracking-widest uppercase rounded-2xl shadow-[0_4px_25px_rgba(6,182,212,0.4)] hover:shadow-[0_4px_30px_rgba(6,182,212,0.55)] transform transition-all active:scale-98 flex items-center justify-center gap-2 py-4 text-sm"
+        className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black tracking-widest uppercase rounded-2xl shadow-[0_4px_25px_rgba(6,182,212,0.4)] hover:shadow-[0_4px_30px_rgba(6,182,212,0.55)] transform transition-all active:scale-98 flex items-center justify-center gap-2 py-3 text-xs md:text-sm"
       >
-        <Play size={18} />
+        <Play size={16} />
         INICIAR DESAFIO SOLO
       </button>
     </div>

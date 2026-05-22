@@ -419,18 +419,18 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
             {/* Show "Don't show again" checkbox only on the last page AND if it was auto-triggered */}
             {currentPage === 5 && rulesAutoTriggered && (
-              <label className="flex items-center gap-2 cursor-pointer select-none group pointer-events-auto">
-                <div className="relative">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none group pointer-events-auto py-1 px-3 bg-zinc-900/50 hover:bg-zinc-900/80 border border-zinc-850/60 rounded-xl transition-all duration-200 shadow-md">
+                <div className="relative w-8 h-4 flex items-center">
                   <input 
                     type="checkbox" 
                     checked={dontShowAgain}
                     onChange={(e) => { SoundManager.playUIClick(); setDontShowAgain(e.target.checked); }}
                     className="sr-only peer"
                   />
-                  <div className="w-8 h-4.5 bg-zinc-850 rounded-full border border-zinc-800 peer-checked:bg-cyan-500/25 peer-checked:border-cyan-500/50 transition-all duration-200"></div>
-                  <div className="absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-zinc-600 peer-checked:bg-cyan-400 peer-checked:translate-x-3.5 transition-all duration-200 shadow"></div>
+                  <div className="w-8 h-4 bg-zinc-850 rounded-full border border-zinc-700/60 peer-checked:bg-cyan-500 peer-checked:border-cyan-400 transition-all duration-300"></div>
+                  <div className="absolute top-[2px] left-[2px] w-3 h-3 rounded-full bg-zinc-500 peer-checked:bg-white peer-checked:translate-x-4 transition-all duration-300 shadow-sm"></div>
                 </div>
-                <span className="text-[10px] font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors uppercase tracking-wide">
+                <span className="text-[10px] font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors uppercase tracking-wide leading-none">
                   Não mostrar novamente
                 </span>
               </label>

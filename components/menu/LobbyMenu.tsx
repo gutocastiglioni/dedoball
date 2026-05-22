@@ -278,7 +278,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   title="Customizar Perfil, Time e Uniforme"
                 >
                   {/* Left: Team Name */}
-                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[65px] xs:max-w-[85px]">
+                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
                     {userProfile?.teamName || 'Meu Time'}
                   </span>
 
@@ -303,7 +303,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   </div>
 
                   {/* Right: Player Name */}
-                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[65px] xs:max-w-[85px]">
+                  <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
                     {userProfile?.username || activeUser.displayName}
                   </span>
 
@@ -428,7 +428,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
 
 
             {/* Render Active Tab content container with no extra outer scrollbar */}
-            <div className="w-full h-full overflow-y-auto pr-0.5 flex flex-col justify-start items-stretch">
+            <div className={`w-full h-full pr-0.5 flex flex-col justify-start items-stretch ${currentMenuTab === 'solo' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
               {renderActiveTabContent()}
             </div>
           </div>
@@ -583,12 +583,12 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
 
   const renderDesktopMenu = () => {
     return (
-      <div className="absolute inset-0 z-20 flex flex-col items-center bg-gradient-to-br from-zinc-950 via-zinc-900/98 to-slate-950 select-none justify-start p-4 md:p-6 overflow-y-auto min-h-screen">
+      <div className="absolute inset-0 z-20 flex flex-col items-center bg-gradient-to-br from-zinc-950 via-zinc-900/98 to-slate-950 select-none justify-start p-4 md:p-6 overflow-hidden h-screen w-screen">
         {/* Animated Background Lights */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse delay-700"></div>
 
-        <div className="relative max-w-4xl w-full flex flex-col items-center text-center space-y-4 md:space-y-6 pt-2 md:pt-4 pb-8 md:pb-12">
+        <div className="relative max-w-4xl w-full flex flex-col items-center text-center space-y-3.5 md:space-y-5 pt-2 md:pt-4 pb-4 md:pb-6">
           {/* Header com Auth Info */}
           <div className="w-full flex justify-between items-center gap-2 flex-wrap border-b border-zinc-800/80 pb-3 md:pb-4">
             <div className="flex flex-col items-start select-none">
@@ -634,7 +634,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   title="Customizar Perfil, Time e Uniforme"
                 >
                   {/* Left: Team Name */}
-                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[120px] md:max-w-[150px]">
+                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
                     {userProfile?.teamName || 'Meu Time'}
                   </span>
 
@@ -659,7 +659,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   </div>
 
                   {/* Right: Player Name */}
-                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide truncate max-w-[120px] md:max-w-[150px]">
+                  <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
                     {userProfile?.username || activeUser.displayName}
                   </span>
 
@@ -770,7 +770,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           </div>
 
           {/* TAB CONTENTS */}
-          <div className="w-full flex-grow flex flex-col justify-center overflow-hidden max-h-[380px] mt-4">
+          <div className="w-full flex-grow flex flex-col justify-start items-stretch overflow-hidden max-h-[380px] md:max-h-[460px] mt-2 md:mt-4">
             {renderActiveTabContent()}
           </div>
 

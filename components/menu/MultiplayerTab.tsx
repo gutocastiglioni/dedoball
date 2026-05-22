@@ -18,10 +18,10 @@ const MultiplayerTab: React.FC = () => {
   const [inputPassword, setInputPassword] = useState('');
 
   return (
-    <div className={`w-full animate-scaleUp ${isMobile ? 'space-y-1.5' : 'space-y-6'}`}>
+    <div className={`w-full h-full flex flex-col justify-start items-stretch animate-scaleUp ${isMobile ? 'gap-1.5' : 'gap-4'}`}>
       
       {/* Create Room Form Toggler */}
-      <div className={`w-full flex flex-row justify-between items-center bg-zinc-900/40 border border-zinc-800/60 text-left
+      <div className={`w-full flex flex-row justify-between items-center bg-zinc-900/40 border border-zinc-800/60 text-left flex-shrink-0
         ${isMobile ? 'p-2 rounded-xl gap-2' : 'p-4 rounded-2xl gap-3'}
       `}>
         <div>
@@ -39,7 +39,7 @@ const MultiplayerTab: React.FC = () => {
 
       {/* Create Room Modal/Box */}
       {showCreateRoomForm && (
-        <div className={`w-full bg-zinc-900 border border-indigo-500/40 shadow-[0_0_25px_rgba(99,102,241,0.15)] text-left animate-fadeIn
+        <div className={`w-full bg-zinc-900 border border-indigo-500/40 shadow-[0_0_25px_rgba(99,102,241,0.15)] text-left animate-fadeIn flex-shrink-0
           ${isMobile ? 'p-3 space-y-2 max-w-none' : 'max-w-md mx-auto p-5 space-y-4 rounded-2xl'}
         `}>
           <h4 className="text-[10px] sm:text-xs font-black tracking-widest text-indigo-400 uppercase">Configuração da Sala</h4>
@@ -119,7 +119,7 @@ const MultiplayerTab: React.FC = () => {
 
       {/* Password input prompt */}
       {joiningRoomId && (
-        <div className="w-full max-w-sm mx-auto p-4 rounded-2xl bg-zinc-900 border border-amber-500/50 shadow-lg text-left space-y-3 animate-fadeIn">
+        <div className="w-full max-w-sm mx-auto p-4 rounded-2xl bg-zinc-900 border border-amber-500/50 shadow-lg text-left space-y-3 animate-fadeIn flex-shrink-0">
           <div>
             <h4 className="text-[10px] sm:text-xs font-black text-amber-400 tracking-wider flex items-center gap-1">
               <Lock size={10} /> SALA COM SENHA
@@ -156,46 +156,46 @@ const MultiplayerTab: React.FC = () => {
         </div>
       )}
 
-      {/* Rooms Grid */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 overflow-y-auto pr-1 scrollbar-thin
-        ${isMobile ? 'max-h-[170px]' : 'max-h-[350px]'}
-      `}>
+      {/* Contêiner inferior com borda e fundo, esticando verticalmente */}
+      <div className="bg-zinc-900/30 border border-zinc-900 rounded-2xl p-3 flex-grow flex flex-col justify-start items-stretch min-h-0 relative overflow-hidden">
         {activeRooms.length > 0 ? (
-          activeRooms.map((room) => (
-            <div 
-              key={room.roomId}
-              className={`bg-zinc-900/60 border border-zinc-800 flex justify-between items-center hover:border-zinc-700 transition-colors shadow-inner
-                ${isMobile ? 'p-2 rounded-xl' : 'p-4 rounded-2xl'}
-              `}
-            >
-              <div className="flex items-center gap-2">
-                <img src={room.players.home.photoURL} alt="" className="w-6 h-6 rounded-full border border-zinc-850" referrerPolicy="no-referrer" />
-                <div className="text-left">
-                  <h4 className="text-[10px] sm:text-xs font-black text-zinc-200 uppercase tracking-wide flex items-center gap-1">
-                    {room.name}
-                    {room.isClosed && <Lock size={9} className="text-amber-500" />}
-                  </h4>
-                  <p className="text-[8px] font-semibold text-zinc-550 uppercase">Criador: {room.players.home.displayName}</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (room.isClosed) {
-                    setJoiningRoomId(room.roomId);
-                  } else {
-                    joinRoom(room.roomId);
-                  }
-                }}
-                className="px-3 py-1 bg-indigo-950 border border-indigo-800/40 hover:bg-indigo-900 text-indigo-400 font-black rounded-lg text-[9px] sm:text-xs tracking-wider transition-colors"
+          <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin grid grid-cols-1 md:grid-cols-2 gap-2">
+            {activeRooms.map((room) => (
+              <div 
+                key={room.roomId}
+                className={`bg-zinc-900/60 border border-zinc-800 flex justify-between items-center hover:border-zinc-700 transition-colors shadow-inner
+                  ${isMobile ? 'p-2 rounded-xl' : 'p-4 rounded-2xl'}
+                `}
               >
-                JOGAR
-              </button>
-            </div>
-          ))
+                <div className="flex items-center gap-2 text-left">
+                  <img src={room.players.home.photoURL} alt="" className="w-6 h-6 rounded-full border border-zinc-850" referrerPolicy="no-referrer" />
+                  <div className="text-left">
+                    <h4 className="text-[10px] sm:text-xs font-black text-zinc-200 uppercase tracking-wide flex items-center gap-1">
+                      {room.name}
+                      {room.isClosed && <Lock size={9} className="text-amber-500" />}
+                    </h4>
+                    <p className="text-[8px] font-semibold text-zinc-550 uppercase">Criador: {room.players.home.displayName}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (room.isClosed) {
+                      setJoiningRoomId(room.roomId);
+                    } else {
+                      joinRoom(room.roomId);
+                    }
+                  }}
+                  className="px-3 py-1 bg-indigo-950 border border-indigo-800/40 hover:bg-indigo-900 text-indigo-400 font-black rounded-lg text-[9px] sm:text-xs tracking-wider transition-colors"
+                >
+                  JOGAR
+                </button>
+              </div>
+            ))}
+          </div>
         ) : (
-          <div className="col-span-2 py-6 sm:py-12 bg-zinc-900/30 border border-zinc-900 rounded-2xl text-center flex flex-col items-center justify-center text-zinc-500 font-bold">
-            <Users size={isMobile ? 20 : 28} className="opacity-30 mb-1" />
+          <div className="flex-grow flex flex-col items-center justify-center text-center text-zinc-500 font-bold py-6 sm:py-12">
+            <Users size={isMobile ? 20 : 28} className="opacity-30 mb-1 animate-pulse" />
             <span className="text-[10px] sm:text-xs font-semibold">Nenhuma sala aguardando oponentes no momento.</span>
             <span className="text-[8px] sm:text-[10px] text-zinc-655 font-medium">Clique no botão acima para inaugurar a arena!</span>
           </div>

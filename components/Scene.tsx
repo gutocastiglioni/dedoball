@@ -27,7 +27,7 @@ interface SceneProps {
   isIAThinking: boolean;
   setActionStatus: (status: string) => void;
   handleBallStopped: (stoppedPosition: [number, number, number]) => void;
-  updateGoalkeeperPositions?: (homeX: number, awayX: number) => void;
+  updateGoalkeeperPositions?: (homeX: number, homeZ: number, awayX: number, awayZ: number) => void;
   incrementGoalkeeperSaves?: (team: Team) => void;
   triggerFoul?: (e1: string, e2: string, stoppedPosition: [number, number, number]) => void;
   homeKitConfig?: any;
@@ -722,10 +722,14 @@ const SceneContent: React.FC<SceneProps> = ({
 
     // --- GOALKEEPER sliding logic (Real-Time Tracking) ---
     const ballX = ballStateRef.current.position[0];
+    const ballZ = ballStateRef.current.position[2];
+    const ballVx = ballStateRef.current.velocity[0];
+    const ballVz = ballStateRef.current.velocity[2];
+    const gkBallSpeed = Math.hypot(ballVx, ballVz);
     
-    let baseGkSpeed = 4.275; // -5% (era 4.5)
-    if (difficulty === Difficulty.EASY) baseGkSpeed = 1.9; // -5% (era 2.0)
-    else if (difficulty === Difficulty.HARD) baseGkSpeed = 7.125; // -5% (era 7.5)
+    let baseGkSpeed = 7.0;
+    if (difficulty === Difficulty.EASY) baseGkSpeed = 3.5;
+    else if (difficulty === Difficulty.HARD) baseGkSpeed = 11.0;
 
     // Home Goalkeeper (number 1)
     const homeGK = homePlayersRef.current.find(p => p.number === 1);
@@ -734,14 +738,66 @@ const SceneContent: React.FC<SceneProps> = ({
       const homeSpeedMult = Math.max(0.1, 1 - homeSaves * 0.01);
       const currentHomeGkSpeed = baseGkSpeed * homeSpeedMult;
 
-      const targetX = THREE.MathUtils.clamp(ballX, -0.85, 0.85);
+      // Predict trajectory for horizontal positioning:
+      // If the ball is moving towards the home goal (vz < -0.5), slide to the expected intersection point on the goal line.
+      // Otherwise, track the ball's current X coordinate.
+      let targetX = ballX;
+      if (ballVz < -0.5) {
+        const tGoal = (-7.2 - ballZ) / ballVz;
+        if (tGoal > 0 && tGoal < 2.0) {
+          const expectedXGoal = ballX + ballVx * tGoal;
+          if (Math.abs(expectedXGoal) < 1.2) {
+            targetX = expectedXGoal;
+          }
+        }
+      }
+      targetX = THREE.MathUtils.clamp(targetX, -0.85, 0.85);
+
       const currentX = homeGK.position[0];
       const dx = targetX - currentX;
       const step = Math.sign(dx) * Math.min(Math.abs(dx), currentHomeGkSpeed * dt);
       homeGK.position[0] = currentX + step;
+
+      // Smarter Trajectory Analysis for advancing:
+      // Goalkeeper ONLY comes forward if:
+      // 1. Ball is moving towards him at a catchable speed (0.5 to 5.0 m/s) to avoid charging out on power shots.
+      // 2. Will intersect his intercept zone (Z = -6.8) within 1.2 seconds.
+      // 3. Goalkeeper can actually reach the expected X intersection point in time (t >= timeToReach + 0.05).
+      let isInterceptable = false;
+      if (ballVz < -0.5 && gkBallSpeed > 0.5 && gkBallSpeed < 5.0) {
+        const t = (-6.8 - ballZ) / ballVz;
+        if (t > 0 && t < 1.2) {
+          const expectedX = THREE.MathUtils.clamp(ballX + ballVx * t, -0.85, 0.85);
+          if (Math.abs(expectedX) < 1.1) {
+            const distX = Math.abs(expectedX - currentX);
+            const timeToReach = distX / currentHomeGkSpeed;
+            if (t >= timeToReach + 0.05) {
+              isInterceptable = true;
+            }
+          }
+        }
+      }
+
+      let targetZ = -7.2;
+      if (isInterceptable) {
+        // Active Resource (Recurso): comes forward to intercept slow/medium direct balls
+        targetZ = -6.6;
+      } else {
+        // Defensive Posture: stay deep, adjust slightly back on wide shots (up to -7.4) to cover corners
+        const ballDistanceZ = Math.max(0, ballZ + 8.0);
+        const proximity = THREE.MathUtils.clamp(1 - ballDistanceZ / 5.0, 0, 1);
+        const centrality = THREE.MathUtils.clamp(1 - Math.abs(ballX) / 2.5, 0, 1);
+        targetZ = -7.2 - (0.2 * proximity * (1 - centrality));
+      }
+
+      const currentZ = homeGK.position[2];
+      const dz = targetZ - currentZ;
+      const stepZ = Math.sign(dz) * Math.min(Math.abs(dz), currentHomeGkSpeed * dt);
+      homeGK.position[2] = currentZ + stepZ;
       
       if (homeGKRef.current) {
         homeGKRef.current.position.x = homeGK.position[0];
+        homeGKRef.current.position.z = homeGK.position[2];
       }
     }
 
@@ -752,14 +808,66 @@ const SceneContent: React.FC<SceneProps> = ({
       const awaySpeedMult = Math.max(0.1, 1 - awaySaves * 0.01);
       const currentAwayGkSpeed = baseGkSpeed * awaySpeedMult;
 
-      const targetX = THREE.MathUtils.clamp(ballX, -0.85, 0.85);
+      // Predict trajectory for horizontal positioning:
+      // If the ball is moving towards the away goal (vz > 0.5), slide to the expected intersection point on the goal line.
+      // Otherwise, track the ball's current X coordinate.
+      let targetX = ballX;
+      if (ballVz > 0.5) {
+        const tGoal = (7.2 - ballZ) / ballVz;
+        if (tGoal > 0 && tGoal < 2.0) {
+          const expectedXGoal = ballX + ballVx * tGoal;
+          if (Math.abs(expectedXGoal) < 1.2) {
+            targetX = expectedXGoal;
+          }
+        }
+      }
+      targetX = THREE.MathUtils.clamp(targetX, -0.85, 0.85);
+
       const currentX = awayGK.position[0];
       const dx = targetX - currentX;
       const step = Math.sign(dx) * Math.min(Math.abs(dx), currentAwayGkSpeed * dt);
       awayGK.position[0] = currentX + step;
+
+      // Smarter Trajectory Analysis for advancing:
+      // Goalkeeper ONLY comes forward if:
+      // 1. Ball is moving towards him at a catchable speed (0.5 to 5.0 m/s) to avoid charging out on power shots.
+      // 2. Will intersect his intercept zone (Z = 6.8) within 1.2 seconds.
+      // 3. Goalkeeper can actually reach the expected X intersection point in time (t >= timeToReach + 0.05).
+      let isInterceptable = false;
+      if (ballVz > 0.5 && gkBallSpeed > 0.5 && gkBallSpeed < 5.0) {
+        const t = (6.8 - ballZ) / ballVz;
+        if (t > 0 && t < 1.2) {
+          const expectedX = THREE.MathUtils.clamp(ballX + ballVx * t, -0.85, 0.85);
+          if (Math.abs(expectedX) < 1.1) {
+            const distX = Math.abs(expectedX - currentX);
+            const timeToReach = distX / currentAwayGkSpeed;
+            if (t >= timeToReach + 0.05) {
+              isInterceptable = true;
+            }
+          }
+        }
+      }
+
+      let targetZ = 7.2;
+      if (isInterceptable) {
+        // Active Resource (Recurso): comes forward to intercept slow/medium direct balls
+        targetZ = 6.6;
+      } else {
+        // Defensive Posture: stay deep, adjust slightly back on wide shots (up to 7.4) to cover corners
+        const ballDistanceZ = Math.max(0, 8.0 - ballZ);
+        const proximity = THREE.MathUtils.clamp(1 - ballDistanceZ / 5.0, 0, 1);
+        const centrality = THREE.MathUtils.clamp(1 - Math.abs(ballX) / 2.5, 0, 1);
+        targetZ = 7.2 + (0.2 * proximity * (1 - centrality));
+      }
+
+      const currentZ = awayGK.position[2];
+      const dz = targetZ - currentZ;
+      const stepZ = Math.sign(dz) * Math.min(Math.abs(dz), currentAwayGkSpeed * dt);
+      awayGK.position[2] = currentZ + stepZ;
       
       if (awayGKRef.current) {
         awayGKRef.current.position.x = awayGK.position[0];
+        awayGKRef.current.position.z = awayGK.position[2];
       }
     }
     // --- END GOALKEEPER sliding logic ---
@@ -1000,7 +1108,7 @@ const SceneContent: React.FC<SceneProps> = ({
         const homeGK = homePlayersRef.current.find(p => p.number === 1);
         const awayGK = awayPlayersRef.current.find(p => p.number === 1);
         if (homeGK && awayGK && updateGoalkeeperPositions) {
-          updateGoalkeeperPositions(homeGK.position[0], awayGK.position[0]);
+          updateGoalkeeperPositions(homeGK.position[0], homeGK.position[2], awayGK.position[0], awayGK.position[2]);
         }
         
         handleBallStopped(currentBall.position);

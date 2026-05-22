@@ -21,17 +21,17 @@ const TournamentTab: React.FC = () => {
   const [showCreateTForm, setShowCreateTForm] = useState(false);
 
   return (
-    <div className={`w-full animate-scaleUp ${isMobile ? 'space-y-1.5' : 'space-y-6'}`}>
+    <div className={`w-full h-full flex flex-col justify-start items-stretch animate-scaleUp ${isMobile ? 'gap-1.5' : 'gap-4'}`}>
       
       {/* Torneio Principal Switcher */}
       {!activeTournamentId ? (
-        <div className={isMobile ? 'space-y-1.5' : 'space-y-6'}>
-          <div className={`w-full flex flex-row justify-between items-center bg-zinc-900/40 border border-zinc-800/60 text-left
+        <>
+          <div className={`w-full flex flex-row justify-between items-center bg-zinc-900/40 border border-zinc-800/60 text-left flex-shrink-0
             ${isMobile ? 'p-2 rounded-xl gap-2' : 'p-4 rounded-2xl gap-3'}
           `}>
             <div>
               <h3 className="text-xs sm:text-sm font-bold text-yellow-400 text-left">COPA MATA-MATA (4 JOGADORES)</h3>
-              <p className={`text-[9px] text-zinc-550 text-left ${isMobile ? 'hidden' : 'block'}`}>Encare humanos e IAs substitutas na chave rumo ao ouro</p>
+              <p className={`text-[9px] text-zinc-555 text-left ${isMobile ? 'hidden' : 'block'}`}>Encare humanos e IAs substitutas na chave rumo ao ouro</p>
             </div>
             <button
               onClick={() => setShowCreateTForm(!showCreateTForm)}
@@ -43,7 +43,7 @@ const TournamentTab: React.FC = () => {
           </div>
 
           {showCreateTForm && (
-            <div className="w-full max-w-md mx-auto p-4 rounded-2xl bg-zinc-900 border border-yellow-500/40 shadow-[0_0_25px_rgba(234,179,8,0.15)] space-y-3 text-left animate-fadeIn">
+            <div className="w-full max-w-md mx-auto p-4 rounded-2xl bg-zinc-900 border border-yellow-500/40 shadow-[0_0_25px_rgba(234,179,8,0.15)] space-y-3 text-left animate-fadeIn flex-shrink-0">
               <h4 className="text-[10px] sm:text-xs font-black tracking-widest text-yellow-400 uppercase">Configuração da Copa</h4>
               <div>
                 <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Nome da Copa</label>
@@ -76,58 +76,58 @@ const TournamentTab: React.FC = () => {
             </div>
           )}
 
-          {/* Tournaments List */}
-          <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 overflow-y-auto pr-1 scrollbar-thin
-            ${isMobile ? 'max-h-[170px]' : 'max-h-[350px]'}
-          `}>
+          {/* Contêiner inferior com borda e fundo, esticando verticalmente */}
+          <div className="bg-zinc-900/30 border border-zinc-900 rounded-2xl p-3 flex-grow flex flex-col justify-start items-stretch min-h-0 relative overflow-hidden">
             {tournamentsList.length > 0 ? (
-              tournamentsList.map((t) => {
-                const pCount = Object.keys(t.players || {}).length;
-                return (
-                  <div 
-                    key={t.tournamentId}
-                    className={`bg-zinc-900/60 border border-zinc-800 flex justify-between items-center hover:border-zinc-700 transition-colors shadow-inner
-                      ${isMobile ? 'p-2 rounded-xl' : 'p-4 rounded-2xl'}
-                    `}
-                  >
-                    <div className="text-left">
-                      <h4 className="text-[10px] sm:text-xs font-black text-zinc-200 uppercase tracking-wide flex items-center gap-1.5">
-                        {t.name}
-                        <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full ${t.status === 'active' ? 'bg-yellow-950 border border-yellow-800 text-yellow-400' : t.status === 'completed' ? 'bg-zinc-800 border border-zinc-700 text-zinc-400' : 'bg-emerald-950 border border-emerald-800 text-emerald-450'}`}>
-                          {t.status === 'active' ? 'EM CURSO' : t.status === 'completed' ? 'CONCLUÍDO' : 'INSCRIÇÕES'}
-                        </span>
-                      </h4>
-                      <p className="text-[8px] font-semibold text-zinc-555 uppercase">Competidores: {pCount} / 4</p>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        joinTournament(t.tournamentId);
-                      }}
-                      className="px-3 py-1 bg-yellow-950 border border-yellow-800/40 hover:bg-yellow-900 text-yellow-400 font-black rounded-lg text-[9px] sm:text-xs tracking-wider transition-colors"
+              <div className="flex-grow overflow-y-auto pr-1 scrollbar-thin grid grid-cols-1 md:grid-cols-2 gap-2">
+                {tournamentsList.map((t) => {
+                  const pCount = Object.keys(t.players || {}).length;
+                  return (
+                    <div 
+                      key={t.tournamentId}
+                      className={`bg-zinc-900/60 border border-zinc-800 flex justify-between items-center hover:border-zinc-700 transition-colors shadow-inner
+                        ${isMobile ? 'p-2 rounded-xl' : 'p-4 rounded-2xl'}
+                      `}
                     >
-                      ENTRAR
-                    </button>
-                  </div>
-                );
-              })
+                      <div className="text-left">
+                        <h4 className="text-[10px] sm:text-xs font-black text-zinc-200 uppercase tracking-wide flex items-center gap-1.5">
+                          {t.name}
+                          <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full ${t.status === 'active' ? 'bg-yellow-950 border border-yellow-800 text-yellow-400' : t.status === 'completed' ? 'bg-zinc-800 border border-zinc-700 text-zinc-400' : 'bg-emerald-950 border border-emerald-800 text-emerald-450'}`}>
+                            {t.status === 'active' ? 'EM CURSO' : t.status === 'completed' ? 'CONCLUÍDO' : 'INSCRIÇÕES'}
+                          </span>
+                        </h4>
+                        <p className="text-[8px] font-semibold text-zinc-555 uppercase">Competidores: {pCount} / 4</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          joinTournament(t.tournamentId);
+                        }}
+                        className="px-3 py-1 bg-yellow-950 border border-yellow-800/40 hover:bg-yellow-900 text-yellow-400 font-black rounded-lg text-[9px] sm:text-xs tracking-wider transition-colors"
+                      >
+                        ENTRAR
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="col-span-2 py-6 sm:py-12 bg-zinc-900/30 border border-zinc-900 rounded-2xl text-center flex flex-col items-center justify-center text-zinc-500 font-bold">
-                <Trophy size={20} className="opacity-30 mb-1" />
+              <div className="flex-grow flex flex-col items-center justify-center text-center text-zinc-500 font-bold py-6 sm:py-12">
+                <Trophy size={20} className="opacity-30 mb-1 animate-pulse" />
                 <span className="text-[10px] sm:text-xs font-semibold">Nenhum torneio agendado.</span>
                 <span className="text-[8px] sm:text-[10px] text-zinc-655 font-medium">Clique no botão acima para fundar a sua copa!</span>
               </div>
             )}
           </div>
-        </div>
+        </>
       ) : (
         // BRACKETS TREE SCREEN (ACTIVE TOURNAMENT)
-        <div className={`w-full bg-zinc-900/40 border border-zinc-800 flex flex-col shadow-inner animate-scaleUp
+        <div className={`w-full flex-grow bg-zinc-900/40 border border-zinc-800 flex flex-col shadow-inner animate-scaleUp min-h-0 overflow-hidden
           ${isMobile ? 'p-2 rounded-xl space-y-2' : 'p-6 rounded-3xl space-y-6'}
         `}>
           
           {/* Brackets Header */}
-          <div className="flex flex-row justify-between items-center gap-2 border-b border-zinc-800/60 pb-2">
+          <div className="flex flex-row justify-between items-center gap-2 border-b border-zinc-800/60 pb-2 flex-shrink-0">
             <div className="text-left">
               <span className="text-[8px] font-black uppercase text-yellow-400 tracking-widest bg-yellow-950 border border-yellow-800/60 px-2 py-0.5 rounded-full">CHAVE TÁTICA ATIVA</span>
               <h3 className="text-xs sm:text-base font-black uppercase mt-1 tracking-wide truncate max-w-[120px] sm:max-w-xs">{tournament?.name}</h3>
@@ -153,7 +153,7 @@ const TournamentTab: React.FC = () => {
 
           {/* Torneio Arvore Brackets Visual */}
           {tournament && tournament.status !== 'waiting' ? (
-            <div className="relative w-full flex flex-row gap-3 items-center overflow-x-auto pb-2 scrollbar-thin">
+            <div className="relative w-full flex-grow flex flex-row gap-3 items-center overflow-x-auto pb-2 scrollbar-thin min-h-0">
               
               {/* Coluna 1: Semifinais */}
               <div className="flex flex-col space-y-2 min-w-[140px] xs:min-w-[160px] flex-shrink-0">
@@ -201,7 +201,7 @@ const TournamentTab: React.FC = () => {
 
                       {/* WAIT/SPECTATE Match Button */}
                       {match.status === 'pending' && !isMyMatch && (
-                        <div className="mt-0.5 text-[8px] font-bold text-zinc-650 uppercase text-center italic bg-zinc-900 border border-zinc-800 rounded py-0.5">
+                        <div className="mt-0.5 text-[8px] font-bold text-zinc-655 uppercase text-center italic bg-zinc-900 border border-zinc-800 rounded py-0.5">
                           Aguardando Bots...
                         </div>
                       )}
@@ -274,7 +274,7 @@ const TournamentTab: React.FC = () => {
 
             </div>
           ) : (
-            <div className="py-8 text-center text-zinc-500 space-y-2 flex flex-col items-center">
+            <div className="py-8 text-center text-zinc-500 space-y-2 flex flex-col items-center justify-center flex-grow">
               <Users size={24} className="opacity-30" />
               <div>
                 <span className="text-[10px] font-semibold block">Aguardando competidores confirmarem presença.</span>
