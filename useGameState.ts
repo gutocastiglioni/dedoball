@@ -774,30 +774,39 @@ export const useGameState = () => {
     });
   }, [isMultiplayer, roomId, myRole, addGameLog]);
 
-  // Derrota por Timeout (estouro de tempo na preparação ou reposicionamento de capitão)
+  // Derrota ou Empate por Timeout (estouro de tempo na preparação ou reposicionamento de capitão)
   const triggerTimeoutDefeat = useCallback(() => {
     if (!isMultiplayer || !roomId || !myRole) return;
-    console.log("%c[Game Loop] ⏰ Timeout defeat triggered! Player failed to confirm action.", "color: #c0392b; font-weight: bold;");
+    console.log("%c[Game Loop] ⏰ Timeout triggered! Player failed to confirm action.", "color: #c0392b; font-weight: bold;");
 
     const currentScores = scoresRef.current;
     let finalScores = { home: 0, away: 0 };
-    
-    // The player who timed out gets 0 goals. The other player gets Math.max(3, currentScore).
-    if (myRole === 'HOME') {
+    let nextStatus = '';
+
+    // Se estiver na preparação tática e NENHUM jogador confirmou, é empate (DRAW) por duplo timeout
+    if (phase === GamePhase.PREPARATION && !homeReady && !awayReady) {
       finalScores = {
-        home: 0,
-        away: Math.max(3, currentScores.away)
+        home: currentScores.home,
+        away: currentScores.away
       };
+      nextStatus = 'Empate por Timeout Mútuo! Ambos os jogadores falharam em confirmar a preparação tática.';
+      addGameLog('Fim de jogo por Timeout Mútuo! Ambos os jogadores falharam em confirmar a tática a tempo. Partida encerrada em Empate.', 'phase');
     } else {
-      finalScores = {
-        home: Math.max(3, currentScores.home),
-        away: 0
-      };
+      // Caso padrão: derrota por timeout de quem não confirmou
+      if (myRole === 'HOME') {
+        finalScores = {
+          home: 0,
+          away: Math.max(3, currentScores.away)
+        };
+      } else {
+        finalScores = {
+          home: Math.max(3, currentScores.home),
+          away: 0
+        };
+      }
+      nextStatus = `Derrota por Timeout do Time ${myRole === 'HOME' ? 'Casa' : 'Visitante'}! Limite de tempo excedido.`;
+      addGameLog(`Fim de jogo por Estouro de Tempo (Timeout)! O time ${myRole === 'HOME' ? 'Casa' : 'Visitante'} falhou em confirmar sua ação. Placar Final: Casa ${finalScores.home} x ${finalScores.away} Visitante.`, 'phase');
     }
-
-    const nextStatus = `Derrota por Timeout do Time ${myRole === 'HOME' ? 'Casa' : 'Visitante'}! Limite de tempo excedido.`;
-
-    addGameLog(`Fim de jogo por Estouro de Tempo (Timeout)! O time ${myRole === 'HOME' ? 'Casa' : 'Visitante'} falhou em confirmar sua ação. Placar Final: Casa ${finalScores.home} x ${finalScores.away} Visitante.`, 'phase');
 
     // 1. Transition locally to GAME_OVER phase
     flushSync(() => {
@@ -816,7 +825,7 @@ export const useGameState = () => {
       'gameState/scores': finalScores,
       'gameState/actionStatus': nextStatus
     });
-  }, [isMultiplayer, roomId, myRole, addGameLog]);
+  }, [isMultiplayer, roomId, myRole, addGameLog, phase, homeReady, awayReady]);
 
   // Gerenciamento dinâmico dos timers de Preparação Tática e Capitão
   useEffect(() => {
@@ -825,26 +834,16 @@ export const useGameState = () => {
       return;
     }
 
-    const isReady = myRole === 'HOME' ? homeReady : awayReady;
-
     if (phase === GamePhase.PREPARATION) {
-      if (isReady) {
-        setPrepTimer(null);
-      } else {
-        // Usa atualização funcional para preservar a contagem existente ao reconectar ou ao atualizar o estado de prontidão
-        setPrepTimer(prev => prev !== null ? prev : 120); // 2 minutes (120 seconds) for general tactical prep
-      }
+      // Ambos os jogadores veem o cronômetro de 120s da preparação tática
+      setPrepTimer(prev => prev !== null ? prev : 120); // 2 minutes (120 seconds) for general tactical prep
     } else if (phase === GamePhase.GOAL_CELEBRATION && captainMoveMode !== null) {
-      if (captainMoveMode === myRole) {
-        // Usa atualização funcional para preservar a contagem existente do capitão
-        setPrepTimer(prev => prev !== null ? prev : 30); // 30 seconds for repositioning captain
-      } else {
-        setPrepTimer(null);
-      }
+      // Ambos os jogadores veem o cronômetro de 30s para a escolha/reposição do capitão
+      setPrepTimer(prev => prev !== null ? prev : 30); // 30 seconds for repositioning captain
     } else {
       setPrepTimer(null);
     }
-  }, [phase, captainMoveMode, homeReady, awayReady, myRole, isMultiplayer]);
+  }, [phase, captainMoveMode, myRole, isMultiplayer]);
 
   // Tick down do prepTimer a cada segundo
   useEffect(() => {
@@ -861,7 +860,20 @@ export const useGameState = () => {
         }
         if (prev <= 1) {
           clearInterval(interval);
-          triggerTimeoutDefeat();
+          
+          // Apenas o jogador que NÃO confirmou sofre a derrota por timeout
+          const isReady = myRole === 'HOME' ? homeReady : awayReady;
+          
+          if (phase === GamePhase.PREPARATION) {
+            if (!isReady) {
+              triggerTimeoutDefeat();
+            }
+          } else if (phase === GamePhase.GOAL_CELEBRATION && captainMoveMode !== null) {
+            if (captainMoveMode === myRole) {
+              triggerTimeoutDefeat();
+            }
+          }
+          
           return 0;
         }
         return prev - 1;
@@ -869,7 +881,7 @@ export const useGameState = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [prepTimer, isMultiplayer, opponentDisconnected, triggerTimeoutDefeat]);
+  }, [prepTimer, isMultiplayer, opponentDisconnected, triggerTimeoutDefeat, homeReady, awayReady, myRole, phase, captainMoveMode]);
 
   // Listener de Desconexão (Contagem Regressiva para substituir por IA ou voltar ao lobby)
   useEffect(() => {
@@ -992,7 +1004,8 @@ export const useGameState = () => {
             oppPlayer.photoURL,
             myGoals,
             oppGoals,
-            !!activeTournamentId
+            !!activeTournamentId,
+            oppPlayer.uid || opponentInfo?.uid || opponentProfile?.uid || ''
           );
 
           // 2. If tournament, update brackets

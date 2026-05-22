@@ -79,6 +79,7 @@ export const signInGoogle = async () => {
     await set(userRef, {
       uid: user.uid,
       displayName: user.displayName || 'Jogador',
+      username: user.displayName || 'Jogador',
       photoURL: user.photoURL || '',
       email: user.email || '',
       points: 0,
@@ -89,11 +90,24 @@ export const signInGoogle = async () => {
       goalsConceded: 0
     });
   } else {
-    // Keep name & photo in sync
-    await update(userRef, {
-      displayName: user.displayName || 'Jogador',
-      photoURL: user.photoURL || ''
-    });
+    // Keep photo in sync, but do NOT overwrite customized displayName or username with Google name if they already exist in database!
+    const existingData = snap.val();
+    const updates: any = {
+      photoURL: user.photoURL || existingData.photoURL || ''
+    };
+    if (!existingData.displayName) {
+      updates.displayName = user.displayName || 'Jogador';
+    }
+    if (!existingData.username) {
+      updates.username = existingData.displayName || user.displayName || 'Jogador';
+    }
+    if (existingData.points === undefined) updates.points = 0;
+    if (existingData.wins === undefined) updates.wins = 0;
+    if (existingData.losses === undefined) updates.losses = 0;
+    if (existingData.draws === undefined) updates.draws = 0;
+    if (existingData.goalsScored === undefined) updates.goalsScored = 0;
+    if (existingData.goalsConceded === undefined) updates.goalsConceded = 0;
+    await update(userRef, updates);
   }
   return user;
 };
@@ -109,7 +123,7 @@ export const fetchLeaderboard = async () => {
   if (!snap.exists()) return [];
   
   const usersData = snap.val();
-  const list = Object.keys(usersData).map(uid => usersData[uid]);
+  const list = Object.keys(usersData).map(uid => ({ uid, ...usersData[uid] }));
   
   // Sort by points desc, then wins desc, then goalsScored desc
   return list.sort((a, b) => {
@@ -136,7 +150,8 @@ export const updateLeaderboardAndHistory = async (
   opponentPhoto: string,
   myGoals: number,
   opponentGoals: number,
-  isTournament: boolean = false
+  isTournament: boolean = false,
+  opponentUid?: string
 ) => {
   const userRef = ref(db, `users/${playerUid}`);
   const snap = await get(userRef);
@@ -167,6 +182,7 @@ export const updateLeaderboardAndHistory = async (
   await set(child(historyRef, newHistoryKey), {
     opponentName,
     opponentPhoto,
+    opponentUid: opponentUid || '',
     myGoals,
     opponentGoals,
     result: isWin ? 'WIN' : isDraw ? 'DRAW' : 'LOSS',
@@ -180,12 +196,24 @@ export const createMultiplayerRoom = async (name: string, password?: string, mat
   const user = auth.currentUser;
   if (!user) throw new Error('NOT_AUTHENTICATED');
   
+  // Load custom profile if exists
+  const userRef = ref(db, `users/${user.uid}`);
+  const snap = await get(userRef);
+  let customUsername = user.displayName || 'Jogador Casa';
+  let logoUrl = user.photoURL || '';
+  
+  if (snap.exists()) {
+    const data = snap.val();
+    customUsername = data.username || data.displayName || customUsername;
+    logoUrl = data.logoUrl || data.photoURL || logoUrl;
+  }
+  
   const roomsRef = ref(db, 'rooms');
   const roomId = push(roomsRef).key!;
   
   const newRoom: Room = {
     roomId,
-    name: name || `Sala de ${user.displayName}`,
+    name: name || `Sala de ${customUsername}`,
     isClosed: !!password,
     status: 'waiting',
     createdAt: Date.now(),
@@ -193,8 +221,8 @@ export const createMultiplayerRoom = async (name: string, password?: string, mat
     players: {
       home: {
         uid: user.uid,
-        displayName: user.displayName || 'Jogador Casa',
-        photoURL: user.photoURL || '',
+        displayName: customUsername,
+        photoURL: logoUrl,
         ready: false
       }
     }
@@ -232,10 +260,22 @@ export const joinMultiplayerRoom = async (roomId: string, password?: string) => 
     throw new Error('ROOM_FULL');
   }
   
+  // Load custom profile if exists
+  const userRef = ref(db, `users/${user.uid}`);
+  const snapUser = await get(userRef);
+  let customUsername = user.displayName || 'Jogador Visitante';
+  let logoUrl = user.photoURL || '';
+  
+  if (snapUser.exists()) {
+    const data = snapUser.val();
+    customUsername = data.username || data.displayName || customUsername;
+    logoUrl = data.logoUrl || data.photoURL || logoUrl;
+  }
+  
   const awayPlayer: RoomPlayer = {
     uid: user.uid,
-    displayName: user.displayName || 'Jogador Visitante',
-    photoURL: user.photoURL || '',
+    displayName: customUsername,
+    photoURL: logoUrl,
     ready: false
   };
   
