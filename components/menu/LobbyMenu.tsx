@@ -156,7 +156,8 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
     resetMatch,
     cameraMode,
     changeCameraMode,
-    setShowRulesModal
+    setShowRulesModal,
+    setSystemMessage
   } = useGameStateContext();
   const isMobile = useIsMobile();
 
@@ -370,6 +371,14 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                     onClick={() => {
                       SoundManager.playUIClick();
                       setShowSettingsPopup(false);
+                      if (tab.id === 'tournament') {
+                        setSystemMessage({
+                          title: 'EM BREVE',
+                          message: 'O modo Mata-Mata estará disponível em breve! Fique atento às próximas atualizações.',
+                          type: 'info'
+                        });
+                        return;
+                      }
                       if (tab.id !== 'solo' && !activeUser) {
                         handleLoginAttempt(tab.id as any);
                       } else {
@@ -575,7 +584,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
         <div className="absolute bottom-3.5 right-4 z-20 pointer-events-none select-none flex items-center gap-1.5 text-[10.5px] font-bold text-zinc-500 uppercase tracking-wider leading-none">
           <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
           <span className="text-zinc-800 font-black">&bull;</span>
-          <span className="text-zinc-400 font-black">v0.3.3</span>
+          <span className="text-zinc-400 font-black">v0.9.0</span>
         </div>
       </div>
     );
@@ -748,6 +757,12 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                     SoundManager.playUIClick();
                     if (tab.id === 'rules') {
                       setShowRulesModal(true);
+                    } else if (tab.id === 'tournament') {
+                      setSystemMessage({
+                        title: 'EM BREVE',
+                        message: 'O modo Mata-Mata estará disponível em breve! Fique atento às próximas atualizações.',
+                        type: 'info'
+                      });
                     } else if (tab.id !== 'solo' && !activeUser) {
                       handleLoginAttempt(tab.id as any);
                     } else {
@@ -779,7 +794,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v0.3.3</span>
+              <span>v0.9.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -891,7 +906,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               Cancelar e Excluir Sala
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-600 uppercase tracking-widest select-none">
-              <span>v0.3.3</span>
+              <span>v0.9.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>

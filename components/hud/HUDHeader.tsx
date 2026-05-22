@@ -32,7 +32,10 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
     matchDuration,
     ball,
     homePlayers,
-    awayPlayers
+    awayPlayers,
+    prepTimer,
+    homeReady,
+    awayReady
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -46,6 +49,8 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
   };
 
   const isBallMoving = ball ? Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05 : false;
+
+  const isReady = isMultiplayer && myRole ? (myRole === 'HOME' ? homeReady : awayReady) : false;
 
   // Click outside scoreboard pill collapses expanded team names
   useEffect(() => {
@@ -296,7 +301,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                   {awaySaves > 0 && (
                     <>
                       <span 
-                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-800/40 text-amber-400 font-extrabold text-[8px] md:text-[9.5px] shadow-[0_0_8px_rgba(245,158,11,0.15)]`}
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-955/60 border border-amber-800/40 text-amber-400 font-extrabold text-[8px] md:text-[9.5px] shadow-[0_0_8px_rgba(245,158,11,0.15)]`}
                         title={`Goleiro: ${awaySaves} defesas (Lentidão de -${awaySaves}%)`}
                       >
                         (-{awaySaves}%) {awaySaves} 🧤
@@ -327,14 +332,17 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
       {/* TV-Broadcast-style Game Timer Pill */}
       <div className={`hud-timer-pill pointer-events-auto flex items-center bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-full shadow-2xl text-[10px] md:text-xs font-black tracking-wide uppercase ${isMobile ? 'px-2.5 py-1 gap-1 text-[9px]' : 'px-4 py-2 md:px-5 md:py-2.5 gap-3 md:gap-4'}`}>
         {phase === GamePhase.PREPARATION ? (
-          <div className="flex items-center gap-1.5 text-emerald-400">
-            <Clock size={isMobile ? 11 : 14} className="animate-pulse text-emerald-400" />
-            <span className="tracking-wider text-[9px] md:text-xs">
-              {isMobile ? 'PREPARAÇÃO' : (
-                <>
-                  PREPARAÇÃO TÁTICA{' '}
-                  {isMultiplayer ? '(AGUARDANDO CONFIRMAÇÃO)' : '(ILIMITADA)'}
-                </>
+          <div className={`flex items-center gap-1.5 ${isMultiplayer && !isReady && prepTimer !== null && prepTimer <= 15 ? 'text-rose-450 animate-pulse' : 'text-emerald-400'}`}>
+            <Clock size={isMobile ? 11 : 14} className={isMultiplayer && !isReady && prepTimer !== null && prepTimer <= 15 ? 'animate-bounce text-rose-500' : 'animate-pulse text-emerald-400'} />
+            <span className="tracking-wider text-[9px] md:text-xs font-black">
+              {isMultiplayer ? (
+                isReady ? (
+                  isMobile ? 'AGUARDANDO...' : 'PRONTO! AGUARDANDO RIVAL...'
+                ) : (
+                  prepTimer !== null ? `PREPARAÇÃO: ${formatTime(prepTimer)}` : 'PREPARAÇÃO'
+                )
+              ) : (
+                isMobile ? 'PREPARAÇÃO' : 'PREPARAÇÃO TÁTICA (ILIMITADA)'
               )}
             </span>
           </div>

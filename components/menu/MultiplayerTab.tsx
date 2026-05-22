@@ -44,7 +44,7 @@ const MultiplayerTab: React.FC = () => {
         `}>
           <h4 className="text-[10px] sm:text-xs font-black tracking-widest text-indigo-400 uppercase">Configuração da Sala</h4>
           
-          <div className={`grid grid-cols-2 gap-2 ${isMobile ? '' : 'flex flex-col space-y-3'}`}>
+          <div className={`grid grid-cols-2 ${isMobile ? 'gap-2' : 'gap-4'}`}>
             <div>
               <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Nome da Sala</label>
               <input 

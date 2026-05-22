@@ -239,12 +239,15 @@ export const joinMultiplayerRoom = async (roomId: string, password?: string) => 
     ready: false
   };
   
-  await update(ref(db, `rooms/${roomId}/players`), { away: awayPlayer });
-  await update(roomRef, { status: 'preparation' });
+  // Perform an atomic update to prevent the host's client from triggering a false disconnect reset
+  const updates: any = {};
+  updates['players/away'] = awayPlayer;
+  updates['status'] = 'preparation';
+  updates['presence/away'] = true;
+  await update(roomRef, updates);
   
-  // Set Presence for AWAY
+  // Set Presence onDisconnect handler for AWAY
   const presenceRef = ref(db, `rooms/${roomId}/presence/away`);
-  await set(presenceRef, true);
   onDisconnect(presenceRef).set(false);
 };
 
@@ -266,10 +269,12 @@ export const leaveMultiplayerRoom = async (roomId: string, role: Team) => {
       // If the match is already active, deleting the room ends it cleanly for both
       await remove(roomRef);
     } else {
-      // If guest leaves in preparation, reset room to waiting so host can wait for another guest
-      await update(roomRef, { status: 'waiting' });
-      await remove(ref(db, `rooms/${roomId}/players/away`));
-      await remove(ref(db, `rooms/${roomId}/presence/away`));
+      // If guest leaves in preparation, reset room to waiting atomically so host can wait for another guest
+      const updates: any = {};
+      updates['status'] = 'waiting';
+      updates['players/away'] = null;
+      updates['presence/away'] = null;
+      await update(roomRef, updates);
     }
   }
 };

@@ -26,6 +26,9 @@ const HUDOverlays: React.FC = () => {
     homeKitConfig,
     awayKitConfig,
     matchDuration,
+    currentRoom,
+    actionStatus,
+    prepTimer,
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -150,6 +153,18 @@ const HUDOverlays: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Pulsing countdown timer for repositioning */}
+                {prepTimer !== null && (
+                  <div className={`flex items-center justify-center gap-1.5 px-3 py-2 mb-4 rounded-xl border font-black text-xs transition-all duration-300 ${
+                    prepTimer <= 8 
+                      ? 'bg-rose-950/80 border-rose-800/50 text-rose-450 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.15)]' 
+                      : 'bg-amber-955/60 border-amber-800/40 text-amber-400 animate-pulse'
+                  }`}>
+                    <Hourglass size={13} className={prepTimer <= 8 ? 'animate-spin text-rose-500' : 'animate-spin text-amber-500'} style={{ animationDuration: '2.5s' }} />
+                    <span>TEMPO RESTANTE: {prepTimer}s</span>
+                  </div>
+                )}
+
                 {/* Confirm button — always active */}
                 <button
                   id="captain-confirm-btn"
@@ -164,13 +179,20 @@ const HUDOverlays: React.FC = () => {
           ) : (
             /* ── SCORING PLAYER or AI waiting ── */
             <div className="pointer-events-none relative animate-scaleUp">
-              <div className="flex items-center gap-3 bg-zinc-900/95 border border-zinc-700/60 rounded-2xl px-5 py-3.5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
-                <Hourglass size={14} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
-                <span className="text-[11px] font-bold tracking-widest text-zinc-300 uppercase">
-                  {captainMoveMode === 'AWAY'
-                    ? 'IA reposicionando capitão...'
-                    : 'Adversário reposicionando o capitão...'}
-                </span>
+              <div className="flex flex-col items-center gap-2 bg-zinc-900/95 border border-zinc-700/60 rounded-2xl px-5 py-3.5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+                <div className="flex items-center gap-3">
+                  <Hourglass size={14} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
+                  <span className="text-[11px] font-bold tracking-widest text-zinc-300 uppercase">
+                    {captainMoveMode === 'AWAY'
+                      ? 'IA reposicionando capitão...'
+                      : 'Adversário reposicionando o capitão...'}
+                  </span>
+                </div>
+                {prepTimer !== null && (
+                  <span className="text-[10px] font-black text-cyan-400 tracking-wider">
+                    Tempo limite do rival: {prepTimer}s
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -214,37 +236,60 @@ const HUDOverlays: React.FC = () => {
             <div className="relative max-w-2xl w-full rounded-[24px] md:rounded-[36px] border border-zinc-800/80 bg-zinc-900/60 backdrop-blur-md shadow-[0_24px_50px_rgba(0,0,0,0.8)] p-6 md:p-10 flex flex-col items-center space-y-6 md:space-y-8 animate-scaleUp">
               
               {/* Header Badge & Title */}
-              <div className="flex flex-col items-center text-center space-y-2.5">
-                <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center border transition-all duration-500 ${
-                  localResult === 'WIN' 
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.2)]'
-                    : localResult === 'DRAW'
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_30px_rgba(251,113,133,0.2)]'
-                }`}>
-                  {localResult === 'WIN' && <Trophy size={isMobile ? 32 : 40} className="animate-bounce" style={{ animationDuration: '3s' }} />}
-                  {localResult === 'DRAW' && <Hourglass size={isMobile ? 32 : 40} className="animate-spin" style={{ animationDuration: '6s' }} />}
-                  {localResult === 'LOSE' && <ShieldAlert size={isMobile ? 32 : 40} className="animate-pulse" />}
-                </div>
-                
-                <h1 className={`text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-none bg-gradient-to-r bg-clip-text text-transparent ${
-                  localResult === 'WIN' 
-                    ? 'from-emerald-300 via-teal-400 to-emerald-500'
-                    : localResult === 'DRAW'
-                    ? 'from-amber-300 via-yellow-400 to-amber-500'
-                    : 'from-rose-400 via-red-500 to-rose-600'
-                }`}>
-                  {localResult === 'WIN' && 'VITÓRIA!'}
-                  {localResult === 'DRAW' && 'EMPATE'}
-                  {localResult === 'LOSE' && 'DERROTA'}
-                </h1>
-                
-                <p className="text-zinc-400 text-[10px] md:text-xs font-semibold tracking-wide max-w-sm md:max-w-md">
-                  {localResult === 'WIN' && 'Excelente partida! Sua tática e controle foram impecáveis e consagraram seu time.'}
-                  {localResult === 'DRAW' && 'Que jogo disputado! Ambos os lados lutaram bravamente até o apito final.'}
-                  {localResult === 'LOSE' && 'Faltou pouco! Ajuste seus posicionamentos, refine a pontaria e tente outra vez.'}
-                </p>
-              </div>
+              {(() => {
+                const isWO = actionStatus ? (actionStatus.includes('W.O.') || actionStatus.includes('WO')) : false;
+                const isTimeout = actionStatus ? (actionStatus.toLowerCase().includes('timeout') || actionStatus.toLowerCase().includes('tempo excedido')) : false;
+
+                return (
+                  <div className="flex flex-col items-center text-center space-y-2.5">
+                    <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center border transition-all duration-500 ${
+                      localResult === 'WIN' 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.2)]'
+                        : localResult === 'DRAW'
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_30px_rgba(251,113,133,0.2)]'
+                    }`}>
+                      {localResult === 'WIN' && <Trophy size={isMobile ? 32 : 40} className="animate-bounce" style={{ animationDuration: '3s' }} />}
+                      {localResult === 'DRAW' && <Hourglass size={isMobile ? 32 : 40} className="animate-spin" style={{ animationDuration: '6s' }} />}
+                      {localResult === 'LOSE' && <ShieldAlert size={isMobile ? 32 : 40} className="animate-pulse" />}
+                    </div>
+                    
+                    <h1 className={`text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-none bg-gradient-to-r bg-clip-text text-transparent ${
+                      localResult === 'WIN' 
+                        ? 'from-emerald-300 via-teal-400 to-emerald-500'
+                        : localResult === 'DRAW'
+                        ? 'from-amber-300 via-yellow-400 to-amber-500'
+                        : 'from-rose-400 via-red-500 to-rose-600'
+                    }`}>
+                      {localResult === 'WIN' && (
+                        isWO ? 'VITÓRIA POR W.O.!' : (isTimeout ? 'VITÓRIA POR TIMEOUT!' : 'VITÓRIA!')
+                      )}
+                      {localResult === 'DRAW' && 'EMPATE'}
+                      {localResult === 'LOSE' && (
+                        isWO ? 'DERROTA POR W.O.!' : (isTimeout ? 'DERROTA POR TIMEOUT!' : 'DERROTA')
+                      )}
+                    </h1>
+                    
+                    <p className="text-zinc-400 text-[10px] md:text-xs font-semibold tracking-wide max-w-sm md:max-w-md">
+                      {localResult === 'WIN' && (
+                        isWO 
+                          ? 'O oponente desconectou e você venceu a partida por W.O.!' 
+                          : (isTimeout 
+                              ? 'O oponente esgotou o tempo limite para concluir sua jogada e foi derrotado por timeout!' 
+                              : 'Excelente partida! Sua tática e controle foram impecáveis e consagraram seu time.')
+                      )}
+                      {localResult === 'DRAW' && 'Que jogo disputado! Ambos os lados lutaram bravamente até o apito final.'}
+                      {localResult === 'LOSE' && (
+                        isWO 
+                          ? 'Você desconectou e perdeu a partida por W.O.' 
+                          : (isTimeout 
+                              ? 'Seu tempo limite esgotou antes de confirmar sua jogada, resultando em derrota por timeout!' 
+                              : 'Faltou pouco! Ajuste seus posicionamentos, refine a pontaria e tente outra vez.')
+                      )}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {/* Scoreboard & Crests Showcase Area */}
               <div className="w-full flex items-center justify-between bg-zinc-950/40 rounded-[20px] md:rounded-[28px] border border-zinc-800/40 p-4 md:p-6 shadow-inner relative overflow-hidden">
@@ -334,13 +379,21 @@ const HUDOverlays: React.FC = () => {
 
             {/* Pulsing countdown timer */}
             <div className="bg-zinc-950 border border-zinc-800 py-4 px-6 rounded-2xl w-fit mx-auto">
-              <span className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase block mb-1">A IA assumirá em</span>
+              <span className="text-[10px] text-zinc-500 font-bold tracking-widest uppercase block mb-1">
+                {currentRoom?.status === 'preparation' ? 'Retornando ao lobby em' : 'Vitória por W.O. em'}
+              </span>
               <span className="text-3xl font-black text-rose-500 tabular-nums animate-pulse">{disconnectCountdown}s</span>
             </div>
 
-            <p className="text-[10px] text-zinc-550 italic font-semibold">
-              * Você não perderá pontos ou progresso caso decida aguardar ou continuar contra a IA!
-            </p>
+            {currentRoom?.status === 'preparation' ? (
+              <p className="text-[10px] text-zinc-550 italic font-semibold">
+                * Aguardando o oponente estabilizar a conexão para iniciar a partida.
+              </p>
+            ) : (
+              <p className="text-[10px] text-zinc-550 italic font-semibold">
+                * Caso o oponente não retorne a tempo, você vencerá a partida por W.O. automaticamente!
+              </p>
+            )}
           </div>
         </div>
       )}

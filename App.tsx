@@ -13,6 +13,7 @@ import { useIsMobile } from './hooks/useIsMobile';
 import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen } from 'lucide-react';
 import SoundManager from './SoundManager';
 import RulesModal from './components/RulesModal';
+import SystemAlertModal from './components/SystemAlertModal';
 import { Canvas, useFrame } from '@react-three/fiber';
 import Pitch from './components/Pitch';
 
@@ -70,7 +71,9 @@ const AppContent: React.FC = () => {
     incrementGoalkeeperSaves,
     showRulesModal,
     setShowRulesModal,
-    setRulesAutoTriggered
+    setRulesAutoTriggered,
+    systemMessage,
+    setSystemMessage
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -531,6 +534,16 @@ const AppContent: React.FC = () => {
       {/* Profile & Kit Customizer Modal Overlay */}
       {showProfileModal && activeUser && (
         <ProfileModal onClose={() => setShowProfileModal(false)} />
+      )}
+
+      {/* Custom System Alert Modal */}
+      {systemMessage && (
+        <SystemAlertModal
+          title={systemMessage.title}
+          message={systemMessage.message}
+          type={systemMessage.type}
+          onClose={() => setSystemMessage(null)}
+        />
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { GamePhase, Difficulty, Team, PlayerConfig, Slot, BallState, ActionType, UniformConfig, GameLogEntry } from './types';
 import { 
-  db, auth, onAuthStateChanged, User, ref, set, get, onValue, off, update, remove 
+  db, auth, onAuthStateChanged, User, ref, set, get, onValue, off, update, remove, onDisconnect 
 } from './firebase';
 import { 
   Room, RoomPlayer, Tournament, TournamentMatch,
@@ -210,6 +210,7 @@ export const useGameState = () => {
   const [opponentProfile, setOpponentProfile] = useState<any>(null);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [disconnectCountdown, setDisconnectCountdown] = useState(15);
+  const [prepTimer, setPrepTimer] = useState<number | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
 
@@ -225,6 +226,7 @@ export const useGameState = () => {
 
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [rulesAutoTriggered, setRulesAutoTriggered] = useState(false);
+  const [systemMessage, setSystemMessage] = useState<{ title: string; message: string; type?: 'info' | 'error' | 'success' | 'warning' } | null>(null);
 
   const setHasSeenRules = useCallback(async () => {
     localStorage.setItem('tableball_has_seen_rules', 'true');
@@ -423,22 +425,16 @@ export const useGameState = () => {
           if (snap.exists()) {
             const data = snap.val();
             setUserProfile(data);
-            const activeKit = data.selectedKit || 'home';
-            if (activeKit === 'away' && data.awayUniform) {
-              setHomeKitConfig(data.awayUniform);
-            } else if (data.uniform) {
-              setHomeKitConfig(data.uniform);
-            } else {
-              setHomeKitConfig(undefined);
-            }
           } else {
             setUserProfile(null);
           }
         });
       } else {
         setMatchHistory([]);
-        setHomeKitConfig(undefined);
         setUserProfile(null);
+        setOpponentProfile(null);
+        setHomeKitConfig(undefined);
+        setAwayKitConfig(undefined);
       }
     });
 
@@ -465,8 +461,42 @@ export const useGameState = () => {
     }
   }, [opponentInfo?.uid]);
 
-  // Automatic contrast for AWAY (AI) team based on HOME kit
+  // Dynamic Role-Aware Uniform Configuration & Synchronization
   useEffect(() => {
+    const getKitFromProfile = (profile: any) => {
+      if (!profile) return undefined;
+      const activeKit = profile.selectedKit || 'home';
+      if (activeKit === 'away' && profile.awayUniform) {
+        return profile.awayUniform;
+      }
+      return profile.uniform || undefined;
+    };
+
+    if (isMultiplayer) {
+      const myKit = getKitFromProfile(userProfile);
+      const oppKit = getKitFromProfile(opponentProfile);
+
+      if (myRole === 'HOME') {
+        setHomeKitConfig(myKit);
+        setAwayKitConfig(oppKit);
+      } else if (myRole === 'AWAY') {
+        setHomeKitConfig(oppKit);
+        setAwayKitConfig(myKit);
+      } else {
+        setHomeKitConfig(undefined);
+        setAwayKitConfig(undefined);
+      }
+    } else {
+      // Local/Offline mode: Player is always HOME
+      const myKit = getKitFromProfile(userProfile);
+      setHomeKitConfig(myKit);
+    }
+  }, [isMultiplayer, myRole, userProfile, opponentProfile]);
+
+  // Automatic contrast for AWAY (AI) team based on HOME kit (Solo Mode Only)
+  useEffect(() => {
+    if (isMultiplayer) return; // Prevent AI contrast from overriding opponent's uniform in multiplayer!
+
     if (!homeKitConfig) {
       setAwayKitConfig(undefined);
       return;
@@ -502,7 +532,7 @@ export const useGameState = () => {
         socksColor: '#1e3799'
       });
     }
-  }, [homeKitConfig]);
+  }, [homeKitConfig, isMultiplayer]);
 
   // Fetch lists and refresh
   const refreshHistoryAndLeaderboard = async (uid: string) => {
@@ -555,11 +585,16 @@ export const useGameState = () => {
     const unsubscribe = onValue(roomRef, (snapshot) => {
       if (!snapshot.exists()) {
         // Room was deleted/canceled by either client
+        if (phaseRef.current === GamePhase.GAME_OVER) {
+          // If the match is already over, do not auto-kick to main menu!
+          // Let the user click the OK button to go back.
+          return;
+        }
         if (!isLeavingRef.current) {
           if (myRoleRef.current === 'AWAY') {
-            alert('O host cancelou a partida.');
+            setSystemMessage({ title: 'Partida Cancelada', message: 'O host cancelou a partida.', type: 'warning' });
           } else if (myRoleRef.current === 'HOME') {
-            alert('O oponente saiu da partida.');
+            setSystemMessage({ title: 'Oponente Saiu', message: 'O oponente saiu da partida.', type: 'warning' });
           }
         }
         resetMatch();
@@ -574,19 +609,6 @@ export const useGameState = () => {
       }
 
       const isHome = myRoleRef.current === 'HOME';
-
-      // If we are HOME (host) and room is in preparation, but guest disconnected (presence is false)
-      if (isHome && room.status === 'preparation') {
-        const guestPresent = room.presence ? !!room.presence.away : false;
-        if (!guestPresent) {
-          // Reset room to waiting and remove away player
-          update(roomRef, { status: 'waiting' });
-          remove(ref(db, `rooms/${roomId}/players/away`));
-          remove(ref(db, `rooms/${roomId}/presence/away`));
-          alert('O oponente desconectou. Voltando para o lobby de espera...');
-          return;
-        }
-      }
 
       // If room status is waiting and host is currently in game preparation, return to menu lobby
       if (room.status === 'waiting' && isHome && phaseRef.current !== GamePhase.MENU) {
@@ -631,7 +653,7 @@ export const useGameState = () => {
       }
 
       // Sincronização de Estado Ativo de Jogo (Se mudou o turno localmente, se não for meu turno ou se mudou a fase)
-      if (room.status === 'playing' && room.gameState) {
+      if ((room.status === 'playing' || room.status === 'ended') && room.gameState) {
         const isMyTurn = room.gameState.turn === myRoleRef.current;
         const dbPhase = room.gameState.phase;
         const turnChanged = turnRef.current !== room.gameState.turn;
@@ -668,8 +690,8 @@ export const useGameState = () => {
       const oppKey = isHome ? 'away' : 'home';
       const oppPresent = room.presence ? !!room.presence[oppKey] : true;
       
-      // Se o oponente cair durante o jogo ativo
-      if (!oppPresent && room.status === 'playing') {
+      // Se o oponente cair durante preparação ou jogo ativo
+      if (!oppPresent && (room.status === 'preparation' || room.status === 'playing')) {
         setOpponentDisconnected(true);
       } else {
         setOpponentDisconnected(false);
@@ -682,7 +704,174 @@ export const useGameState = () => {
     };
   }, [isMultiplayer, roomId]);
 
-  // Listener de Desconexão (Contagem Regressiva para substituir por IA)
+  // Monitoramento dinâmico de presença usando .info/connected
+  useEffect(() => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+
+    const connectedRef = ref(db, '.info/connected');
+    const myPresenceRef = ref(db, `rooms/${roomId}/presence/${myRole === 'HOME' ? 'home' : 'away'}`);
+
+    const unsubConnected = onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        // Grava true no nó de presença
+        set(myPresenceRef, true);
+
+        // Define o handler de onDisconnect no servidor
+        if (myRole === 'HOME') {
+          onDisconnect(myPresenceRef).remove();
+          onDisconnect(ref(db, `rooms/${roomId}`)).remove();
+        } else {
+          onDisconnect(myPresenceRef).set(false);
+        }
+      }
+    });
+
+    return () => {
+        unsubConnected();
+      };
+    }, [isMultiplayer, roomId, myRole]);
+
+  // Vitória por W.O. (Walkover) do jogador remanescente
+  const triggerWO = useCallback(() => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    console.log("%c[Game Loop] 🏆 WO triggered! Opponent disconnected.", "color: #27ae60; font-weight: bold;");
+
+    const currentScores = scoresRef.current;
+    let finalScores = { home: 0, away: 0 };
+    let winnerRole: Team = myRole;
+
+    if (myRole === 'HOME') {
+      finalScores = {
+        home: Math.max(3, currentScores.home),
+        away: 0
+      };
+    } else {
+      finalScores = {
+        home: 0,
+        away: Math.max(3, currentScores.away)
+      };
+    }
+
+    const nextStatus = `Vitória por W.O. do Time ${winnerRole === 'HOME' ? 'Casa' : 'Visitante'}! O oponente desconectou.`;
+
+    addGameLog(`Vitória por W.O.! O time oponente desconectou da partida. Placar Final: Casa ${finalScores.home} x ${finalScores.away} Visitante.`, 'phase');
+
+    // 1. Transition locally to GAME_OVER phase
+    flushSync(() => {
+      setScoresSync(finalScores);
+      setPhaseSync(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+      setOpponentDisconnected(false);
+    });
+
+    // 2. Update Firebase room state to GAME_OVER and ended status
+    const roomRef = ref(db, `rooms/${roomId}`);
+    update(roomRef, { 
+      status: 'ended',
+      'gameState/phase': GamePhase.GAME_OVER,
+      'gameState/scores': finalScores,
+      'gameState/actionStatus': nextStatus
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog]);
+
+  // Derrota por Timeout (estouro de tempo na preparação ou reposicionamento de capitão)
+  const triggerTimeoutDefeat = useCallback(() => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    console.log("%c[Game Loop] ⏰ Timeout defeat triggered! Player failed to confirm action.", "color: #c0392b; font-weight: bold;");
+
+    const currentScores = scoresRef.current;
+    let finalScores = { home: 0, away: 0 };
+    
+    // The player who timed out gets 0 goals. The other player gets Math.max(3, currentScore).
+    if (myRole === 'HOME') {
+      finalScores = {
+        home: 0,
+        away: Math.max(3, currentScores.away)
+      };
+    } else {
+      finalScores = {
+        home: Math.max(3, currentScores.home),
+        away: 0
+      };
+    }
+
+    const nextStatus = `Derrota por Timeout do Time ${myRole === 'HOME' ? 'Casa' : 'Visitante'}! Limite de tempo excedido.`;
+
+    addGameLog(`Fim de jogo por Estouro de Tempo (Timeout)! O time ${myRole === 'HOME' ? 'Casa' : 'Visitante'} falhou em confirmar sua ação. Placar Final: Casa ${finalScores.home} x ${finalScores.away} Visitante.`, 'phase');
+
+    // 1. Transition locally to GAME_OVER phase
+    flushSync(() => {
+      setScoresSync(finalScores);
+      setPhaseSync(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+      setOpponentDisconnected(false);
+      setPrepTimer(null);
+    });
+
+    // 2. Update Firebase room state to GAME_OVER and ended status
+    const roomRef = ref(db, `rooms/${roomId}`);
+    update(roomRef, { 
+      status: 'ended',
+      'gameState/phase': GamePhase.GAME_OVER,
+      'gameState/scores': finalScores,
+      'gameState/actionStatus': nextStatus
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog]);
+
+  // Gerenciamento dinâmico dos timers de Preparação Tática e Capitão
+  useEffect(() => {
+    if (!isMultiplayer || !myRole) {
+      setPrepTimer(null);
+      return;
+    }
+
+    const isReady = myRole === 'HOME' ? homeReady : awayReady;
+
+    if (phase === GamePhase.PREPARATION) {
+      if (isReady) {
+        setPrepTimer(null);
+      } else {
+        // Usa atualização funcional para preservar a contagem existente ao reconectar ou ao atualizar o estado de prontidão
+        setPrepTimer(prev => prev !== null ? prev : 120); // 2 minutes (120 seconds) for general tactical prep
+      }
+    } else if (phase === GamePhase.GOAL_CELEBRATION && captainMoveMode !== null) {
+      if (captainMoveMode === myRole) {
+        // Usa atualização funcional para preservar a contagem existente do capitão
+        setPrepTimer(prev => prev !== null ? prev : 30); // 30 seconds for repositioning captain
+      } else {
+        setPrepTimer(null);
+      }
+    } else {
+      setPrepTimer(null);
+    }
+  }, [phase, captainMoveMode, homeReady, awayReady, myRole, isMultiplayer]);
+
+  // Tick down do prepTimer a cada segundo
+  useEffect(() => {
+    if (prepTimer === null || !isMultiplayer) return;
+
+    // Pausa o cronômetro de preparação se o oponente sofrer desconexão
+    if (opponentDisconnected) return;
+
+    const interval = setInterval(() => {
+      setPrepTimer(prev => {
+        if (prev === null) {
+          clearInterval(interval);
+          return null;
+        }
+        if (prev <= 1) {
+          clearInterval(interval);
+          triggerTimeoutDefeat();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [prepTimer, isMultiplayer, opponentDisconnected, triggerTimeoutDefeat]);
+
+  // Listener de Desconexão (Contagem Regressiva para substituir por IA ou voltar ao lobby)
   useEffect(() => {
     if (!opponentDisconnected || !isMultiplayer || !roomId) return;
 
@@ -690,11 +879,35 @@ export const useGameState = () => {
       setDisconnectCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          // AI assumes the disconnected player
-          setIsMultiplayer(false); // Transita para modo local!
-          setMyRole(null);
-          setOpponentDisconnected(false);
-          setActionStatus(`Oponente desconectou permanentemente! A IA assumiu o controle do time adversário.`);
+          
+          const isHome = myRoleRef.current === 'HOME';
+          const roomRef = ref(db, `rooms/${roomId}`);
+          
+          if (currentRoom?.status === 'preparation') {
+            if (isHome) {
+              // Host resets room back to waiting and removes Guest
+              update(roomRef, { status: 'waiting' });
+              remove(ref(db, `rooms/${roomId}/players/away`));
+              remove(ref(db, `rooms/${roomId}/presence/away`));
+              setSystemMessage({ 
+                title: 'Oponente Desconectado', 
+                message: 'O oponente não retornou a tempo. Voltando para o lobby de espera...', 
+                type: 'warning' 
+              });
+            } else {
+              // Guest resets match and leaves
+              setSystemMessage({ 
+                title: 'Conexão Perdida', 
+                message: 'Você foi desconectado por inatividade ou instabilidade.', 
+                type: 'error' 
+              });
+              resetMatch();
+            }
+          } else {
+            // Status is playing (or other) - WO victory triggered!
+            triggerWO();
+          }
+          
           return 0;
         }
         return prev - 1;
@@ -702,7 +915,7 @@ export const useGameState = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [opponentDisconnected, isMultiplayer, roomId]);
+  }, [opponentDisconnected, isMultiplayer, roomId, currentRoom?.status, triggerWO]);
 
   // Real-Time Flick listener
   useEffect(() => {
@@ -752,50 +965,71 @@ export const useGameState = () => {
     };
   }, [isMultiplayer, roomId]);
 
-  // Sincronizar final de jogo para salvar histórico e ranking
+  // Sincronizar final de jogo para salvar histórico e ranking de forma independente
   useEffect(() => {
-    if (phase === GamePhase.GAME_OVER && isMultiplayer && roomId && myRole) {
-      const isMaster = turnRef.current === myRole;
-      if (isMaster) {
-        const homeGoals = scores.home;
-        const awayGoals = scores.away;
+    if (phase === GamePhase.GAME_OVER && isMultiplayer && roomId && myRole && activeUser) {
+      console.log("%c[Game Loop] GAME_OVER phase detected. Saving stats...", "color: #27ae60; font-weight: bold;");
 
-        // Finalize room in DB
-        update(ref(db, `rooms/${roomId}`), { status: 'ended' });
+      const isHome = myRole === 'HOME';
 
-        // Fetch final users info to record history
-        get(ref(db, `rooms/${roomId}`)).then(async (snap) => {
-          if (!snap.exists()) return;
-          const room: Room = snap.val();
-          const homeP = room.players.home;
-          const awayP = room.players.away;
+      // Fetch final users info to record history
+      get(ref(db, `rooms/${roomId}`)).then(async (snap) => {
+        if (!snap.exists()) return;
+        const room: Room = snap.val();
+        const homeP = room.players.home;
+        const awayP = room.players.away;
 
-          if (homeP && awayP) {
-            // Master records stats in users files
-            const { updateLeaderboardAndHistory } = await import('./firebaseMultiplayer');
-            if (myRole === 'HOME') {
-              await updateLeaderboardAndHistory(homeP.uid, awayP.displayName, awayP.photoURL, homeGoals, awayGoals, !!activeTournamentId);
-              await updateLeaderboardAndHistory(awayP.uid, homeP.displayName, homeP.photoURL, awayGoals, homeGoals, !!activeTournamentId);
-            } else {
-              await updateLeaderboardAndHistory(awayP.uid, homeP.displayName, homeP.photoURL, awayGoals, homeGoals, !!activeTournamentId);
-              await updateLeaderboardAndHistory(homeP.uid, awayP.displayName, awayP.photoURL, homeGoals, awayGoals, !!activeTournamentId);
-            }
+        if (homeP && awayP) {
+          const myGoals = isHome ? scores.home : scores.away;
+          const oppGoals = isHome ? scores.away : scores.home;
+          const oppPlayer = isHome ? awayP : homeP;
 
-            // If tournament, update brackets
-            if (activeTournamentId && currentMatchId) {
-              const winnerUid = homeGoals > awayGoals ? homeP.uid : awayP.uid;
-              await updateTournamentMatchResult(activeTournamentId, currentMatchId, myRole === 'HOME' ? homeGoals : awayGoals, myRole === 'AWAY' ? homeGoals : awayGoals, winnerUid);
+          // 1. Each client updates their own leaderboard and history! (respecting database security rules)
+          const { updateLeaderboardAndHistory } = await import('./firebaseMultiplayer');
+          await updateLeaderboardAndHistory(
+            activeUser.uid,
+            oppPlayer.displayName,
+            oppPlayer.photoURL,
+            myGoals,
+            oppGoals,
+            !!activeTournamentId
+          );
+
+          // 2. If tournament, update brackets
+          if (activeTournamentId && currentMatchId) {
+            const winnerUid = myGoals > oppGoals ? activeUser.uid : oppPlayer.uid;
+            
+            // Only the Host, or the Guest if Host disconnected, writes to the tournament
+            const shouldWriteTournament = isHome || opponentDisconnected;
+            if (shouldWriteTournament) {
+              await updateTournamentMatchResult(
+                activeTournamentId,
+                currentMatchId,
+                myGoals,
+                oppGoals,
+                winnerUid
+              );
             }
           }
-        });
-      }
-      
+        }
+
+        // 3. Host (or Guest if Host disconnected) marks the room as ended and schedules deletion
+        const shouldDeleteRoom = isHome || opponentDisconnected;
+        if (shouldDeleteRoom) {
+          // Mark room as ended if not already
+          update(ref(db, `rooms/${roomId}`), { status: 'ended' });
+
+          setTimeout(() => {
+            console.log("%c[Cleanup] Deleting room from database to prevent phantom room.", "color: #e74c3c; font-weight: bold;");
+            remove(ref(db, `rooms/${roomId}`));
+          }, 2000);
+        }
+      });
+
       // Refresh local user profile lists
-      if (activeUser) {
-        setTimeout(() => refreshHistoryAndLeaderboard(activeUser.uid), 2000);
-      }
+      setTimeout(() => refreshHistoryAndLeaderboard(activeUser.uid), 2000);
     }
-  }, [phase, isMultiplayer, roomId, myRole]);
+  }, [phase, isMultiplayer, roomId, myRole, activeUser, opponentDisconnected, scores.home, scores.away, activeTournamentId, currentMatchId]);
 
   // Sincronizar Torneio Mata-Mata Ativo
   useEffect(() => {
@@ -1085,6 +1319,9 @@ export const useGameState = () => {
   };
 
   const updatePlayerAngle = (playerId: string, angle: number) => {
+    const isReady = isMultiplayer && (myRole === 'HOME' ? homeReady : awayReady);
+    if (isReady) return;
+
     if (isMultiplayer && myRole) {
       const isHomePlayer = playerId.startsWith('home');
       if (myRole === 'HOME' && !isHomePlayer) return;
@@ -1096,6 +1333,9 @@ export const useGameState = () => {
   };
 
   const updatePlayerActionType = (playerId: string, actionType: ActionType) => {
+    const isReady = isMultiplayer && (myRole === 'HOME' ? homeReady : awayReady);
+    if (isReady) return;
+
     if (isMultiplayer && myRole) {
       const isHomePlayer = playerId.startsWith('home');
       if (myRole === 'HOME' && !isHomePlayer) return;
@@ -1124,6 +1364,9 @@ export const useGameState = () => {
   };
 
   const updatePlayerBlocking = (playerId: string, isBlocking: boolean) => {
+    const isReady = isMultiplayer && (myRole === 'HOME' ? homeReady : awayReady);
+    if (isReady) return;
+
     if (isMultiplayer && myRole) {
       const isHomePlayer = playerId.startsWith('home');
       if (myRole === 'HOME' && !isHomePlayer) return;
@@ -1257,6 +1500,9 @@ export const useGameState = () => {
 
   // Change Captain (only during Preparation; GK cannot be captain)
   const setCaptain = (playerId: string) => {
+    const isReady = isMultiplayer && (myRole === 'HOME' ? homeReady : awayReady);
+    if (isReady) return;
+
     if (phase !== GamePhase.PREPARATION) return;
     if (captainMoveModeRef.current !== null) return; // Block changing captain after kickoff / during captain Move Mode!
     if (isMultiplayer && myRole) {
@@ -1276,6 +1522,9 @@ export const useGameState = () => {
   };
 
   const completePreparation = async () => {
+    const isReady = isMultiplayer && (myRole === 'HOME' ? homeReady : awayReady);
+    if (isReady && captainMoveModeRef.current === null) return; // Allow confirmCaptainMove to execute if in captain move mode even if ready is set!
+
     if (captainMoveModeRef.current !== null) {
       confirmCaptainMove();
       return;
@@ -2219,7 +2468,7 @@ export const useGameState = () => {
       if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
     } catch (err) {
       console.error(err);
-      alert('Erro ao criar sala.');
+      setSystemMessage({ title: 'Erro de Sala', message: 'Erro ao criar sala.', type: 'error' });
     }
   };
 
@@ -2240,9 +2489,9 @@ export const useGameState = () => {
     } catch (err: any) {
       console.error(err);
       if (err.message === 'WRONG_PASSWORD') {
-        alert('Senha incorreta!');
+        setSystemMessage({ title: 'Acesso Negado', message: 'Senha incorreta!', type: 'error' });
       } else {
-        alert('Erro ao entrar na sala. Talvez esteja cheia.');
+        setSystemMessage({ title: 'Erro de Conexão', message: 'Erro ao entrar na sala. Talvez esteja cheia.', type: 'error' });
       }
     }
   };
@@ -2255,7 +2504,7 @@ export const useGameState = () => {
       setActionStatus('Torneio criado! Aguardando competidores...');
     } catch (err) {
       console.error(err);
-      alert('Erro ao criar torneio.');
+      setSystemMessage({ title: 'Erro de Torneio', message: 'Erro ao criar torneio.', type: 'error' });
     }
   };
 
@@ -2266,7 +2515,7 @@ export const useGameState = () => {
       setActionStatus('Você se inscreveu no Torneio! Aguardando início...');
     } catch (err) {
       console.error(err);
-      alert('Erro ao entrar no torneio.');
+      setSystemMessage({ title: 'Erro de Torneio', message: 'Erro ao entrar no torneio.', type: 'error' });
     }
   };
 
@@ -2276,7 +2525,7 @@ export const useGameState = () => {
       setActionStatus('Torneio Iniciado! Que vença o melhor.');
     } catch (err) {
       console.error(err);
-      alert('Erro ao iniciar torneio.');
+      setSystemMessage({ title: 'Erro de Torneio', message: 'Erro ao iniciar torneio.', type: 'error' });
     }
   };
 
@@ -2405,6 +2654,9 @@ export const useGameState = () => {
     setHasSeenRules,
     rulesAutoTriggered,
     setRulesAutoTriggered,
+    systemMessage,
+    setSystemMessage,
+    prepTimer,
 
     // Firebase Multiplayer exports
     activeUser,

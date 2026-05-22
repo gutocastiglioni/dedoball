@@ -147,8 +147,8 @@ const CameraManager: React.FC<{
   const lastBallPos = useRef<[number, number, number]>(ballPos);
   const lastRecenterTrigger = useRef(recenterTrigger);
 
-  // Retrieve cameraMode from the GameStateContext
-  const { cameraMode } = useGameStateContext();
+  // Retrieve cameraMode and myRole from the GameStateContext
+  const { cameraMode, myRole } = useGameStateContext();
 
   // Reset automatic tracking mode when game phase changes
   if (phase !== lastPhase.current) {
@@ -190,11 +190,11 @@ const CameraManager: React.FC<{
         // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
         if (phase === GamePhase.PREPARATION || captainMoveMode !== null) {
           // Top down taptic view for placing players
-          const destPos = new THREE.Vector3(0, 11, -2);
+          const destPos = new THREE.Vector3(0, 11, myRole === 'AWAY' ? 2 : -2);
           camera.position.lerp(destPos, 0.03);
         } else {
           // Steady isometric side overview
-          const destPos = new THREE.Vector3(0, 7, -10);
+          const destPos = new THREE.Vector3(0, 7, myRole === 'AWAY' ? 10 : -10);
           camera.position.lerp(destPos, 0.03);
         }
       } else {
@@ -205,7 +205,7 @@ const CameraManager: React.FC<{
         // Auto reposition camera depending on game phase (only if user is not manually orbiting/zooming)
         if (phase === GamePhase.PREPARATION || captainMoveMode !== null) {
           // Top down taptic view for placing players
-          const destPos = new THREE.Vector3(0, 11, -2);
+          const destPos = new THREE.Vector3(0, 11, myRole === 'AWAY' ? 2 : -2);
           camera.position.lerp(destPos, 0.03);
         } else if (phase === GamePhase.GOAL_CELEBRATION) {
           // Dramatic orbit
@@ -218,7 +218,7 @@ const CameraManager: React.FC<{
       // If user controlled, apply lock boundaries to controls target
       const target = controlsRef.current.target;
       target.x = THREE.MathUtils.clamp(target.x, -5, 5);
-      target.z = THREE.MathUtils.clamp(target.z, -5.5, 3.93);
+      target.z = THREE.MathUtils.clamp(target.z, myRole === 'AWAY' ? -3.93 : -5.5, myRole === 'AWAY' ? 5.5 : 3.93);
       target.y = THREE.MathUtils.clamp(target.y, 0, 1.5);
     }
 
@@ -1363,8 +1363,10 @@ const SceneContent: React.FC<SceneProps> = ({
 
 // 5. MAIN SCENE EXPORT (Canvas Wrapper)
 const Scene: React.FC<SceneProps> = (props) => {
+  const { myRole } = useGameStateContext();
+  const cameraPos: [number, number, number] = myRole === 'AWAY' ? [0, 6, 9] : [0, 6, -9];
   return (
-    <Canvas shadows camera={{ position: [0, 6, -9], fov: 45 }}>
+    <Canvas shadows camera={{ position: cameraPos, fov: 45 }}>
       <SceneContent {...props} />
     </Canvas>
   );
