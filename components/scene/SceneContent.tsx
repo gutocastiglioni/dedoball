@@ -8,6 +8,7 @@ import Goal from '../Goal';
 import { Ball3D } from './Ball3D';
 import { CameraManager } from './CameraManager';
 import { SlingshotController } from './SlingshotController';
+
 import { GamePhase, Team, PlayerConfig, BallState, MovementState, Difficulty } from '../../types';
 import { updateBallPhysics } from '../../PhysicsEngine';
 import { useGameStateContext } from '../../GameStateContext';
@@ -87,10 +88,10 @@ export const SceneContent: React.FC<SceneContentProps> = ({
   }, [phase]);
   
   // Touch/Drag to Rotate States and Listeners
-  const { updatePlayerAngle, isMultiplayer, myRole, roomId, captainMoveMode, addGameLog, gameMode, gkMoveActiveTeam, confirmGkPosition, setSwapPlayerId } = useGameStateContext();
+  const { updatePlayerAngle, updatePlayerActionType, updatePlayerBlocking, setCaptain, isMultiplayer, myRole, roomId, captainMoveMode, addGameLog, gameMode, gkMoveActiveTeam, confirmGkPosition, setSwapPlayerId } = useGameStateContext();
   const [rotatingPlayerId, setRotatingPlayerId] = useState<string | null>(null);
   const [rotationTarget, setRotationTarget] = useState<THREE.Vector3 | null>(null);
-  const { camera, raycaster, pointer } = useThree();
+  const { camera, raycaster, pointer, size } = useThree();
 
   const [isDraggingGK, setIsDraggingGK] = useState(false);
   const draggingGKTeamRef = useRef<Team | null>(null);
@@ -286,6 +287,92 @@ export const SceneContent: React.FC<SceneContentProps> = ({
             })}
           </group>
         )}
+      </group>
+    );
+  };
+
+  // Handle direct touch/click on the interactive 3D slider around the player
+  const handleSliderPress = (playerId: string, e: any) => {
+    e.stopPropagation();
+    SoundManager.init();
+    pendingPlayerIdRef.current = playerId;
+    pointerStartPosRef.current = new THREE.Vector2(pointer.x, pointer.y);
+    hasDraggedRef.current = true; // snap and drag immediately!
+    setRotatingPlayerId(playerId);
+
+    const tempPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.05);
+    const target = new THREE.Vector3();
+    raycaster.setFromCamera(pointer, camera);
+    if (raycaster.ray.intersectPlane(tempPlane, target)) {
+      const player = homePlayers.find(p => p.id === playerId) || awayPlayers.find(p => p.id === playerId);
+      if (player) {
+        const pdx = target.x - player.position[0];
+        const pdz = target.z - player.position[2];
+        const angle = Math.atan2(pdx, pdz);
+        updatePlayerAngle(playerId, angle);
+        setRotationTarget(target);
+      }
+    }
+  };
+
+  // Render the interactive 3D slider around the selected player piece
+  const renderInteractiveSlider = (player: PlayerConfig) => {
+    if (player.number === 1) return null; // No action slider for goalkeeper
+
+    const color = player.actionType === 'SHOOT' ? '#ff3f34' : player.actionType === 'PASS' ? '#00d2ff' : '#ffcd38';
+
+    return (
+      <group position={player.position}>
+        {/* 1. Interactive Ring Area */}
+        <mesh 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[0, 0.015, 0]}
+          onPointerDown={(e) => handleSliderPress(player.id, e)}
+        >
+          <ringGeometry args={[0.45, 0.9, 36]} />
+          <meshBasicMaterial color={color} transparent opacity={0.12} depthWrite={false} />
+        </mesh>
+
+        {/* 2. Inner and Outer border rings */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <ringGeometry args={[0.88, 0.9, 36]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4} depthWrite={false} />
+        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <ringGeometry args={[0.45, 0.47, 36]} />
+          <meshBasicMaterial color={color} transparent opacity={0.4} depthWrite={false} />
+        </mesh>
+
+        {/* 3. Angular ticks/dashes for premium dial aesthetic */}
+        {Array.from({ length: 12 }).map((_, idx) => {
+          const tickAngle = (idx * 30) * (Math.PI / 180);
+          const cos = Math.cos(tickAngle);
+          const sin = Math.sin(tickAngle);
+          return (
+            <mesh 
+              key={idx} 
+              position={[sin * 0.675, 0.022, cos * 0.675]}
+              rotation={[0, -tickAngle, 0]}
+            >
+              <boxGeometry args={[0.015, 0.005, 0.1]} />
+              <meshBasicMaterial color={color} transparent opacity={0.3} depthWrite={false} />
+            </mesh>
+          );
+        })}
+
+        {/* 4. Beautiful current direction handle/arrow */}
+        <group rotation={[0, player.angle, 0]}>
+          {/* Direction vector line */}
+          <mesh position={[0, 0.025, 0.45]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 0.9, 8]} />
+            <meshBasicMaterial color={color} depthWrite={false} />
+          </mesh>
+          {/* Arrow tip */}
+          <mesh position={[0, 0.025, 0.9]} rotation={[Math.PI / 2, 0, 0]}>
+            <coneGeometry args={[0.07, 0.2, 8]} />
+            <meshBasicMaterial color={color} depthWrite={false} />
+          </mesh>
+        </group>
       </group>
     );
   };
@@ -1076,22 +1163,7 @@ export const SceneContent: React.FC<SceneContentProps> = ({
 
 
 
-      {/* 3D Transparent Ghost Preview of selected player under cursor */}
-      {previewPosition && playerA && (
-        <group position={previewPosition}>
-          <SoccerPlayer
-            currentMovement={MovementState.STANDING}
-            role={playerA.number === 1 ? 'goalkeeper' : 'player'}
-            team={playerA.team}
-            skinColor={playerA.skinColor}
-            hairColor={playerA.hairColor}
-            uniformConfig={playerA.team === 'HOME' ? homeKitConfig : awayKitConfig}
-            angle={playerA.angle}
-            isGhost={true}
-            raycast={() => null}
-          />
-        </group>
-      )}
+
 
       <Ball3D 
         ref={ballMeshRef} 
@@ -1130,6 +1202,23 @@ export const SceneContent: React.FC<SceneContentProps> = ({
       />
 
       {phase === GamePhase.PREPARATION && rotatingPlayerId && renderPlayerRotationIndicator()}
+
+      {/* Interactive 3D Angle Slider for the selected controllable player */}
+      {(() => {
+        if (!selectedPlayerId || selectedPlayerId === 'ball') return null;
+        const p = homePlayers.find(pl => pl.id === selectedPlayerId) || awayPlayers.find(pl => pl.id === selectedPlayerId);
+        if (!p) return null;
+        const isHomePlayer = p.id.startsWith('home');
+        const isControllable = !isMultiplayer || (myRole === 'HOME' && isHomePlayer) || (myRole === 'AWAY' && !isHomePlayer);
+        if (!isControllable) return null;
+        if (p.number === 1) return null; // No action slider for goalkeepers
+        if (phase === GamePhase.PREPARATION || isCaptainMoveActive) {
+          return renderInteractiveSlider(p);
+        }
+        return null;
+      })()}
+
+
 
       <CameraManager 
         phase={phase} 

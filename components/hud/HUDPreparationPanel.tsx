@@ -97,17 +97,15 @@ const HUDPreparationPanel: React.FC = () => {
             </div>
           )}
 
-          {/* Main Selected Player Card (Player A) */}
+          {/* Main Selected Player Card (Player A) - Commented out as we now use the floating action panel on field
           <div className={`hud-player-card pointer-events-auto w-[230px] sm:w-[280px] md:w-[340px] bg-zinc-900/90 backdrop-blur-lg border rounded-2xl md:rounded-3xl p-2 md:p-4 shadow-2xl transition-all duration-300 ${swapPlayer ? 'border-rose-500/50 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-pulseGlow' : 'border-zinc-800'}`}>
             <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
-              {/* Informative swap header inside */}
               {swapPlayer && (
                 <div className="text-[9.5px] text-zinc-300 leading-normal text-center bg-rose-955/20 py-2 px-3 rounded-xl border border-rose-900/30">
                   Clique no <strong>Botão de Nº {swapPlayer.number}</strong> ou em sua base em campo para confirmar a troca de posições!
                 </div>
               )}
 
-            {/* Header of Player Card */}
             <div className="flex justify-between items-center border-b border-zinc-800 pb-2.5 md:pb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-950 border border-blue-800/50 flex items-center justify-center font-black text-blue-450 shadow-inner">
@@ -120,7 +118,6 @@ const HUDPreparationPanel: React.FC = () => {
                 </div>
               </div>
               
-              {/* Status & Captain Actions */}
               <div className="flex items-center gap-2">
                 {selectedPlayer.isCaptain ? (
                   <span className="hud-captain-badge text-[9px] font-black text-zinc-950 bg-amber-500 border border-amber-400 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-[0_0_12px_rgba(245,158,11,0.45)]">
@@ -140,10 +137,8 @@ const HUDPreparationPanel: React.FC = () => {
               </div>
             </div>
 
-            {/* Controls for non-goalkeepers */}
             {selectedPlayer.number !== 1 && (
               <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
-                {/* Angle Control / Rotation Slider */}
                 <div className="flex flex-col gap-1 sm:gap-1.5 md:gap-2">
                   <div className="hud-angle-text flex justify-between items-center text-xs text-zinc-400 font-bold uppercase">
                     <span>Direção da Deflexão</span>
@@ -177,7 +172,6 @@ const HUDPreparationPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Action Mode Toggle (Cross vs. Shoot vs. Blocker) */}
                 <div className="flex flex-col gap-1 sm:gap-1.5 md:gap-2">
                   <span className="hud-title-text text-xs text-zinc-400 font-bold uppercase block">
                     Ação Programada na Colisão
@@ -211,9 +205,8 @@ const HUDPreparationPanel: React.FC = () => {
                       CRUZAR
                     </button>
                     
-                    {/* Check if slot allows shooting (Z >= 0 or home-att slot) */}
                     {(() => {
-                      const canShoot = selectedPlayer.position[2] >= 0; // forward half
+                      const canShoot = selectedPlayer.position[2] >= 0;
                       return (
                         <button
                           disabled={!canShoot}
@@ -236,7 +229,6 @@ const HUDPreparationPanel: React.FC = () => {
                     })()}
                   </div>
 
-                  {/* Blocker Aggregate Toggle */}
                   <div className="hud-blocker-container pt-1 sm:pt-1.5 md:pt-3">
                     <button
                       onClick={() => {
@@ -291,9 +283,10 @@ const HUDPreparationPanel: React.FC = () => {
               </div>
             )}
           </div>
+          </div>
+          */}
         </div>
-      </div>
-    )}
+      )}
 
       {/* Confirm Escalation Done Button */}
       <div className="pointer-events-auto w-full landscape:w-auto md:w-auto ml-auto flex flex-col gap-2.5 md:gap-3 items-end">

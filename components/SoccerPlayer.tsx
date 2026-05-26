@@ -59,6 +59,7 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
   const captainDiamondRef = useRef<THREE.Mesh>(null);
   
   const swapIndicatorRef = useRef<THREE.Group>(null);
+  const selectionRingRef = useRef<THREE.Mesh>(null);
   
   // Limbs
   const leftUpperArm = useRef<THREE.Group>(null);
@@ -178,15 +179,33 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
       swapIndicatorRef.current.rotation.y = t * 3.0;
       swapIndicatorRef.current.position.y = swapY + Math.sin(t * 5) * 0.05;
     }
+
+    if (isSelected && selectionRingRef.current) {
+      const ringMat = selectionRingRef.current.material as THREE.MeshBasicMaterial;
+      if (ringMat) {
+        const pulse = Math.sin(t * 6) * 0.5 + 0.5;
+        ringMat.opacity = 0.35 + pulse * 0.65;
+        
+        const baseColor = actionType === 'SHOOT' ? '#ff3f34' : actionType === 'PASS' ? '#00d2ff' : '#ffcd38';
+        ringMat.color.setStyle(baseColor);
+      }
+      const scalePulse = 0.95 + Math.sin(t * 6) * 0.05;
+      selectionRingRef.current.scale.set(scalePulse, scalePulse, 1);
+    }
   });
 
   return (
     <group ref={group} onPointerDown={onPointerDown} onClick={onClick} scale={[scaleValue, scaleValue, scaleValue]} raycast={raycast}>
       {/* 1. SELECTION GLOW RING */}
       {isSelected && (
-        <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10}>
+        <mesh ref={selectionRingRef} position={[0, 0.105, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10}>
           <ringGeometry args={[0.42, 0.48, 32]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.8 + Math.sin(Date.now() * 0.01) * 0.2} depthWrite={false} />
+          <meshBasicMaterial 
+            color={actionType === 'SHOOT' ? '#ff3f34' : actionType === 'PASS' ? '#00d2ff' : '#ffcd38'} 
+            transparent 
+            opacity={0.8} 
+            depthWrite={false} 
+          />
         </mesh>
       )}
 
@@ -194,7 +213,7 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
       {(role === 'player' || gameMode === 'manual') && !isKeeper && team === 'HOME' && (
         <>
           {/* Action Visual Ring */}
-          <mesh position={[0, 0.09, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10}>
+          <mesh position={[0, 0.101, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10}>
             <ringGeometry args={[0.38, 0.44, 32]} />
             <primitive object={mats.arrowMat} attach="material" />
           </mesh>
@@ -209,13 +228,15 @@ const SoccerPlayer: React.FC<SoccerPlayerProps> = ({
 
           {/* Directional arrow */}
           {actionType !== 'TACKLE' && (
-            <group position={[0, 0.05, 0]} rotation={[0, angle, 0]}>
-              <mesh position={[0, 0.04, 0.5]} rotation={[Math.PI / 2, 0, 0]} renderOrder={10}>
-                <cylinderGeometry args={[0.04, 0.04, 0.6, 6]} />
+            <group rotation={[0, angle, 0]}>
+              {/* Flat shaft plane merged into circle */}
+              <mesh position={[0, 0.101, 0.58]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={10}>
+                <planeGeometry args={[0.08, 0.4]} />
                 <primitive object={mats.arrowMat} attach="material" />
               </mesh>
-              <mesh position={[0, 0.04, 0.85]} rotation={[Math.PI / 2, 0, 0]} renderOrder={10}>
-                <coneGeometry args={[0.12, 0.25, 6]} />
+              {/* Flat arrowhead (cone flattened dynamically) */}
+              <mesh position={[0, 0.101, 0.905]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.001]} renderOrder={10}>
+                <coneGeometry args={[0.13, 0.25, 3]} />
                 <primitive object={mats.arrowMat} attach="material" />
               </mesh>
             </group>

@@ -8,6 +8,7 @@ import HUDHeader from './components/hud/HUDHeader';
 import HUDPreparationPanel from './components/hud/HUDPreparationPanel';
 import HUDActionOverlay from './components/hud/HUDActionOverlay';
 import HUDOverlays from './components/hud/HUDOverlays';
+import { FloatingHUDActionMenu } from './components/scene/FloatingHUDActionMenu';
 // import HUDTelemetryLog from './components/hud/HUDTelemetryLog';
 import { useIsMobile } from './hooks/useIsMobile';
 import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen } from 'lucide-react';
@@ -73,7 +74,13 @@ const AppContent: React.FC = () => {
     setShowRulesModal,
     setRulesAutoTriggered,
     systemMessage,
-    setSystemMessage
+    setSystemMessage,
+    updatePlayerActionType,
+    updatePlayerBlocking,
+    setCaptain,
+    captainMoveMode,
+    isMultiplayer,
+    myRole,
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -354,6 +361,9 @@ const AppContent: React.FC = () => {
             <p className="text-zinc-400 text-xs font-semibold tracking-wide">
               Futebol de botão online
             </p>
+            <span className="text-[10px] font-bold text-zinc-600 tracking-widest uppercase mt-0.5">
+              v0.9.5
+            </span>
           </div>
 
           <div className="flex flex-col items-center gap-2">
@@ -424,6 +434,38 @@ const AppContent: React.FC = () => {
         </>
       )}
 
+      {/* Floating HUD Action Menu — fixed bottom-left, above settings buttons, outside canvas */}
+      {phase !== GamePhase.MENU && !showFullscreenGate && (() => {
+        if (!selectedPlayerId || selectedPlayerId === 'ball') return null;
+        const isCaptainMoveActive = captainMoveMode !== null;
+        if (phase !== GamePhase.PREPARATION && !isCaptainMoveActive) return null;
+        const p = homePlayers.find(pl => pl.id === selectedPlayerId) || awayPlayers.find(pl => pl.id === selectedPlayerId);
+        if (!p) return null;
+        const isHomePlayer = p.id.startsWith('home');
+        const isControllable = !isMultiplayer || (myRole === 'HOME' && isHomePlayer) || (myRole === 'AWAY' && !isHomePlayer);
+        if (!isControllable) return null;
+        if (p.number === 1) return null;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const baseRef = Math.min(w, h * 2);
+        const baseScale = Math.min(1.2, Math.max(0.6, baseRef / 800));
+        const menuScale = isMobile ? baseScale * 0.7 : baseScale;
+        return (
+          <FloatingHUDActionMenu
+            player={p}
+            menuScale={menuScale}
+            homePlayers={homePlayers}
+            awayPlayers={awayPlayers}
+            isMultiplayer={isMultiplayer}
+            myRole={myRole}
+            isMobile={isMobile}
+            updatePlayerActionType={updatePlayerActionType}
+            updatePlayerBlocking={updatePlayerBlocking}
+            setCaptain={setCaptain}
+          />
+        );
+      })()}
+
       {/* Recenter Button when NOT in preparation phase and center is lost */}
       {phase !== GamePhase.MENU && phase !== GamePhase.PREPARATION && !isCameraCentered && (
         <div className="absolute bottom-6 right-6 z-15 pointer-events-auto">
@@ -438,12 +480,14 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Premium Glassmorphic In-Game Unified Sidebar Dock */}
-      {phase !== GamePhase.MENU && (
+      {phase !== GamePhase.MENU && (!selectedPlayerId || selectedPlayerId === 'ball') && (
         <div 
-          className="absolute bottom-6 left-6 z-20 pointer-events-auto flex items-end gap-3 select-none"
+          className="absolute z-20 pointer-events-auto flex flex-col-reverse items-start select-none"
+          style={{ bottom: isMobile ? '6px' : '24px', left: isMobile ? '8px' : '24px', gap: '6px' }}
         >
-          {/* Vertical Dock Container */}
-          <div className="flex flex-col items-center bg-zinc-950/85 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl p-1.5 gap-1.5">
+          {/* Horizontal Dock Container */}
+          <div className="flex flex-row items-center bg-zinc-950/85 border border-zinc-800 text-zinc-300 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+            style={{ borderRadius: isMobile ? '10px' : '14px', padding: isMobile ? '2px' : '6px', gap: isMobile ? '2px' : '6px' }}>
             {/* Gear Button (Settings) */}
             <button
               onClick={() => {
@@ -453,14 +497,15 @@ const AppContent: React.FC = () => {
               onMouseEnter={() => {
                 if (!isMobile) setIsExpanded(true);
               }}
-              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 ${
+              className={`flex items-center justify-center transition-all duration-300 ${
                 isExpanded
                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
                   : 'text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900/60 border border-transparent'
               }`}
+              style={{ width: isMobile ? '28px' : '44px', height: isMobile ? '28px' : '44px', borderRadius: isMobile ? '8px' : '14px' }}
               title="Ajustes de Jogo"
             >
-              <Settings size={18} className={`transition-transform duration-700 ease-out ${isExpanded ? 'rotate-180' : ''}`} />
+              <Settings size={isMobile ? 12 : 18} className={`transition-transform duration-700 ease-out ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Info Button (Rules) */}
@@ -469,21 +514,23 @@ const AppContent: React.FC = () => {
                 SoundManager.playUIClick();
                 setShowRulesModal(true);
               }}
-              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 ${
+              className={`flex items-center justify-center transition-all duration-300 ${
                 showRulesModal
                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
                   : 'text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900/60 border border-transparent'
               }`}
+              style={{ width: isMobile ? '28px' : '44px', height: isMobile ? '28px' : '44px', borderRadius: isMobile ? '8px' : '14px' }}
               title="Regras do Jogo"
             >
-              <Info size={18} />
+              <Info size={isMobile ? 12 : 18} />
             </button>
           </div>
 
           {/* Floating Settings Card Panel */}
           {isExpanded && (
             <div 
-              className="bg-zinc-950/90 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl p-4 flex flex-col justify-between w-[260px] h-[335px] animate-scaleUp animate-duration-200"
+              className="bg-zinc-950/90 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-col justify-between animate-scaleUp animate-duration-200"
+              style={{ padding: isMobile ? '10px' : '16px', width: isMobile ? '190px' : '260px', height: isMobile ? '260px' : '335px' }}
               onMouseLeave={() => {
                 if (!isMobile) setIsExpanded(false);
               }}

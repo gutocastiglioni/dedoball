@@ -252,7 +252,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
               setIsExpanded(prev => !prev);
               setIsOpponentStatsOpen(prev => !prev);
             }}
-            className="flex items-center gap-2 md:gap-4 cursor-pointer select-none"
+            className={`flex items-center ${isMobile ? 'gap-0.5' : 'gap-2 md:gap-4'} cursor-pointer select-none`}
           >
             {/* Home Team & Flick Indicators */}
             <div className={`flex items-center ${isMobile ? 'gap-1' : 'gap-1.5 md:gap-3'}`}>
@@ -331,7 +331,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
             </div>
 
             {/* Score Numbers */}
-            <div className={`flex items-center bg-zinc-950 border border-zinc-800/80 rounded-full font-black tabular-nums tracking-widest text-white shadow-inner transition-all duration-300 ${isMobile ? 'mx-0.5 px-1.5 py-0.5 text-[11px]' : 'mx-1 md:mx-3 px-3 py-1 md:px-4 md:py-1.5 text-sm md:text-base'}`}>
+            <div className={`flex items-center bg-zinc-950 border border-zinc-800/80 rounded-full font-black tabular-nums tracking-widest text-white shadow-inner transition-all duration-300 ${isMobile ? 'mx-0 px-1.5 py-0.5 text-[11px]' : 'mx-1 md:mx-3 px-3 py-1 md:px-4 md:py-1.5 text-sm md:text-base'}`}>
               <span className={turn === 'HOME' ? 'text-blue-400' : 'text-zinc-300'}>{scores.home}</span>
               <span className={`text-zinc-650 ${isMobile ? 'mx-0.5' : 'mx-1'}`}>:</span>
               <span className={turn === 'AWAY' ? 'text-orange-400' : 'text-zinc-300'}>{scores.away}</span>
