@@ -1,0 +1,1063 @@
+import { useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
+import { GamePhase, Team, PlayerConfig, BallState, GameLogEntry, UniformConfig, Difficulty } from '../types';
+import { 
+  db, auth, onAuthStateChanged, User, ref, set, get, onValue, off, update, remove, onDisconnect 
+} from '../firebase';
+import { 
+  Room, RoomPlayer, Tournament, TournamentMatch,
+  signInGoogle, logoutFirebase, fetchLeaderboard, fetchMatchHistory,
+  createMultiplayerRoom, joinMultiplayerRoom, leaveMultiplayerRoom,
+  createTournament, joinTournament, startTournament, updateTournamentMatchResult
+} from '../firebaseMultiplayer';
+import SoundManager from '../SoundManager';
+import { INITIAL_BALL } from '../gameConstants';
+
+interface UseGameMultiplayerParams {
+  phase: GamePhase;
+  phaseRef: React.MutableRefObject<GamePhase>;
+  setPhase: React.Dispatch<React.SetStateAction<GamePhase>>;
+  setPhaseSync: (p: GamePhase) => void;
+  scores: { home: number; away: number };
+  scoresRef: React.MutableRefObject<{ home: number; away: number }>;
+  setScores: React.Dispatch<React.SetStateAction<{ home: number; away: number }>>;
+  setScoresSync: (s: { home: number; away: number }) => void;
+  homePlayers: PlayerConfig[];
+  setHomePlayers: React.Dispatch<React.SetStateAction<PlayerConfig[]>>;
+  homePlayersRef: React.MutableRefObject<PlayerConfig[]>;
+  awayPlayers: PlayerConfig[];
+  setAwayPlayers: React.Dispatch<React.SetStateAction<PlayerConfig[]>>;
+  awayPlayersRef: React.MutableRefObject<PlayerConfig[]>;
+  ball: BallState;
+  ballRef: React.MutableRefObject<BallState>;
+  setBall: React.Dispatch<React.SetStateAction<BallState>>;
+  setBallSync: (b: BallState) => void;
+  turn: Team;
+  turnRef: React.MutableRefObject<Team>;
+  setTurn: React.Dispatch<React.SetStateAction<Team>>;
+  setTurnSync: (t: Team) => void;
+  actionStatus: string;
+  setActionStatus: React.Dispatch<React.SetStateAction<string>>;
+  homeReady: boolean;
+  setHomeReady: React.Dispatch<React.SetStateAction<boolean>>;
+  awayReady: boolean;
+  setAwayReady: React.Dispatch<React.SetStateAction<boolean>>;
+  gameTime: number;
+  gameTimeRef: React.MutableRefObject<number>;
+  setGameTime: React.Dispatch<React.SetStateAction<number>>;
+  setGameTimeSync: (t: number) => void;
+  matchDuration: number;
+  matchDurationRef: React.MutableRefObject<number>;
+  setMatchDuration: React.Dispatch<React.SetStateAction<number>>;
+  gameTimeSecondsRef: React.MutableRefObject<number>;
+  setGameTimeSecondsSync: (s: number) => void;
+  homeFlicksRemainingRef: React.MutableRefObject<number>;
+  setHomeFlicksSync: (f: number) => void;
+  awayFlicksRemainingRef: React.MutableRefObject<number>;
+  setAwayFlicksSync: (f: number) => void;
+  gkMoveActiveTeamRef: React.MutableRefObject<Team | null>;
+  setGkMoveActiveTeamSync: (t: Team | null) => void;
+  gkMoveTimerRef: React.MutableRefObject<number | null>;
+  setGkMoveTimerSync: (t: number | null) => void;
+  lastGoalScorerRef: React.MutableRefObject<Team | null>;
+  setLastGoalScorer: React.Dispatch<React.SetStateAction<Team | null>>;
+  consecutiveGoalsCountRef: React.MutableRefObject<number>;
+  setConsecutiveGoalsCount: React.Dispatch<React.SetStateAction<number>>;
+  gameMode: 'standard' | 'manual';
+  setGameModeSync: (m: 'standard' | 'manual') => void;
+  isMultiplayer: boolean;
+  setIsMultiplayer: React.Dispatch<React.SetStateAction<boolean>>;
+  roomId: string | null;
+  setRoomId: React.Dispatch<React.SetStateAction<string | null>>;
+  myRole: Team | null;
+  myRoleRef: React.MutableRefObject<Team | null>;
+  setMyRole: React.Dispatch<React.SetStateAction<Team | null>>;
+  activeUser: User | null;
+  setActiveUser: React.Dispatch<React.SetStateAction<User | null>>;
+  userProfile: any;
+  setUserProfile: React.Dispatch<React.SetStateAction<any>>;
+  opponentInfo: RoomPlayer | null;
+  setOpponentInfo: React.Dispatch<React.SetStateAction<RoomPlayer | null>>;
+  opponentProfile: any;
+  setOpponentProfile: React.Dispatch<React.SetStateAction<any>>;
+  opponentDisconnected: boolean;
+  setOpponentDisconnected: React.Dispatch<React.SetStateAction<boolean>>;
+  disconnectCountdown: number;
+  setDisconnectCountdown: React.Dispatch<React.SetStateAction<number>>;
+  prepTimer: number | null;
+  setPrepTimer: React.Dispatch<React.SetStateAction<number | null>>;
+  turnTimer: number | null;
+  setTurnTimer: React.Dispatch<React.SetStateAction<number | null>>;
+  currentRoom: Room | null;
+  setCurrentRoom: React.Dispatch<React.SetStateAction<Room | null>>;
+  activeRooms: Room[];
+  setActiveRooms: React.Dispatch<React.SetStateAction<Room[]>>;
+  leaderboard: any[];
+  setLeaderboard: React.Dispatch<React.SetStateAction<any[]>>;
+  matchHistory: any[];
+  setMatchHistory: React.Dispatch<React.SetStateAction<any[]>>;
+  tournamentsList: Tournament[];
+  setTournamentsList: React.Dispatch<React.SetStateAction<Tournament[]>>;
+  activeTournamentId: string | null;
+  setActiveTournamentId: React.Dispatch<React.SetStateAction<string | null>>;
+  currentMatchId: string | null;
+  setCurrentMatchId: React.Dispatch<React.SetStateAction<string | null>>;
+  tournament: Tournament | null;
+  setTournament: React.Dispatch<React.SetStateAction<Tournament | null>>;
+  homeKitConfig: UniformConfig | undefined;
+  setHomeKitConfig: React.Dispatch<React.SetStateAction<UniformConfig | undefined>>;
+  awayKitConfig: UniformConfig | undefined;
+  setAwayKitConfig: React.Dispatch<React.SetStateAction<UniformConfig | undefined>>;
+  isLeavingRef: React.MutableRefObject<boolean>;
+  setSystemMessage: React.Dispatch<React.SetStateAction<{ title: string; message: string; type?: 'info' | 'error' | 'success' | 'warning' } | null>>;
+  addGameLog: (message: string, type: GameLogEntry['type']) => void;
+  initializeTeams: () => void;
+  resetMatch: () => void;
+}
+
+export const useGameMultiplayer = ({
+  phase,
+  phaseRef,
+  setPhase,
+  setPhaseSync,
+  scores,
+  scoresRef,
+  setScores,
+  setScoresSync,
+  homePlayers,
+  setHomePlayers,
+  homePlayersRef,
+  awayPlayers,
+  setAwayPlayers,
+  awayPlayersRef,
+  ball,
+  ballRef,
+  setBall,
+  setBallSync,
+  turn,
+  turnRef,
+  setTurn,
+  setTurnSync,
+  actionStatus,
+  setActionStatus,
+  homeReady,
+  setHomeReady,
+  awayReady,
+  setAwayReady,
+  gameTime,
+  gameTimeRef,
+  setGameTime,
+  setGameTimeSync,
+  matchDuration,
+  matchDurationRef,
+  setMatchDuration,
+  gameTimeSecondsRef,
+  setGameTimeSecondsSync,
+  homeFlicksRemainingRef,
+  setHomeFlicksSync,
+  awayFlicksRemainingRef,
+  setAwayFlicksSync,
+  gkMoveActiveTeamRef,
+  setGkMoveActiveTeamSync,
+  gkMoveTimerRef,
+  setGkMoveTimerSync,
+  lastGoalScorerRef,
+  setLastGoalScorer,
+  consecutiveGoalsCountRef,
+  setConsecutiveGoalsCount,
+  gameMode,
+  setGameModeSync,
+  isMultiplayer,
+  setIsMultiplayer,
+  roomId,
+  setRoomId,
+  myRole,
+  myRoleRef,
+  setMyRole,
+  activeUser,
+  setActiveUser,
+  userProfile,
+  setUserProfile,
+  opponentInfo,
+  setOpponentInfo,
+  opponentProfile,
+  setOpponentProfile,
+  opponentDisconnected,
+  setOpponentDisconnected,
+  disconnectCountdown,
+  setDisconnectCountdown,
+  prepTimer,
+  setPrepTimer,
+  turnTimer,
+  setTurnTimer,
+  currentRoom,
+  setCurrentRoom,
+  activeRooms,
+  setActiveRooms,
+  leaderboard,
+  setLeaderboard,
+  matchHistory,
+  setMatchHistory,
+  tournamentsList,
+  setTournamentsList,
+  activeTournamentId,
+  setActiveTournamentId,
+  currentMatchId,
+  setCurrentMatchId,
+  tournament,
+  setTournament,
+  homeKitConfig,
+  setHomeKitConfig,
+  awayKitConfig,
+  setAwayKitConfig,
+  isLeavingRef,
+  setSystemMessage,
+  addGameLog,
+  initializeTeams,
+  resetMatch
+}: UseGameMultiplayerParams) => {
+
+  const refreshHistoryAndLeaderboard = useCallback(async (uid: string) => {
+    const history = await fetchMatchHistory(uid);
+    const ranking = await fetchLeaderboard();
+    setMatchHistory(history);
+    setLeaderboard(ranking);
+  }, [setMatchHistory, setLeaderboard]);
+
+  const syncGameStateToFirebase = useCallback((
+    nextBall: BallState,
+    nextHomePlayers: PlayerConfig[],
+    nextAwayPlayers: PlayerConfig[],
+    nextTurn: Team,
+    nextScores: { home: number; away: number },
+    nextGameTime: number,
+    nextHomeFlicks: number,
+    nextAwayFlicks: number,
+    nextPhase: GamePhase,
+    nextStatus: string,
+    forceSync: boolean = false
+  ) => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    
+    const isMaster = forceSync || turnRef.current === myRole;
+    if (!isMaster) return;
+
+    console.log(
+      `%c[Multiplayer Outgoing] 📤 Syncing GameState to DB: Turn=${nextTurn} | Time=${nextGameTime}' | Scores=H:${nextScores.home} A:${nextScores.away} | Flicks=H:${nextHomeFlicks} A:${nextAwayFlicks} | Phase=${nextPhase}`,
+      "color: #8e44ad; font-weight: bold; background: #f4ecf7; padding: 2px 4px; border: 1px solid #8e44ad; border-radius: 3px;"
+    );
+
+    const updates: any = {
+      gameState: {
+        ball: nextBall,
+        homePlayers: nextHomePlayers,
+        awayPlayers: nextAwayPlayers,
+        turn: nextTurn,
+        scores: nextScores,
+        gameTime: nextGameTime,
+        gameTimeSeconds: gameTimeSecondsRef.current,
+        homeFlicksRemaining: nextHomeFlicks,
+        awayFlicksRemaining: nextAwayFlicks,
+        phase: nextPhase,
+        actionStatus: nextStatus,
+        lastGoalScorer: lastGoalScorerRef.current,
+        consecutiveGoalsCount: consecutiveGoalsCountRef.current,
+        gkMoveActiveTeam: gkMoveActiveTeamRef.current,
+        gkMoveTimer: gkMoveTimerRef.current
+      }
+    };
+
+    if (nextPhase === GamePhase.PREPARATION) {
+      updates['players/home/ready'] = false;
+      updates['players/away/ready'] = false;
+    }
+
+    update(ref(db, `rooms/${roomId}`), updates);
+  }, [isMultiplayer, roomId, myRole, turnRef, gameTimeSecondsRef, lastGoalScorerRef, consecutiveGoalsCountRef, gkMoveActiveTeamRef, gkMoveTimerRef]);
+
+  // Vitória por W.O. (Walkover) do jogador remanescente
+  const triggerWO = useCallback(() => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    console.log("%c[Game Loop] 🏆 WO triggered! Opponent disconnected.", "color: #27ae60; font-weight: bold;");
+
+    const currentScores = scoresRef.current;
+    let finalScores = { home: 0, away: 0 };
+    let winnerRole: Team = myRole;
+
+    if (myRole === 'HOME') {
+      finalScores = {
+        home: Math.max(3, currentScores.home),
+        away: 0
+      };
+    } else {
+      finalScores = {
+        home: 0,
+        away: Math.max(3, currentScores.away)
+      };
+    }
+
+    const nextStatus = `Vitória por W.O. do Time ${winnerRole === 'HOME' ? 'Casa' : 'Visitante'}! O oponente desconectou.`;
+
+    addGameLog(`Vitória por W.O.! O time oponente desconectou da partida. Placar Final: Casa ${finalScores.home} x ${finalScores.away} Visitante.`, 'phase');
+
+    // 1. Transition locally to GAME_OVER phase
+    flushSync(() => {
+      setScoresSync(finalScores);
+      setPhaseSync(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+      setOpponentDisconnected(false);
+    });
+
+    // 2. Update Firebase room state to GAME_OVER and ended status
+    const roomRef = ref(db, `rooms/${roomId}`);
+    update(roomRef, { 
+      status: 'ended',
+      'gameState/phase': GamePhase.GAME_OVER,
+      'gameState/scores': finalScores,
+      'gameState/actionStatus': nextStatus
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog, scoresRef, setScoresSync, setPhaseSync, setActionStatus, setOpponentDisconnected]);
+
+  // Derrota ou Empate por Timeout (estouro de tempo na preparação ou reposicionamento de capitão)
+  const triggerTimeoutDefeat = useCallback(() => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    console.log("%c[Game Loop] ⏰ Timeout triggered! Player failed to confirm action.", "color: #c0392b; font-weight: bold;");
+
+    const currentScores = scoresRef.current;
+    let finalScores = { home: 0, away: 0 };
+    let nextStatus = '';
+
+    if (phase === GamePhase.PREPARATION && !homeReady && !awayReady) {
+      finalScores = {
+        home: currentScores.home,
+        away: currentScores.away
+      };
+      nextStatus = 'Empate por Timeout Mútuo! Ambos os jogadores falharam em confirmar a preparação tática.';
+      addGameLog('Fim de jogo por Timeout Mútuo! Ambos os jogadores falharam em confirmar a tática a tempo. Partida encerrada em Empate.', 'phase');
+    } else {
+      if (myRole === 'HOME') {
+        finalScores = {
+          home: 0,
+          away: Math.max(3, currentScores.away)
+        };
+      } else {
+        finalScores = {
+          home: Math.max(3, currentScores.home),
+          away: 0
+        };
+      }
+      nextStatus = `Derrota por Timeout do Time ${myRole === 'HOME' ? 'Casa' : 'Visitante'}! Limite de tempo excedido.`;
+      addGameLog(`Fim de jogo por Estouro de Tempo (Timeout)! O time ${myRole === 'HOME' ? 'Casa' : 'Visitante'} falhou em confirmar sua ação. Placar Final: Casa ${finalScores.home} x ${finalScores.away} Visitante.`, 'phase');
+    }
+
+    // 1. Transition locally to GAME_OVER phase
+    flushSync(() => {
+      setScoresSync(finalScores);
+      setPhaseSync(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+      setOpponentDisconnected(false);
+      setPrepTimer(null);
+    });
+
+    // 2. Update Firebase room state to GAME_OVER and ended status
+    const roomRef = ref(db, `rooms/${roomId}`);
+    update(roomRef, { 
+      status: 'ended',
+      'gameState/phase': GamePhase.GAME_OVER,
+      'gameState/scores': finalScores,
+      'gameState/actionStatus': nextStatus
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog, scoresRef, phase, homeReady, awayReady, setScoresSync, setPhaseSync, setActionStatus, setOpponentDisconnected, setPrepTimer]);
+
+  // Derrota por Inatividade (Timeout de peteleco na fase de ação ativa) - Multiplayer Apenas
+  const triggerActiveTurnTimeout = useCallback((timedOutTeam: Team) => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+    console.log(`%c[Game Loop] ⏰ Active Turn Timeout triggered for team: ${timedOutTeam}`, "color: #c0392b; font-weight: bold;");
+
+    const currentScores = scoresRef.current;
+    let finalScores = { home: 0, away: 0 };
+    let nextStatus = '';
+
+    if (timedOutTeam === 'HOME') {
+      finalScores = {
+        home: 0,
+        away: Math.max(3, currentScores.away)
+      };
+      nextStatus = 'Derrota por Timeout do Time Casa! Jogador inativo.';
+      addGameLog('Fim de jogo por Estouro de Tempo (Timeout)! O time Casa perdeu por inatividade.', 'phase');
+    } else {
+      finalScores = {
+        home: Math.max(3, currentScores.home),
+        away: 0
+      };
+      nextStatus = 'Derrota por Timeout do Time Visitante! Jogador inativo.';
+      addGameLog('Fim de jogo por Estouro de Tempo (Timeout)! O time Visitante perdeu por inatividade.', 'phase');
+    }
+
+    SoundManager.playRefereeWhistle('full');
+
+    // 1. Transition locally to GAME_OVER phase
+    flushSync(() => {
+      setScoresSync(finalScores);
+      setPhaseSync(GamePhase.GAME_OVER);
+      setActionStatus(nextStatus);
+      setOpponentDisconnected(false);
+      setPrepTimer(null);
+      setTurnTimer(null);
+    });
+
+    // 2. Update Firebase room state to GAME_OVER and ended status
+    const roomRef = ref(db, `rooms/${roomId}`);
+    update(roomRef, { 
+      status: 'ended',
+      'gameState/phase': GamePhase.GAME_OVER,
+      'gameState/scores': finalScores,
+      'gameState/actionStatus': nextStatus
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog, scoresRef, setScoresSync, setPhaseSync, setActionStatus, setOpponentDisconnected, setPrepTimer, setTurnTimer]);
+
+  // Auth Listener & User Profile Listener
+  useEffect(() => {
+    let profileUnsub: (() => void) | null = null;
+
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      setActiveUser(user);
+      
+      if (profileUnsub) {
+        profileUnsub();
+        profileUnsub = null;
+      }
+
+      if (user) {
+        refreshHistoryAndLeaderboard(user.uid);
+        
+        const userRef = ref(db, `users/${user.uid}`);
+        profileUnsub = onValue(userRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.val();
+            setUserProfile(data);
+          } else {
+            setUserProfile(null);
+          }
+        });
+      } else {
+        setMatchHistory([]);
+        setUserProfile(null);
+        setOpponentProfile(null);
+        setHomeKitConfig(undefined);
+        setAwayKitConfig(undefined);
+      }
+    });
+
+    return () => {
+      unsub();
+      if (profileUnsub) profileUnsub();
+    };
+  }, [setActiveUser, setUserProfile, setMatchHistory, setOpponentProfile, setHomeKitConfig, setAwayKitConfig, refreshHistoryAndLeaderboard]);
+
+  // Sync opponent profile dynamically when opponentInfo is set
+  useEffect(() => {
+    if (opponentInfo?.uid) {
+      const oppProfileRef = ref(db, `users/${opponentInfo.uid}`);
+      const oppUnsub = onValue(oppProfileRef, (snap) => {
+        if (snap.exists()) {
+          setOpponentProfile(snap.val());
+        } else {
+          setOpponentProfile(null);
+        }
+      });
+      return () => oppUnsub();
+    } else {
+      setOpponentProfile(null);
+    }
+  }, [opponentInfo?.uid, setOpponentProfile]);
+
+  // Dynamic Role-Aware Uniform Configuration & Synchronization
+  useEffect(() => {
+    const getKitFromProfile = (profile: any) => {
+      if (!profile) return undefined;
+      const activeKit = profile.selectedKit || 'home';
+      if (activeKit === 'away' && profile.awayUniform) {
+        return profile.awayUniform;
+      }
+      return profile.uniform || undefined;
+    };
+
+    if (isMultiplayer) {
+      const myKit = getKitFromProfile(userProfile);
+      const oppKit = getKitFromProfile(opponentProfile);
+
+      if (myRole === 'HOME') {
+        setHomeKitConfig(myKit);
+        setAwayKitConfig(oppKit);
+      } else if (myRole === 'AWAY') {
+        setHomeKitConfig(oppKit);
+        setAwayKitConfig(myKit);
+      } else {
+        setHomeKitConfig(undefined);
+        setAwayKitConfig(undefined);
+      }
+    } else {
+      const myKit = getKitFromProfile(userProfile);
+      setHomeKitConfig(myKit);
+    }
+  }, [isMultiplayer, myRole, userProfile, opponentProfile, setHomeKitConfig, setAwayKitConfig]);
+
+  // Automatic contrast for AWAY (AI) team based on HOME kit (Solo Mode Only)
+  useEffect(() => {
+    if (isMultiplayer) return;
+
+    if (!homeKitConfig) {
+      setAwayKitConfig(undefined);
+      return;
+    }
+
+    const isDarkOrBlue = (color: string) => {
+      const hex = color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16) || 0;
+      const g = parseInt(hex.substring(2, 4), 16) || 0;
+      const b = parseInt(hex.substring(4, 6), 16) || 0;
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      const isBlueish = b > r * 1.2 && b > g * 1.2;
+      return brightness < 120 || isBlueish;
+    };
+
+    if (isDarkOrBlue(homeKitConfig.primaryColor)) {
+      setAwayKitConfig({
+        primaryColor: '#e55039',
+        secondaryColor: '#f6b93b',
+        pattern: 'solid',
+        shortsColor: '#1e272e',
+        socksColor: '#e55039'
+      });
+    } else {
+      setAwayKitConfig({
+        primaryColor: '#1e3799',
+        secondaryColor: '#ffffff',
+        pattern: 'solid',
+        shortsColor: '#ffffff',
+        socksColor: '#1e3799'
+      });
+    }
+  }, [homeKitConfig, isMultiplayer, setAwayKitConfig]);
+
+  // Rooms and Tournaments list listeners (lobby)
+  useEffect(() => {
+    const roomsRef = ref(db, 'rooms');
+    const tRef = ref(db, 'tournaments');
+
+    const unsubRooms = onValue(roomsRef, (snap) => {
+      if (!snap.exists()) {
+        setActiveRooms([]);
+        return;
+      }
+      const data = snap.val();
+      const list = Object.keys(data).map(key => data[key]);
+      setActiveRooms(list.filter(r => r.status === 'waiting'));
+    });
+
+    const unsubTournaments = onValue(tRef, (snap) => {
+      if (!snap.exists()) {
+        setTournamentsList([]);
+        return;
+      }
+      const data = snap.val();
+      const list = Object.keys(data).map(key => data[key]);
+      setTournamentsList(list);
+    });
+
+    return () => {
+      off(roomsRef);
+      off(tRef);
+    };
+  }, [setActiveRooms, setTournamentsList]);
+
+  // Sincronização Multiplayer em Tempo Real
+  useEffect(() => {
+    if (!isMultiplayer || !roomId) {
+      setCurrentRoom(null);
+      return;
+    }
+
+    const roomRef = ref(db, `rooms/${roomId}`);
+
+    const unsubscribe = onValue(roomRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        if (phaseRef.current === GamePhase.GAME_OVER) {
+          return;
+        }
+        if (!isLeavingRef.current) {
+          if (myRoleRef.current === 'AWAY') {
+            setSystemMessage({ title: 'Partida Cancelada', message: 'O host cancelou a partida.', type: 'warning' });
+          } else if (myRoleRef.current === 'HOME') {
+            setSystemMessage({ title: 'Oponente Saiu', message: 'O oponente saiu da partida.', type: 'warning' });
+          }
+        }
+        resetMatch();
+        return;
+      }
+      const room: Room = snapshot.val();
+      setCurrentRoom(room);
+
+      if (room.gameMode !== undefined) {
+        setGameModeSync(room.gameMode);
+      }
+
+      if (room.matchDuration !== undefined) {
+        setMatchDuration(room.matchDuration);
+        matchDurationRef.current = room.matchDuration;
+      }
+
+      const isHome = myRoleRef.current === 'HOME';
+
+      if (room.status === 'waiting' && isHome && phaseRef.current !== GamePhase.MENU) {
+        setPhase(GamePhase.MENU);
+        setScores({ home: 0, away: 0 });
+        setHomeReady(false);
+        setAwayReady(false);
+        initializeTeams();
+        setBall(INITIAL_BALL);
+        return;
+      }
+
+      if (room.status === 'preparation' && phaseRef.current === GamePhase.MENU) {
+        setPhase(GamePhase.PREPARATION);
+      }
+
+      if (room.status === 'preparation' || (room.status === 'playing' && room.gameState && room.gameState.phase === GamePhase.PREPARATION)) {
+        const homeSetup = room.players.home.ready;
+        const awaySetup = room.players.away ? room.players.away.ready : false;
+
+        setHomeReady(homeSetup);
+        setAwayReady(awaySetup);
+
+        if (room.gameState) {
+          if (myRoleRef.current === 'HOME' && room.gameState.awayPlayers) {
+            setAwayPlayers(room.gameState.awayPlayers);
+          }
+          if (myRoleRef.current === 'AWAY' && room.gameState.homePlayers) {
+            setHomePlayers(room.gameState.homePlayers);
+          }
+        }
+
+        // If both are ready, the host (HOME) should start/resume the match!
+        if (homeSetup && awaySetup && myRoleRef.current === 'HOME') {
+          const isPrepRoomStatus = room.status === 'preparation';
+          const isPrepGamePhase = room.gameState?.phase === GamePhase.PREPARATION;
+
+          if (isPrepRoomStatus || isPrepGamePhase) {
+            console.log("%c[Multiplayer] Both players ready! Starting/resuming game...", "color: #2ecc71; font-weight: bold;");
+            
+            const nextStatus = 'Partida Iniciada! Vez do Time Casa (Você).';
+            
+            const freshBall: BallState = {
+              position: [0, 0.11, 0],
+              velocity: [0, 0, 0],
+              possession: 'HOME',
+              lastTouchedByPlayerId: null,
+              isKickoff: true,
+              speedMultiplier: 1
+            };
+
+            const updates: any = {};
+            if (isPrepRoomStatus) {
+              updates['status'] = 'playing';
+              updates['gameState'] = {
+                ball: freshBall,
+                homePlayers: room.gameState?.homePlayers || homePlayersRef.current,
+                awayPlayers: room.gameState?.awayPlayers || awayPlayersRef.current,
+                turn: 'HOME',
+                scores: room.gameState?.scores || { home: 0, away: 0 },
+                gameTime: room.gameState?.gameTime || 0,
+                gameTimeSeconds: room.gameState?.gameTimeSeconds || 0,
+                homeFlicksRemaining: 3,
+                awayFlicksRemaining: 3,
+                phase: GamePhase.ACTION,
+                actionStatus: nextStatus,
+                lastGoalScorer: room.gameState?.lastGoalScorer || null,
+                consecutiveGoalsCount: room.gameState?.consecutiveGoalsCount || 0,
+                gkMoveActiveTeam: null,
+                gkMoveTimer: null
+              };
+            } else {
+              const currentBall = room.gameState?.ball || ballRef.current;
+              updates['gameState/phase'] = GamePhase.ACTION;
+              updates['gameState/actionStatus'] = nextStatus;
+              updates['gameState/ball/isKickoff'] = currentBall.isKickoff || false;
+              updates['gameState/ball/position'] = currentBall.position || [0, 0.11, 0];
+              updates['gameState/ball/velocity'] = [0, 0, 0];
+              updates['gameState/homeFlicksRemaining'] = 3;
+              updates['gameState/awayFlicksRemaining'] = 3;
+            }
+
+            update(ref(db, `rooms/${roomId}`), updates);
+          }
+        }
+      }
+
+      if (myRoleRef.current === 'HOME') {
+        setOpponentInfo(room.players.away || null);
+      } else {
+        setOpponentInfo(room.players.home);
+      }
+
+      if ((room.status === 'playing' || room.status === 'ended') && room.gameState) {
+        if (room.gameState.gkMoveActiveTeam !== undefined) {
+          setGkMoveActiveTeamSync(room.gameState.gkMoveActiveTeam);
+        }
+        if (room.gameState.gkMoveTimer !== undefined) {
+          setGkMoveTimerSync(room.gameState.gkMoveTimer);
+        }
+        const isMyTurn = room.gameState.turn === myRoleRef.current;
+        const dbPhase = room.gameState.phase;
+        const turnChanged = turnRef.current !== room.gameState.turn;
+        const phaseChanged = phaseRef.current !== dbPhase;
+        
+        if (turnChanged || phaseChanged || !isMyTurn || dbPhase === GamePhase.PREPARATION || dbPhase === GamePhase.GOAL_CELEBRATION || dbPhase === GamePhase.GAME_OVER) {
+          setScoresSync(room.gameState.scores);
+          setTurnSync(room.gameState.turn);
+          setGameTimeSync(room.gameState.gameTime);
+          if (room.gameState.gameTimeSeconds !== undefined) {
+            setGameTimeSecondsSync(room.gameState.gameTimeSeconds);
+          }
+          setHomeFlicksSync(room.gameState.homeFlicksRemaining);
+          setAwayFlicksSync(room.gameState.awayFlicksRemaining);
+          setPhaseSync(dbPhase);
+          setActionStatus(room.gameState.actionStatus);
+
+          setBallSync(room.gameState.ball);
+          setHomePlayers(room.gameState.homePlayers);
+          setAwayPlayers(room.gameState.awayPlayers);
+          if (room.gameState.lastGoalScorer !== undefined) {
+            setLastGoalScorer(room.gameState.lastGoalScorer);
+            lastGoalScorerRef.current = room.gameState.lastGoalScorer;
+          }
+          if (room.gameState.consecutiveGoalsCount !== undefined) {
+            setConsecutiveGoalsCount(room.gameState.consecutiveGoalsCount);
+            consecutiveGoalsCountRef.current = room.gameState.consecutiveGoalsCount;
+          }
+        }
+      }
+
+      const oppKey = isHome ? 'away' : 'home';
+      const oppPresent = room.presence ? !!room.presence[oppKey] : true;
+      
+      if (!oppPresent && (room.status === 'preparation' || room.status === 'playing')) {
+        setOpponentDisconnected(true);
+      } else {
+        setOpponentDisconnected(false);
+        setDisconnectCountdown(15);
+      }
+    });
+
+    return () => {
+      off(roomRef);
+    };
+  }, [isMultiplayer, roomId, setOpponentDisconnected, setDisconnectCountdown, setGkMoveActiveTeamSync, setGkMoveTimerSync, setScoresSync, setTurnSync, setGameTimeSync, setGameTimeSecondsSync, setHomeFlicksSync, setAwayFlicksSync, setPhaseSync, setBallSync, setLastGoalScorer, setConsecutiveGoalsCount, setHomeReady, setAwayReady, setAwayPlayers, setHomePlayers, setOpponentInfo, setCurrentRoom, setPhase, setScores, initializeTeams, setBall, setActionStatus, setGameModeSync, setMatchDuration, matchDurationRef, phaseRef, myRoleRef, isLeavingRef, setSystemMessage, resetMatch, turnRef, lastGoalScorerRef, consecutiveGoalsCountRef]);
+
+  // Monitoramento dinâmico de presença usando .info/connected
+  useEffect(() => {
+    if (!isMultiplayer || !roomId || !myRole) return;
+
+    const connectedRef = ref(db, '.info/connected');
+    const myPresenceRef = ref(db, `rooms/${roomId}/presence/${myRole === 'HOME' ? 'home' : 'away'}`);
+
+    const unsubConnected = onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        set(myPresenceRef, true);
+
+        if (myRole === 'HOME') {
+          onDisconnect(myPresenceRef).remove();
+          onDisconnect(ref(db, `rooms/${roomId}`)).remove();
+        } else {
+          onDisconnect(myPresenceRef).set(false);
+        }
+      }
+    });
+
+    return () => {
+      unsubConnected();
+    };
+  }, [isMultiplayer, roomId, myRole]);
+
+  // Real-Time Flick listener
+  useEffect(() => {
+    if (!isMultiplayer || !roomId) return;
+
+    const flickRef = ref(db, `rooms/${roomId}/flick`);
+
+    const unsubscribe = onValue(flickRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      const flick = snapshot.val();
+
+      if (flick.by !== myRoleRef.current) {
+        const isKickoff = ballRef.current.isKickoff;
+        if (isKickoff) {
+          console.log("%c[Game Loop] Opponent Kickoff shot! This flick does NOT count.", "color: #2ecc71; font-weight: bold;");
+          setBall(prev => ({
+            ...prev,
+            velocity: [flick.vx, 0, flick.vz],
+            isKickoff: false
+          }));
+        } else {
+          if (flick.by === 'HOME') {
+            const oldFlicks = homeFlicksRemainingRef.current;
+            const newFlicks = Math.max(0, oldFlicks - 1);
+            homeFlicksRemainingRef.current = newFlicks;
+            setHomeFlicksSync(newFlicks);
+            addGameLog(`Peteleco executado pelo Time Casa (Multiplayer). Restantes: ${newFlicks}/3.`, 'flick');
+          } else {
+            const oldFlicks = awayFlicksRemainingRef.current;
+            const newFlicks = Math.max(0, oldFlicks - 1);
+            awayFlicksRemainingRef.current = newFlicks;
+            setAwayFlicksSync(newFlicks);
+            addGameLog(`Peteleco executado pelo Time Visitante (Multiplayer). Restantes: ${newFlicks}/3.`, 'flick');
+          }
+          setBall(prev => ({
+            ...prev,
+            velocity: [flick.vx, 0, flick.vz]
+          }));
+        }
+        setActionStatus('O adversário disparou a bola!');
+      }
+    });
+
+    return () => {
+      off(flickRef);
+    };
+  }, [isMultiplayer, roomId, setBall, setHomeFlicksSync, setAwayFlicksSync, setActionStatus, addGameLog, myRoleRef, ballRef, homeFlicksRemainingRef, awayFlicksRemainingRef]);
+
+  // Sincronizar final de jogo para salvar histórico e ranking de forma independente
+  useEffect(() => {
+    if (phase === GamePhase.GAME_OVER && isMultiplayer && roomId && myRole && activeUser) {
+      console.log("%c[Game Loop] GAME_OVER phase detected. Saving stats...", "color: #27ae60; font-weight: bold;");
+
+      const isHome = myRole === 'HOME';
+
+      get(ref(db, `rooms/${roomId}`)).then(async (snap) => {
+        if (!snap.exists()) return;
+        const room: Room = snap.val();
+        const homeP = room.players.home;
+        const awayP = room.players.away;
+
+        if (homeP && awayP) {
+          const myGoals = isHome ? scores.home : scores.away;
+          const oppGoals = isHome ? scores.away : scores.home;
+          const oppPlayer = isHome ? awayP : homeP;
+
+          const { updateLeaderboardAndHistory } = await import('../firebaseMultiplayer');
+          await updateLeaderboardAndHistory(
+            activeUser.uid,
+            oppPlayer.displayName,
+            oppPlayer.photoURL,
+            myGoals,
+            oppGoals,
+            !!activeTournamentId,
+            oppPlayer.uid || opponentInfo?.uid || opponentProfile?.uid || ''
+          );
+
+          if (activeTournamentId && currentMatchId) {
+            const winnerUid = myGoals > oppGoals ? activeUser.uid : oppPlayer.uid;
+            
+            const shouldWriteTournament = isHome || opponentDisconnected;
+            if (shouldWriteTournament) {
+              await updateTournamentMatchResult(
+                activeTournamentId,
+                currentMatchId,
+                myGoals,
+                oppGoals,
+                winnerUid
+              );
+            }
+          }
+        }
+
+        const shouldDeleteRoom = isHome || opponentDisconnected;
+        if (shouldDeleteRoom) {
+          update(ref(db, `rooms/${roomId}`), { status: 'ended' });
+
+          setTimeout(() => {
+            console.log("%c[Cleanup] Deleting room from database to prevent phantom room.", "color: #e74c3c; font-weight: bold;");
+            remove(ref(db, `rooms/${roomId}`));
+          }, 2000);
+        }
+      });
+
+      setTimeout(() => refreshHistoryAndLeaderboard(activeUser.uid), 2000);
+    }
+  }, [phase, isMultiplayer, roomId, myRole, activeUser, opponentDisconnected, scores.home, scores.away, activeTournamentId, currentMatchId, opponentInfo, opponentProfile, refreshHistoryAndLeaderboard]);
+
+  // Sincronizar Torneio Mata-Mata Ativo
+  useEffect(() => {
+    if (!activeTournamentId) return;
+
+    const tRef = ref(db, `tournaments/${activeTournamentId}`);
+
+    const unsub = onValue(tRef, (snap) => {
+      if (!snap.exists()) return;
+      const t: Tournament = snap.val();
+      setTournament(t);
+
+      if (t.status === 'completed') {
+        setActionStatus(`Torneio Finalizado! O vencedor foi ${t.players[t.winnerUid!].displayName}!`);
+      }
+    });
+
+    return () => {
+      off(tRef);
+    };
+  }, [activeTournamentId, setTournament, setActionStatus]);
+
+  // --- MULTIPLAYER ROOM HELPERS ---
+  const handleCreateRoom = async (name: string, pass?: string, duration: number = 180, mode: 'standard' | 'manual' = 'standard') => {
+    try {
+      isLeavingRef.current = false;
+      const id = await createMultiplayerRoom(name, pass, duration, mode);
+      setRoomId(id);
+      setMyRole('HOME');
+      setIsMultiplayer(true);
+      setScores({ home: 0, away: 0 });
+      setGameModeSync(mode);
+      initializeTeams();
+      setBall({ ...INITIAL_BALL, isKickoff: true });
+      setPhase(GamePhase.MENU);
+      setActionStatus('Sala criada! Aguardando oponente...');
+      setMatchDuration(duration);
+      matchDurationRef.current = duration;
+      setGameTimeSecondsSync(0);
+      
+      if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
+    } catch (err) {
+      console.error(err);
+      setSystemMessage({ title: 'Erro de Sala', message: 'Erro ao criar sala.', type: 'error' });
+    }
+  };
+
+  const handleJoinRoom = async (id: string, pass?: string) => {
+    try {
+      isLeavingRef.current = false;
+      await joinMultiplayerRoom(id, pass);
+      setRoomId(id);
+      setMyRole('AWAY');
+      setIsMultiplayer(true);
+      setScores({ home: 0, away: 0 });
+      initializeTeams();
+      setBall({ ...INITIAL_BALL, isKickoff: true });
+      setPhase(GamePhase.PREPARATION);
+      setActionStatus('Conectado à sala! Monte sua tática de guerra.');
+      
+      if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === 'WRONG_PASSWORD') {
+        setSystemMessage({ title: 'Acesso Negado', message: 'Senha incorreta!', type: 'error' });
+      } else {
+        setSystemMessage({ title: 'Erro de Conexão', message: 'Erro ao entrar na sala. Talvez esteja cheia.', type: 'error' });
+      }
+    }
+  };
+
+  // --- TOURNAMENT HELPERS ---
+  const handleCreateTournament = async (name: string) => {
+    try {
+      const id = await createTournament(name);
+      setActiveTournamentId(id);
+      setActionStatus('Torneio criado! Aguardando competidores...');
+    } catch (err) {
+      console.error(err);
+      setSystemMessage({ title: 'Erro de Torneio', message: 'Erro ao criar torneio.', type: 'error' });
+    }
+  };
+
+  const handleJoinTournament = async (id: string) => {
+    try {
+      await joinTournament(id);
+      setActiveTournamentId(id);
+      setActionStatus('Você se inscreveu no Torneio! Aguardando início...');
+    } catch (err) {
+      console.error(err);
+      setSystemMessage({ title: 'Erro de Torneio', message: 'Erro ao entrar no torneio.', type: 'error' });
+    }
+  };
+
+  const handleStartTournament = async (id: string) => {
+    try {
+      await startTournament(id);
+      setActionStatus('Torneio Iniciado! Que vença o melhor.');
+    } catch (err) {
+      console.error(err);
+      setSystemMessage({ title: 'Erro de Torneio', message: 'Erro ao iniciar torneio.', type: 'error' });
+    }
+  };
+
+  const handlePlayTournamentMatch = async (match: TournamentMatch) => {
+    if (!activeUser) return;
+    const isP1 = match.player1.uid === activeUser.uid;
+    const opponent = isP1 ? match.player2 : match.player1;
+    
+    setCurrentMatchId(match.matchId);
+
+    if (opponent.isAI) {
+      setIsMultiplayer(true);
+      setRoomId(null);
+      setMyRole('HOME');
+      setScores({ home: 0, away: 0 });
+      initializeTeams();
+      setActionStatus(`Partida de Torneio contra ${opponent.displayName}!`);
+      setPhase(GamePhase.PREPARATION);
+    } else {
+      try {
+        const roomName = `Mata-Mata: ${match.player1.displayName} vs ${match.player2.displayName}`;
+        const roomRefId = await createMultiplayerRoom(roomName);
+        
+        await update(ref(db, `tournaments/${activeTournamentId}/matches/${match.matchId}`), {
+          roomId: roomRefId
+        });
+        
+        setRoomId(roomRefId);
+        setMyRole('HOME');
+        setIsMultiplayer(true);
+        setScores({ home: 0, away: 0 });
+        initializeTeams();
+        setBall(INITIAL_BALL);
+        setPhase(GamePhase.PREPARATION);
+        setActionStatus('Sala de torneio criada! Aguardando adversário conectar...');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleJoinTournamentMatch = async (match: TournamentMatch) => {
+    if (!match.roomId) return;
+    setCurrentMatchId(match.matchId);
+    try {
+      await joinMultiplayerRoom(match.roomId);
+      setRoomId(match.roomId);
+      setMyRole('AWAY');
+      setIsMultiplayer(true);
+      setScores({ home: 0, away: 0 });
+      initializeTeams();
+      setBall(INITIAL_BALL);
+      setPhase(GamePhase.PREPARATION);
+      setActionStatus('Conectado à partida do torneio! Prepare-se.');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return {
+    syncGameStateToFirebase,
+    triggerWO,
+    triggerTimeoutDefeat,
+    triggerActiveTurnTimeout,
+    handleCreateRoom,
+    handleJoinRoom,
+    handleCreateTournament,
+    handleJoinTournament,
+    handleStartTournament,
+    handlePlayTournamentMatch,
+    handleJoinTournamentMatch,
+    refreshHistoryAndLeaderboard
+  };
+};

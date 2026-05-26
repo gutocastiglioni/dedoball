@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStateContext } from '../../GameStateContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { PlusCircle, Lock, Users } from 'lucide-react';
+import { PlusCircle, Lock, Users, Zap, Sliders } from 'lucide-react';
 
 const MultiplayerTab: React.FC = () => {
   const { activeRooms, createRoom, joinRoom } = useGameStateContext();
@@ -11,6 +11,8 @@ const MultiplayerTab: React.FC = () => {
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomPassword, setNewRoomPassword] = useState('');
   const [roomDuration, setRoomDuration] = useState(180);
+  const [createRoomMode, setCreateRoomMode] = useState<'standard' | 'manual'>('standard');
+  const [isCreateModeSelected, setIsCreateModeSelected] = useState(false);
   const [showCreateRoomForm, setShowCreateRoomForm] = useState(false);
 
   // Password Prompt for joining closed rooms
@@ -42,78 +44,134 @@ const MultiplayerTab: React.FC = () => {
         <div className={`w-full bg-zinc-900 border border-indigo-500/40 shadow-[0_0_25px_rgba(99,102,241,0.15)] text-left animate-fadeIn flex-shrink-0
           ${isMobile ? 'p-3 space-y-2 max-w-none' : 'max-w-md mx-auto p-5 space-y-4 rounded-2xl'}
         `}>
-          <h4 className="text-[10px] sm:text-xs font-black tracking-widest text-indigo-400 uppercase">Configuração da Sala</h4>
-          
-          <div className={`grid grid-cols-2 ${isMobile ? 'gap-2' : 'gap-4'}`}>
-            <div>
-              <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Nome da Sala</label>
-              <input 
-                type="text"
-                placeholder="Arena Peteleco"
-                value={newRoomName}
-                onChange={(e) => setNewRoomName(e.target.value)}
-                className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-[10px] text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Senha (Opcional)</label>
-              <input 
-                type="password"
-                placeholder="Secreta"
-                value={newRoomPassword}
-                onChange={(e) => setNewRoomPassword(e.target.value)}
-                className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-[10px] text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block">Duração da Partida (Tempo de Bola Rolando)</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 60, label: '1 MIN', desc: 'Rápida' },
-                { id: 180, label: '3 MIN', desc: 'Padrão' },
-                { id: 300, label: '5 MIN', desc: 'Guerra Tática' }
-              ].map((timeOpt) => (
+          {!isCreateModeSelected ? (
+            <>
+              <h4 className="text-[10px] sm:text-xs font-black tracking-widest text-indigo-400 uppercase">Configuração da Sala</h4>
+              <div className="space-y-3">
+                <label className="text-[8.5px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Selecione a Física da Sala</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { id: 'standard', label: 'PADRÃO', desc: 'Física clássica e veloz', icon: Zap },
+                    { id: 'manual', label: 'MANUAL', desc: 'Sem ganho de velocidade', icon: Sliders }
+                  ].map((modeOpt) => {
+                    const Icon = modeOpt.icon;
+                    return (
+                      <button
+                        key={modeOpt.id}
+                        type="button"
+                        onClick={() => {
+                          setCreateRoomMode(modeOpt.id as 'standard' | 'manual');
+                          setIsCreateModeSelected(true);
+                        }}
+                        className="rounded-xl border font-black transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] flex flex-col items-center justify-center py-3.5 px-3 gap-1.5 text-center border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30"
+                      >
+                        <Icon size={16} className={modeOpt.id === 'standard' ? 'text-indigo-455' : 'text-orange-450'} />
+                        <span className="text-[9.5px] tracking-wider font-extrabold">{modeOpt.label}</span>
+                        <span className="text-[7.5px] font-medium text-zinc-500 leading-none">{modeOpt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
-                  key={timeOpt.id}
                   type="button"
-                  onClick={() => setRoomDuration(timeOpt.id)}
-                  className={`
-                    py-1.5 rounded-xl border text-[10px] font-black transition-all flex flex-col items-center justify-center
-                    ${roomDuration === timeOpt.id 
-                      ? 'border-indigo-500/40 text-indigo-400 bg-indigo-950/20 ring-1 ring-white/5 shadow-md shadow-indigo-500/10' 
-                      : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
-                    }
-                  `}
+                  onClick={() => setShowCreateRoomForm(false)}
+                  className="w-full mt-2.5 py-2 bg-zinc-850 hover:bg-zinc-800 border border-zinc-800/80 text-zinc-400 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center pointer-events-auto active:scale-98"
                 >
-                  <span>{timeOpt.label}</span>
-                  <span className="text-[7px] opacity-60 font-medium">{timeOpt.desc}</span>
+                  Cancelar
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h4 className="text-[10px] sm:text-xs font-black tracking-widest text-indigo-400 uppercase flex justify-between items-center pb-1 border-b border-zinc-800/60 mb-2">
+                <span>Configuração da Sala</span>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModeSelected(false)}
+                  className="text-[8px] font-black text-zinc-550 hover:text-indigo-400 transition-colors uppercase tracking-widest flex items-center gap-1"
+                >
+                  <span>&larr;</span> Voltar
+                </button>
+              </h4>
+              
+              <div className={`grid grid-cols-2 ${isMobile ? 'gap-2' : 'gap-4'}`}>
+                <div>
+                  <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Nome da Sala</label>
+                  <input 
+                    type="text"
+                    placeholder="Arena Peteleco"
+                    value={newRoomName}
+                    onChange={(e) => setNewRoomName(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-[10px] text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block mb-1">Senha (Opcional)</label>
+                  <input 
+                    type="password"
+                    placeholder="Secreta"
+                    value={newRoomPassword}
+                    onChange={(e) => setNewRoomPassword(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-xl text-[10px] text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
 
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={() => {
-                createRoom(newRoomName, newRoomPassword, roomDuration);
-                setShowCreateRoomForm(false);
-                setNewRoomName('');
-                setNewRoomPassword('');
-                setRoomDuration(180);
-              }}
-              className="flex-grow py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-widest uppercase transition-all shadow-md"
-            >
-              CRIAR SALA AGORA
-            </button>
-            <button
-              onClick={() => setShowCreateRoomForm(false)}
-              className="px-3 py-2 bg-zinc-850 hover:bg-zinc-700 text-zinc-400 rounded-xl text-[10px] font-bold transition-all"
-            >
-              Cancelar
-            </button>
-          </div>
+              <div className="space-y-1.5">
+                <label className="text-[8px] sm:text-[10px] font-bold text-zinc-500 uppercase block">Duração da Partida (Tempo de Bola Rolando)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 60, label: '1 MIN', desc: 'Rápida' },
+                    { id: 180, label: '3 MIN', desc: 'Padrão' },
+                    { id: 300, label: '5 MIN', desc: 'Guerra Tática' }
+                  ].map((timeOpt) => (
+                    <button
+                      key={timeOpt.id}
+                      type="button"
+                      onClick={() => setRoomDuration(timeOpt.id)}
+                      className={`
+                        py-1.5 rounded-xl border text-[10px] font-black transition-all flex flex-col items-center justify-center
+                        ${roomDuration === timeOpt.id 
+                          ? 'border-indigo-500/40 text-indigo-400 bg-indigo-950/20 ring-1 ring-white/5 shadow-md shadow-indigo-500/10' 
+                          : 'border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30'
+                        }
+                      `}
+                    >
+                      <span>{timeOpt.label}</span>
+                      <span className="text-[7px] opacity-60 font-medium">{timeOpt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    createRoom(newRoomName, newRoomPassword, roomDuration, createRoomMode);
+                    setShowCreateRoomForm(false);
+                    setNewRoomName('');
+                    setNewRoomPassword('');
+                    setRoomDuration(180);
+                    setIsCreateModeSelected(false);
+                  }}
+                  className="flex-grow py-2.5 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-widest uppercase transition-all shadow-md"
+                >
+                  CRIAR SALA AGORA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateRoomForm(false);
+                    setIsCreateModeSelected(false);
+                  }}
+                  className="px-3 py-2 bg-zinc-850 hover:bg-zinc-700 text-zinc-400 rounded-xl text-[10px] font-bold transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -170,9 +228,18 @@ const MultiplayerTab: React.FC = () => {
                 <div className="flex items-center gap-2 text-left">
                   <img src={room.players.home.photoURL} alt="" className="w-6 h-6 rounded-full border border-zinc-850" referrerPolicy="no-referrer" />
                   <div className="text-left">
-                    <h4 className="text-[10px] sm:text-xs font-black text-zinc-200 uppercase tracking-wide flex items-center gap-1">
+                    <h4 className="text-[10px] sm:text-xs font-black text-zinc-200 uppercase tracking-wide flex items-center gap-1.5 flex-wrap">
                       {room.name}
                       {room.isClosed && <Lock size={9} className="text-amber-500" />}
+                      {room.gameMode === 'manual' ? (
+                        <span className="px-1.5 py-0.2 rounded-full border border-orange-500/30 text-orange-400 bg-orange-955/20 text-[6.5px] font-black uppercase tracking-wider">
+                          MANUAL
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded-full border border-zinc-850 text-zinc-500 bg-zinc-950/40 text-[6.5px] font-black uppercase tracking-wider">
+                          PADRÃO
+                        </span>
+                      )}
                     </h4>
                     <p className="text-[8px] font-semibold text-zinc-550 uppercase">Criador: {room.players.home.displayName}</p>
                   </div>

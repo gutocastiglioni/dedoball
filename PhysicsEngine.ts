@@ -29,7 +29,8 @@ export const updateBallPhysics = (
   turn: Team,
   dt: number,
   cooldownPlayerId: string | null,
-  collisionHistory?: string[]
+  collisionHistory?: string[],
+  isManualMode?: boolean
 ): PhysicsResult => {
   let [x, y, z] = currentBall.position;
   let [vx, vy, vz] = currentBall.velocity;
@@ -91,8 +92,8 @@ export const updateBallPhysics = (
   }
 
   // Read and prepare speed multiplier for wall bounces
-  const currentSpeedMult = currentBall.speedMultiplier ?? 1.0;
-  let nextSpeedMult = currentSpeedMult;
+  const currentSpeedMult = isManualMode ? 1.0 : (currentBall.speedMultiplier ?? 1.0);
+  let nextSpeedMult = isManualMode ? 1.0 : currentSpeedMult;
 
   // 2.5 Goalpost & Crossbar 3D Collision Physics
   const POST_RADIUS = 0.04;
@@ -217,7 +218,11 @@ export const updateBallPhysics = (
       const dz = z - pz;
       const dist = Math.hypot(dx, dz);
 
-      if (dist < COLLISION_DIST) {
+      const isGK = p.number === 1;
+      const currentRadius = (isGK && isManualMode) ? PLAYER_RADIUS * 1.3 : PLAYER_RADIUS;
+      const currentCollisionDist = BALL_RADIUS + currentRadius;
+
+      if (dist < currentCollisionDist) {
         collisionPlayerId = p.id;
 
         // NEW BLOCKING (Bloqueio) MECHANIC:
@@ -234,8 +239,8 @@ export const updateBallPhysics = (
           // Push slightly out of the player to avoid sticky bugs
           const nx = dist > 0.01 ? dx / dist : 1;
           const nz = dist > 0.01 ? dz / dist : 0;
-          x = px + nx * (COLLISION_DIST + 0.01);
-          z = pz + nz * (COLLISION_DIST + 0.01);
+          x = px + nx * (currentCollisionDist + 0.01);
+          z = pz + nz * (currentCollisionDist + 0.01);
           
           break;
         }
@@ -286,8 +291,8 @@ export const updateBallPhysics = (
             // Push slightly out of the goalkeeper at the collision contact point (where he saves)
             const nx = dist > 0.01 ? dx / dist : 1;
             const nz = dist > 0.01 ? dz / dist : 0;
-            x = px + nx * (COLLISION_DIST + 0.01);
-            z = pz + nz * (COLLISION_DIST + 0.01);
+            x = px + nx * (currentCollisionDist + 0.01);
+            z = pz + nz * (currentCollisionDist + 0.01);
             y = GROUND_Y;
 
             collisionPlayerId = p.id;
@@ -321,8 +326,8 @@ export const updateBallPhysics = (
             vy = vy_launch;
             y = 0.2;
 
-            x = px + Math.sin(angle) * 0.38;
-            z = pz + Math.cos(angle) * 0.38;
+            x = px + Math.sin(angle) * (currentCollisionDist + 0.08);
+            z = pz + Math.cos(angle) * (currentCollisionDist + 0.08);
 
             console.log(`%c[GK Estouro] ${p.id} (${p.team}) targetZ=${z_target.toFixed(2)} D=${D.toFixed(2)}m | vx=${vx.toFixed(2)} vz=${vz.toFixed(2)}`, 'color: #f39c12; font-weight: bold;');
             collisionPlayerId = p.id;
@@ -334,28 +339,36 @@ export const updateBallPhysics = (
             nextSpeedMult = Math.min(nextSpeedMult * 1.03, 4.0);
 
             const styleRoll = Math.random();
-            if (styleRoll < 0.4) {
-              // PASS: fast, low
-              vx = Math.sin(angle) * 21.25 * nextSpeedMult;
-              vz = Math.cos(angle) * 21.25 * nextSpeedMult;
-              vy = 0.0;
-              y = GROUND_Y;
-            } else if (styleRoll < 0.7) {
-              // CROSS: lobbed
-              vx = Math.sin(angle) * 9.0 * nextSpeedMult;
-              vz = Math.cos(angle) * 9.0 * nextSpeedMult;
-              vy = 5.0;
-              y = 0.2;
+            let finalSpeed: number;
+            let finalVy: number;
+
+            if (isManualMode) {
+              const incomingSpeed = Math.hypot(vx, vz);
+              finalSpeed = Math.max(1.5, incomingSpeed * 0.8); // GK save deflection has a bit more restitution/push
+              finalVy = styleRoll < 0.4 ? 0.0 : styleRoll < 0.7 ? 2.5 : 0.75;
             } else {
-              // SHOOT: powerful ground shot
-              vx = Math.sin(angle) * 28.0 * nextSpeedMult;
-              vz = Math.cos(angle) * 28.0 * nextSpeedMult;
-              vy = 1.5;
-              y = 0.2;
+              if (styleRoll < 0.4) {
+                // PASS: fast, low
+                finalSpeed = 21.25 * nextSpeedMult;
+                finalVy = 0.0;
+              } else if (styleRoll < 0.7) {
+                // CROSS: lobbed
+                finalSpeed = 9.0 * nextSpeedMult;
+                finalVy = 5.0;
+              } else {
+                // SHOOT: powerful ground shot
+                finalSpeed = 28.0 * nextSpeedMult;
+                finalVy = 1.5;
+              }
             }
 
-            x = px + Math.sin(angle) * 0.38;
-            z = pz + Math.cos(angle) * 0.38;
+            vx = Math.sin(angle) * finalSpeed;
+            vz = Math.cos(angle) * finalSpeed;
+            vy = finalVy;
+            y = finalVy === 0.0 ? GROUND_Y : 0.2;
+
+            x = px + Math.sin(angle) * (currentCollisionDist + 0.08);
+            z = pz + Math.cos(angle) * (currentCollisionDist + 0.08);
 
             console.log(`%c[GK Deflection] ${p.id} (${p.team}) spread ${(chosenSpread * 180 / Math.PI).toFixed(0)}° | SpeedMult: ${nextSpeedMult.toFixed(2)}x | vx=${vx.toFixed(2)} vz=${vz.toFixed(2)}`, 'color: #00d2ff; font-weight: bold;');
             collisionPlayerId = p.id;
@@ -394,7 +407,7 @@ export const updateBallPhysics = (
 
         // 4. If in a loop (C >= 3), apply progressive 15 deg rotation and extra speed multiplier
         let loopSpeedBonus = 1.0;
-        if (C >= 3) {
+        if (!isManualMode && C >= 3) {
           const repeats = C - 2;
           const angleShift = repeats * (15 * Math.PI / 180);
           angle += angleShift;
@@ -402,24 +415,45 @@ export const updateBallPhysics = (
           console.log(`%c[Physics Evasion] Loop bounce detected! Alternation size: ${C}, Repeats: ${repeats}, Angle Shifted by: ${(repeats * 15).toFixed(0)}°, Loop Speed Bonus: ${loopSpeedBonus.toFixed(2)}x, Total Multiplier: ${(nextSpeedMult * loopSpeedBonus).toFixed(2)}x`, "color: #2ecc71; font-weight: bold;");
         }
 
+        if (isManualMode) {
+          nextSpeedMult = 1.0;
+          loopSpeedBonus = 1.0;
+        }
+
         const totalMult = nextSpeedMult * loopSpeedBonus;
         console.log(`%c[Physics Bounce] Touch #${collisionHistory ? collisionHistory.length + 1 : 1} | SpeedMultiplier: ${nextSpeedMult.toFixed(2)}x`, 'color: #f39c12; font-weight: bold;');
 
-        if (p.actionType === 'SHOOT') {
-          vx = Math.sin(angle) * 30.0 * totalMult;
-          vz = Math.cos(angle) * 30.0 * totalMult;
-          vy = 2.5;
-        } else if (p.actionType === 'PASS') {
-          // Ground/low pass
-          vx = Math.sin(angle) * 21.25 * totalMult;
-          vz = Math.cos(angle) * 21.25 * totalMult;
-          vy = 0.0;
+        let finalSpeed: number;
+        let finalVy: number;
+
+        if (isManualMode) {
+          // Keep incoming speed but attenuate it to lose inertia/momentum (e.g., 0.75x)
+          const incomingSpeed = Math.hypot(vx, vz);
+          finalSpeed = Math.max(1.2, incomingSpeed * 0.75); // Lose 25% speed, keep a minimum of 1.2 so it doesn't freeze on tiny hits
+          
+          if (p.actionType === 'PASS') {
+            finalVy = 0.0;
+          } else {
+            // Slight manual vertical lift (half of standard)
+            finalVy = p.actionType === 'SHOOT' ? 1.25 : 2.5;
+          }
         } else {
-          // Lobbed Cross: elevated pass that ignores 1 house/row and lands in the second one
-          vx = Math.sin(angle) * 9.0 * totalMult;
-          vz = Math.cos(angle) * 9.0 * totalMult;
-          vy = 5.0;
+          // Standard/automatic mode: boost to action-specific speed
+          if (p.actionType === 'SHOOT') {
+            finalSpeed = 30.0 * totalMult;
+            finalVy = 2.5;
+          } else if (p.actionType === 'PASS') {
+            finalSpeed = 21.25 * totalMult;
+            finalVy = 0.0;
+          } else {
+            finalSpeed = 9.0 * totalMult;
+            finalVy = 5.0;
+          }
         }
+
+        vx = Math.sin(angle) * finalSpeed;
+        vz = Math.cos(angle) * finalSpeed;
+        vy = finalVy;
 
         x = px + Math.sin(angle) * 0.38;
         z = pz + Math.cos(angle) * 0.38;

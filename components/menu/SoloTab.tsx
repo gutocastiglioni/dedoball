@@ -1,15 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameStateContext } from '../../GameStateContext';
 import { Difficulty } from '../../types';
-import { Trophy, Play, Clock } from 'lucide-react';
+import { Trophy, Play, Clock, Zap, Sliders } from 'lucide-react';
 
 const SoloTab: React.FC = () => {
-  const { difficulty, setDifficulty, startGame, matchDuration, setMatchDuration } = useGameStateContext();
+  const { difficulty, setDifficulty, startGame, matchDuration, setMatchDuration, gameMode, setGameMode } = useGameStateContext();
+  const [isModeSelected, setIsModeSelected] = useState(false);
+
+  if (!isModeSelected) {
+    return (
+      <div className="w-full max-w-xl mx-auto space-y-4 md:space-y-4.5 animate-scaleUp">
+        <h3 className="text-xs md:text-sm font-bold uppercase tracking-widest text-cyan-400">DESAFIE A INTELIGÊNCIA ARTIFICIAL</h3>
+        
+        <div className="space-y-2">
+          <h4 className="text-[9.5px] font-black uppercase tracking-widest text-zinc-450 text-left">FÍSICA DA PARTIDA</h4>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { id: 'standard', label: 'MODO PADRÃO', desc: 'Física clássica e veloz', icon: Zap },
+              { id: 'manual', label: 'MODO MANUAL', desc: 'Sem ganho de velocidade', icon: Sliders }
+            ].map((modeOpt) => {
+              const Icon = modeOpt.icon;
+              return (
+                <button
+                  key={modeOpt.id}
+                  onClick={() => {
+                    setGameMode(modeOpt.id as 'standard' | 'manual');
+                    setIsModeSelected(true);
+                  }}
+                  className="rounded-2xl border font-black transition-all duration-300 transform hover:scale-103 active:scale-97 flex flex-col items-center justify-center py-4 px-3 gap-1.5 border-zinc-800 text-zinc-500 hover:text-white hover:bg-zinc-800/30"
+                >
+                  <Icon size={16} className={modeOpt.id === 'standard' ? 'text-cyan-400' : 'text-orange-400'} />
+                  <span className="text-xs tracking-wide">{modeOpt.label}</span>
+                  <span className="text-[8px] font-medium text-zinc-500 leading-none">{modeOpt.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-xl mx-auto space-y-4 md:space-y-4.5 animate-scaleUp">
-      <h3 className="text-xs md:text-sm font-bold uppercase tracking-widest text-cyan-400">DESAFIE A INTELIGÊNCIA ARTIFICIAL</h3>
-      
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs md:text-sm font-bold uppercase tracking-widest text-cyan-400">DESAFIE A INTELIGÊNCIA ARTIFICIAL</h3>
+        <button
+          onClick={() => setIsModeSelected(false)}
+          className="text-[9px] font-black text-zinc-550 hover:text-cyan-400 transition-colors uppercase tracking-widest flex items-center gap-1"
+        >
+          <span>&larr;</span> Voltar
+        </button>
+      </div>
+
       <div className="space-y-2">
         <h4 className="text-[9.5px] font-black uppercase tracking-widest text-zinc-450 text-left">Dificuldade da IA</h4>
         <div className="grid grid-cols-3 gap-2.5">
@@ -65,7 +108,7 @@ const SoloTab: React.FC = () => {
       </div>
 
       <button 
-        onClick={() => startGame(difficulty)}
+        onClick={() => startGame(difficulty, gameMode)}
         className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black tracking-widest uppercase rounded-2xl shadow-[0_4px_25px_rgba(6,182,212,0.4)] hover:shadow-[0_4px_30px_rgba(6,182,212,0.55)] transform transition-all active:scale-98 flex items-center justify-center gap-2 py-3 text-xs md:text-sm"
       >
         <Play size={16} />

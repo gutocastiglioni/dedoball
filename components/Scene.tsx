@@ -147,6 +147,9 @@ const CameraManager: React.FC<{
   const lastBallPos = useRef<[number, number, number]>(ballPos);
   const lastRecenterTrigger = useRef(recenterTrigger);
 
+  const isPanningRef = useRef(false);
+  const lastPosRef = useRef({ x: 0, y: 0 });
+
   // Retrieve cameraMode and myRole from the GameStateContext
   const { cameraMode, myRole } = useGameStateContext();
 
@@ -161,6 +164,71 @@ const CameraManager: React.FC<{
     isUserControlled.current = false;
     lastRecenterTrigger.current = recenterTrigger;
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.buttons === 3) {
+        isPanningRef.current = true;
+        lastPosRef.current = { x: e.clientX, y: e.clientY };
+        isUserControlled.current = true;
+        if (controlsRef.current) {
+          controlsRef.current.enabled = false;
+        }
+      }
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (isPanningRef.current && controlsRef.current) {
+        if (e.buttons !== 3) {
+          isPanningRef.current = false;
+          controlsRef.current.enabled = true;
+          return;
+        }
+
+        const dx = e.clientX - lastPosRef.current.x;
+        const dy = e.clientY - lastPosRef.current.y;
+        lastPosRef.current = { x: e.clientX, y: e.clientY };
+
+        const controls = controlsRef.current;
+        const offset = new THREE.Vector3();
+        const vX = new THREE.Vector3();
+        const vY = new THREE.Vector3();
+        const vZ = new THREE.Vector3();
+
+        camera.matrix.extractBasis(vX, vY, vZ);
+
+        const factor = camera.position.distanceTo(controls.target) * 0.0015;
+        vX.multiplyScalar(-dx * factor);
+        vY.multiplyScalar(dy * factor);
+        offset.addVectors(vX, vY);
+
+        camera.position.add(offset);
+        controls.target.add(offset);
+        controls.update();
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.buttons !== 3) {
+        isPanningRef.current = false;
+        if (controlsRef.current) {
+          controlsRef.current.enabled = true;
+        }
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true });
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('pointerup', handlePointerUp, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [camera]);
 
   useFrame(() => {
     if (!controlsRef.current) return;
@@ -238,8 +306,9 @@ const CameraManager: React.FC<{
     <OrbitControls 
       ref={controlsRef}
       enabled={true}
-      enablePan={controlsEnabled} 
+      enablePan={true} 
       enableRotate={controlsEnabled} 
+      screenSpacePanning={true}
       minPolarAngle={Math.PI / 8} 
       maxPolarAngle={Math.PI / 2.1} 
       minDistance={3}
@@ -473,6 +542,7 @@ const SceneContent: React.FC<SceneProps> = ({
 
   useEffect(() => {
     const handleWindowPointerMove = () => {
+      if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
       if (!pendingPlayerIdRef.current || !pointerStartPosRef.current) return;
 
       // Calculate distance dragged in normalized screen space
@@ -528,14 +598,28 @@ const SceneContent: React.FC<SceneProps> = ({
       setRotationTarget(null);
     };
 
+    const handleWindowTouchStart = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 1) {
+        pendingPlayerIdRef.current = null;
+        pointerStartPosRef.current = null;
+        hasDraggedRef.current = false;
+        setRotatingPlayerId(null);
+        setRotationTarget(null);
+        setSelectedPlayerId(null);
+        setIsDraggingBall(false);
+      }
+    };
+
     window.addEventListener('pointermove', handleWindowPointerMove);
     window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('touchstart', handleWindowTouchStart, { passive: true });
 
     return () => {
       window.removeEventListener('pointermove', handleWindowPointerMove);
       window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('touchstart', handleWindowTouchStart);
     };
-  }, [homePlayers, awayPlayers, camera, raycaster, pointer, isMultiplayer, myRole, phase, selectedPlayerId, setSelectedPlayerId, updatePlayerAngle]);
+  }, [homePlayers, awayPlayers, camera, raycaster, pointer, isMultiplayer, myRole, phase, selectedPlayerId, setSelectedPlayerId, updatePlayerAngle, setIsDraggingBall]);
 
   // Render visual guides for player rotation in Preparation Phase
   const renderPlayerRotationIndicator = () => {
@@ -1213,6 +1297,7 @@ const SceneContent: React.FC<SceneProps> = ({
         {/* Pitch / Table */}
         <group
           onClick={(e) => {
+            if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
             // Allow deselect during captain move mode too
             if (!isCaptainMoveActive) setSelectedPlayerId(null);
           }}
@@ -1268,6 +1353,7 @@ const SceneContent: React.FC<SceneProps> = ({
                 showCaptainGlow={isCaptainMoveActive && p.team === captainMoveMode}
                 number={p.number}
                 onPointerDown={isControllable ? (e) => {
+                  if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
                   if (isCaptainMoveActive) {
                     const allowInCaptainMode = p.isCaptain && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode);
                     if (!allowInCaptainMode) return;
@@ -1277,6 +1363,7 @@ const SceneContent: React.FC<SceneProps> = ({
                   handlePlayerRotateStart(p.id, e);
                 } : undefined}
                 onClick={isControllable ? (e) => {
+                  if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
                   if (isCaptainMoveActive) {
                     const allowInCaptainMode = p.isCaptain && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode);
                     if (!allowInCaptainMode) return;
@@ -1323,6 +1410,7 @@ const SceneContent: React.FC<SceneProps> = ({
                 showCaptainGlow={isCaptainMoveActive && p.team === captainMoveMode}
                 number={p.number}
                 onPointerDown={isControllable ? (e) => {
+                  if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
                   if (isCaptainMoveActive) {
                     const allowInCaptainMode = p.isCaptain && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode);
                     if (!allowInCaptainMode) return;
@@ -1332,6 +1420,7 @@ const SceneContent: React.FC<SceneProps> = ({
                   handlePlayerRotateStart(p.id, e);
                 } : undefined}
                 onClick={isControllable ? (e) => {
+                  if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
                   if (isCaptainMoveActive) {
                     const allowInCaptainMode = p.isCaptain && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode);
                     if (!allowInCaptainMode) return;
@@ -1353,11 +1442,13 @@ const SceneContent: React.FC<SceneProps> = ({
           velocity={ball.velocity} 
           isSelected={selectedPlayerId === 'ball'}
           onClick={(e) => {
+            if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
             if (!isFlickable) return;
             e.stopPropagation();
             setSelectedPlayerId(selectedPlayerId === 'ball' ? null : 'ball');
           }}
           onPointerDown={(e) => {
+            if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
             if (!isFlickable) return;
             setSelectedPlayerId('ball');
           }}
@@ -1390,7 +1481,7 @@ const SceneContent: React.FC<SceneProps> = ({
           phase={phase} 
           ballPos={activeBallPos} 
           turn={turn} 
-          controlsEnabled={!isDraggingBall && !rotatingPlayerId && selectedPlayerId !== 'ball'} 
+          controlsEnabled={!isDraggingBall && !rotatingPlayerId} 
           recenterTrigger={recenterTrigger}
           isCameraCentered={isCameraCentered}
           setIsCameraCentered={setIsCameraCentered}
@@ -1407,7 +1498,12 @@ const Scene: React.FC<SceneProps> = (props) => {
   const { myRole } = useGameStateContext();
   const cameraPos: [number, number, number] = myRole === 'AWAY' ? [0, 6, 9] : [0, 6, -9];
   return (
-    <Canvas shadows camera={{ position: cameraPos, fov: 45 }}>
+    <Canvas 
+      shadows 
+      camera={{ position: cameraPos, fov: 45 }} 
+      style={{ touchAction: 'none' }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <SceneContent {...props} />
     </Canvas>
   );

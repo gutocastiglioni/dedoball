@@ -3,6 +3,7 @@ import { useGameStateContext } from '../../GameStateContext';
 import { GamePhase } from '../../types';
 import { Trophy, Shield, RotateCcw, ShieldAlert, Crown, CheckCircle2, Hourglass } from 'lucide-react';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import SoundManager from '../../SoundManager';
 
 const HUDOverlays: React.FC = () => {
   const {
@@ -29,6 +30,10 @@ const HUDOverlays: React.FC = () => {
     currentRoom,
     actionStatus,
     prepTimer,
+    gameMode,
+    gkMoveActiveTeam,
+    gkMoveTimer,
+    confirmGkPosition,
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -395,6 +400,80 @@ const HUDOverlays: React.FC = () => {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* MANUAL MODE GOALKEEPER TIMER OVERLAY */}
+      {phase === GamePhase.ACTION && gkMoveActiveTeam !== null && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-full max-w-sm px-4">
+          {gkMoveActiveTeam === (isMultiplayer ? myRole : 'HOME') ? (
+            /* ── LOCAL PLAYER DEFENDING (REPOSITIONING GOALKEEPER) ── */
+            <div className="pointer-events-auto relative w-full animate-scaleUp">
+              {/* Title badge */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Shield size={14} className="text-amber-400 animate-pulse" />
+                <span className="text-[10px] font-black tracking-[0.35em] uppercase text-amber-400">
+                  REPOSICIONE SEU GOLEIRO
+                </span>
+                <Shield size={14} className="text-amber-400 animate-pulse" />
+              </div>
+
+              <div className="bg-zinc-900/95 border border-amber-800/50 rounded-2xl md:rounded-3xl p-4 md:p-5 shadow-[0_0_40px_rgba(217,119,6,0.25)]">
+                {/* Instruction row */}
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl bg-amber-950/60 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
+                    <Shield size={18} className="text-amber-400" />
+                  </div>
+                  <p className="text-[11px] md:text-xs text-zinc-300 font-semibold leading-relaxed">
+                    Arraste seu <span className="text-amber-400 font-black">Goleiro</span> para qualquer slot de seu campo ou confirme para mantê-lo estático na posição atual.
+                  </p>
+                </div>
+
+                {/* Pulsing countdown timer for goalkeeper repositioning */}
+                {gkMoveTimer !== null && (
+                  <div className={`flex items-center justify-center gap-1.5 px-3 py-2 mb-4 rounded-xl border font-black text-xs transition-all duration-300 ${
+                    gkMoveTimer <= 3 
+                      ? 'bg-rose-950/80 border-rose-800/50 text-rose-450 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.15)]' 
+                      : 'bg-amber-955/60 border-amber-800/40 text-amber-400 animate-pulse'
+                  }`}>
+                    <Hourglass size={13} className={gkMoveTimer <= 3 ? 'animate-spin text-rose-500' : 'animate-spin text-amber-500'} style={{ animationDuration: '2.5s' }} />
+                    <span>TEMPO RESTANTE: {gkMoveTimer}s</span>
+                  </div>
+                )}
+
+                {/* Confirm button */}
+                <button
+                  onClick={() => {
+                    SoundManager.playUIClick();
+                    confirmGkPosition();
+                  }}
+                  className="w-full py-3.5 rounded-xl md:rounded-2xl font-black tracking-widest uppercase text-xs flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-[0_4px_25px_rgba(217,119,6,0.45)] hover:shadow-[0_4px_30px_rgba(217,119,6,0.6)] active:scale-98"
+                >
+                  <CheckCircle2 size={15} />
+                  CONFIRMAR POSIÇÃO
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── LOCAL PLAYER ATTACKING (WAITING FOR GOALKEEPER MOVE) ── */
+            <div className="pointer-events-none relative animate-scaleUp">
+              <div className="flex flex-col items-center gap-2 bg-zinc-900/95 border border-zinc-700/60 rounded-2xl px-5 py-3.5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+                <div className="flex items-center gap-3">
+                  <Hourglass size={14} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
+                  <span className="text-[11px] font-bold tracking-widest text-zinc-300 uppercase">
+                    {gkMoveActiveTeam === 'AWAY' && !isMultiplayer
+                      ? 'IA ajustando goleiro...'
+                      : 'Oponente reposicionando o goleiro...'}
+                  </span>
+                </div>
+                {gkMoveTimer !== null && (
+                  <span className="text-[10px] font-black text-cyan-400 tracking-wider animate-pulse">
+                    Tempo restante: {gkMoveTimer}s
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

@@ -19,6 +19,7 @@ export interface Room {
   status: 'waiting' | 'preparation' | 'playing' | 'ended';
   createdAt: number;
   matchDuration?: number; // in seconds
+  gameMode?: 'standard' | 'manual';
   players: {
     home: RoomPlayer;
     away?: RoomPlayer;
@@ -41,6 +42,8 @@ export interface Room {
     awayPlayers?: PlayerConfig[];
     lastGoalScorer?: Team | null;
     consecutiveGoalsCount?: number;
+    gkMoveActiveTeam?: Team | null;
+    gkMoveTimer?: number | null;
   };
 }
 
@@ -192,7 +195,7 @@ export const updateLeaderboardAndHistory = async (
 };
 
 // --- ROOM / MATCHMAKING FUNCTIONS ---
-export const createMultiplayerRoom = async (name: string, password?: string, matchDuration: number = 180): Promise<string> => {
+export const createMultiplayerRoom = async (name: string, password?: string, matchDuration: number = 180, gameMode: 'standard' | 'manual' = 'standard'): Promise<string> => {
   const user = auth.currentUser;
   if (!user) throw new Error('NOT_AUTHENTICATED');
   
@@ -218,6 +221,7 @@ export const createMultiplayerRoom = async (name: string, password?: string, mat
     status: 'waiting',
     createdAt: Date.now(),
     matchDuration,
+    gameMode,
     players: {
       home: {
         uid: user.uid,

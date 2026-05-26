@@ -1,16 +1,72 @@
 import React from 'react';
 import * as THREE from 'three';
-import { Slot } from '../types';
+import { useFrame } from '@react-three/fiber';
+import { Slot, Team } from '../types';
 import { ALL_SLOTS } from '../useGameState';
 
-interface PitchProps {
+export interface PitchProps {
   phase: string;
-  captainMoveMode?: string | null;
+  captainMoveMode?: Team | null;
   onSlotClick?: (slotId: string) => void;
+  onLineClick?: (slotId: string, clickX: number) => void;
+  selectedPlayerId?: string | null;
   hoveredSlotId: string | null;
   setHoveredSlotId: (id: string | null) => void;
   homePlayers: any[];
+  awayPlayers?: any[];
+  hoveredSegmentId?: string | null;
+  setHoveredSegmentId?: (id: string | null) => void;
+  hoveredX?: number | null;
+  setHoveredX?: (x: number | null) => void;
 }
+
+export interface LineSegment {
+  id: string;
+  z: number;
+  xStart: number;
+  xEnd: number;
+  team: Team;
+  color: string;
+}
+
+// Static definition of line segments to avoid re-creations
+export const LINE_SEGMENTS: LineSegment[] = [
+  // HOME side Extra line (z = -6.7) - divided
+  { id: 'home-extra-l1', z: -6.7, xStart: -4.5, xEnd: -3.0, team: 'AWAY', color: '#ff3f34' },
+  { id: 'home-extra-l2', z: -6.7, xStart: -3.0, xEnd: -1.0, team: 'HOME', color: '#3498db' },
+  { id: 'home-extra-r1', z: -6.7, xStart: 1.0, xEnd: 3.0, team: 'HOME', color: '#3498db' },
+  { id: 'home-extra-r2', z: -6.7, xStart: 3.0, xEnd: 4.5, team: 'AWAY', color: '#ff3f34' },
+
+  // HOME side Defender line (z = -5.5)
+  { id: 'home-def', z: -5.5, xStart: -4.5, xEnd: 4.5, team: 'HOME', color: '#3498db' },
+
+  // HOME side Midfielders 1 line (z = -2.36)
+  { id: 'home-mid1', z: -2.36, xStart: -4.5, xEnd: 4.5, team: 'HOME', color: '#3498db' },
+
+  // HOME side Midfielders 2 line (z = 0.79)
+  { id: 'home-mid2', z: 0.79, xStart: -4.5, xEnd: 4.5, team: 'HOME', color: '#3498db' },
+
+  // HOME side Attacker line (z = 3.93)
+  { id: 'home-att', z: 3.93, xStart: -4.5, xEnd: 4.5, team: 'HOME', color: '#3498db' },
+
+  // AWAY side Extra line (z = 6.7) - divided
+  { id: 'away-extra-l1', z: 6.7, xStart: -4.5, xEnd: -3.0, team: 'HOME', color: '#3498db' },
+  { id: 'away-extra-l2', z: 6.7, xStart: -3.0, xEnd: -1.0, team: 'AWAY', color: '#ff3f34' },
+  { id: 'away-extra-r1', z: 6.7, xStart: 1.0, xEnd: 3.0, team: 'AWAY', color: '#ff3f34' },
+  { id: 'away-extra-r2', z: 6.7, xStart: 3.0, xEnd: 4.5, team: 'HOME', color: '#3498db' },
+
+  // AWAY side Defender line (z = 5.5)
+  { id: 'away-def', z: 5.5, xStart: -4.5, xEnd: 4.5, team: 'AWAY', color: '#ff3f34' },
+
+  // AWAY side Midfielders 1 line (z = 2.36)
+  { id: 'away-mid1', z: 2.36, xStart: -4.5, xEnd: 4.5, team: 'AWAY', color: '#ff3f34' },
+
+  // AWAY side Midfielders 2 line (z = -0.79)
+  { id: 'away-mid2', z: -0.79, xStart: -4.5, xEnd: 4.5, team: 'AWAY', color: '#ff3f34' },
+
+  // AWAY side Attacker line (z = -3.93)
+  { id: 'away-att', z: -3.93, xStart: -4.5, xEnd: 4.5, team: 'AWAY', color: '#ff3f34' }
+];
 
 // --- STATIC OPTIMIZED THREE.JS MATERIALS & GEOMETRIES ---
 const woodMaterial = new THREE.MeshStandardMaterial({
@@ -69,10 +125,107 @@ const Pitch: React.FC<PitchProps> = ({
   phase, 
   captainMoveMode = null,
   onSlotClick, 
+  onLineClick,
+  selectedPlayerId = null,
   hoveredSlotId, 
   setHoveredSlotId,
-  homePlayers 
+  homePlayers,
+  awayPlayers = [],
+  hoveredSegmentId: propHoveredSegmentId,
+  setHoveredSegmentId: propSetHoveredSegmentId,
+  hoveredX: propHoveredX,
+  setHoveredX: propSetHoveredX
 }) => {
+  const [localHoveredSegmentId, localSetHoveredSegmentId] = React.useState<string | null>(null);
+  const [localHoveredX, localSetHoveredX] = React.useState<number | null>(null);
+
+  const hoveredSegmentId = propHoveredSegmentId !== undefined ? propHoveredSegmentId : localHoveredSegmentId;
+  const setHoveredSegmentId = propSetHoveredSegmentId !== undefined ? propSetHoveredSegmentId : localSetHoveredSegmentId;
+  const hoveredX = propHoveredX !== undefined ? propHoveredX : localHoveredX;
+  const setHoveredX = propSetHoveredX !== undefined ? propSetHoveredX : localSetHoveredX;
+
+  // Keep references for reactive useFrame updates
+  const hoveredSegmentIdRef = React.useRef<string | null>(null);
+  hoveredSegmentIdRef.current = hoveredSegmentId;
+
+  const segmentRefs = React.useRef<{[key: string]: THREE.Mesh}>({});
+
+  // 1. Procedural texture with complete solid band and soft external glow extending after the ends (Blue)
+  const homeTexture = React.useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Set canvas shadow to project a gorgeous soft light glow beyond the borders of the band
+      ctx.shadowColor = '#3498db';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#3498db';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(16, 12, 480, 40, 16); // centered solid rounded rect
+      } else {
+        ctx.rect(16, 12, 480, 40);
+      }
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }, []);
+
+  // 2. Procedural texture with complete solid band and soft external glow extending after the ends (Red)
+  const awayTexture = React.useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // Set canvas shadow for red soft-light external glow radiating after the ends
+      ctx.shadowColor = '#ff3f34';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#ff3f34';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(16, 12, 480, 40, 16); // centered solid rounded rect
+      } else {
+        ctx.rect(16, 12, 480, 40);
+      }
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }, []);
+
+  const activeTeam = captainMoveMode !== null 
+    ? captainMoveMode 
+    : (selectedPlayerId?.startsWith('home') ? 'HOME' : (selectedPlayerId?.startsWith('away') ? 'AWAY' : null));
+
+  const activeTeamRef = React.useRef<Team | null>(null);
+  activeTeamRef.current = activeTeam;
+
+  // Perform continuous 60fps pulsating opacity changes directly on materials to prevent re-renders
+  useFrame((state) => {
+    const isPrep = phase === 'PREPARATION' || captainMoveMode !== null;
+    if (!isPrep) return;
+
+    const t = state.clock.getElapsedTime();
+    // Smooth cosine breathing wave between 0.78 and 1.12
+    const pulseFactor = 0.95 + Math.cos(t * 4.5) * 0.17; 
+
+    LINE_SEGMENTS.forEach((segment) => {
+      const mesh = segmentRefs.current[segment.id];
+      if (mesh) {
+        const mat = mesh.material as THREE.MeshBasicMaterial;
+        if (mat) {
+          const isHovered = hoveredSegmentIdRef.current === segment.id;
+          const isValid = activeTeamRef.current !== null && segment.team === activeTeamRef.current;
+          const baseOpacity = isHovered ? 0.75 : (isValid ? 0.42 : 0.08);
+          mat.opacity = baseOpacity * (isValid || isHovered ? pulseFactor : 1.0);
+        }
+      }
+    });
+  });
+
   return (
     <group>
       {/* 1. Wood Table Base */}
@@ -100,7 +253,7 @@ const Pitch: React.FC<PitchProps> = ({
         <boxGeometry args={[0.2, 0.5, 16.2]} />
       </mesh>
 
-      {/* Back Wall - Player side (Z = -8), leaving a gap in the center [-1.1, 1.1] for the goal */}
+      {/* Back Wall - Player side (Z = -8), leaving a gap for the goal */}
       <mesh position={[-3.05, 0.25, -8.1]} castShadow receiveShadow material={woodMaterial}>
         <boxGeometry args={[3.9, 0.5, 0.2]} />
       </mesh>
@@ -147,13 +300,11 @@ const Pitch: React.FC<PitchProps> = ({
           <planeGeometry args={[10, 0.05]} />
         </mesh>
         {/* Penalty Area outlines */}
-        {/* Player Penalty Box (depth 3.0, from goal line Z=-7.8 to front Z=-4.8) */}
         <group position={[0, -6.3, 0]}>
           <mesh position={[0, 1.5, 0]} material={penaltyBoxMaterial}><planeGeometry args={[6.0, 0.05]} /></mesh>
           <mesh position={[-3.0, 0, 0]} material={penaltyBoxMaterial}><planeGeometry args={[0.05, 3.0]} /></mesh>
           <mesh position={[3.0, 0, 0]} material={penaltyBoxMaterial}><planeGeometry args={[0.05, 3.0]} /></mesh>
         </group>
-        {/* Opponent Penalty Box (depth 3.0, from goal line Z=7.8 to front Z=4.8) */}
         <group position={[0, 6.3, 0]}>
           <mesh position={[0, -1.5, 0]} material={penaltyBoxMaterial}><planeGeometry args={[6.0, 0.05]} /></mesh>
           <mesh position={[-3.0, 0, 0]} material={penaltyBoxMaterial}><planeGeometry args={[0.05, 3.0]} /></mesh>
@@ -161,13 +312,11 @@ const Pitch: React.FC<PitchProps> = ({
         </group>
 
         {/* Goal Area (Pequena Área) */}
-        {/* Player Goal Area */}
         <group position={[0, -7.3, 0]}>
           <mesh position={[0, 0.5, 0]} material={penaltyBoxMaterial}><planeGeometry args={[3.0, 0.05]} /></mesh>
           <mesh position={[-1.5, 0, 0]} material={penaltyBoxMaterial}><planeGeometry args={[0.05, 1.0]} /></mesh>
           <mesh position={[1.5, 0, 0]} material={penaltyBoxMaterial}><planeGeometry args={[0.05, 1.0]} /></mesh>
         </group>
-        {/* Opponent Goal Area */}
         <group position={[0, 7.3, 0]}>
           <mesh position={[0, -0.5, 0]} material={penaltyBoxMaterial}><planeGeometry args={[3.0, 0.05]} /></mesh>
           <mesh position={[-1.5, 0, 0]} material={penaltyBoxMaterial}><planeGeometry args={[0.05, 1.0]} /></mesh>
@@ -182,121 +331,259 @@ const Pitch: React.FC<PitchProps> = ({
           <circleGeometry args={[0.08, 16]} />
         </mesh>
 
-        {/* Penalty Arcs (Meias Luas) */}
-        {/* Player Penalty Arc (centered at penalty spot [0, -5.8, 0], arches outside penalty box [which ends at Y = -4.8]) */}
+        {/* Penalty Arcs */}
         <mesh position={[0, -5.8, 0]} material={penaltyBoxMaterial}>
           <ringGeometry args={[1.5, 1.55, 32, 1, Math.PI / 2 - Math.acos(1.0 / 1.5), 2 * Math.acos(1.0 / 1.5)]} />
         </mesh>
-        {/* Opponent Penalty Arc (centered at penalty spot [0, 5.8, 0], arches outside penalty box [which ends at Y = 4.8]) */}
         <mesh position={[0, 5.8, 0]} material={penaltyBoxMaterial}>
           <ringGeometry args={[1.5, 1.55, 32, 1, 3 * Math.PI / 2 - Math.acos(1.0 / 1.5), 2 * Math.acos(1.0 / 1.5)]} />
         </mesh>
       </group>
 
-      {/* 5. Placement Slots (Preparation Phase or Captain Repositioning Mode) */}
-      {(phase === 'PREPARATION' || captainMoveMode !== null) && ALL_SLOTS.map((slot) => {
-        // Show all field slots on the entire pitch (excluding Goalkeeper slots)
-        if (slot.lineType === 'GK') return null;
+      {/* 5. Placement Bands (Preparation Phase or Captain Repositioning Mode) */}
+      {(phase === 'PREPARATION' || captainMoveMode !== null) && (
+        <group>
+          {LINE_SEGMENTS.map((segment) => {
+            const isHovered = hoveredSegmentId === segment.id;
+            const isValid = activeTeam !== null && segment.team === activeTeam;
 
-        const isHovered = hoveredSlotId === slot.id;
-        const isOccupied = homePlayers.some(p => p.slotId === slot.id);
-        const isHomeSlot = slot.team === 'HOME';
+            const length = segment.xEnd - segment.xStart;
+            const centerX = (segment.xStart + segment.xEnd) / 2;
 
-        let ringColor = '#ffffff';
-        let ringOpacity = 0.3;
+            const activeTeamPlayers = segment.team === 'HOME' ? homePlayers : (awayPlayers || []);
+            const otherPlayersOnLine = activeTeamPlayers.filter((p: any) => 
+              p.id !== selectedPlayerId && 
+              p.number !== 1 && // exclude GK
+              Math.abs(p.position[2] - segment.z) < 0.1
+            );
 
-        if (isHomeSlot) {
-          if (isHovered) {
-            ringColor = '#00d2ff'; // cyan highlight
-            ringOpacity = 0.9;
-          } else if (isOccupied) {
-            ringColor = '#f39c12'; // orange occupied
-            ringOpacity = 0.5;
-          } else {
-            ringColor = '#3498db'; // blue empty home slot
-            ringOpacity = 0.35;
-          }
-        } else {
-          // Opponent slot (AWAY)
-          if (isHovered) {
-            ringColor = '#ff3f34'; // crimson forbidden highlight
-            ringOpacity = 0.6;
-          } else {
-            ringColor = '#e55039'; // red/orange opponent slot
-            ringOpacity = 0.15;
-          }
-        }
+            const getPositionState = (x: number) => {
+              const basePX = Math.max(segment.xStart + 0.35, Math.min(segment.xEnd - 0.35, x));
+              const swapTarget = otherPlayersOnLine.find((p: any) => Math.abs(basePX - p.position[0]) < 0.35);
+              if (swapTarget) {
+                return {
+                  previewX: swapTarget.position[0],
+                  isSwap: true,
+                  isBlocked: false,
+                  swapPlayerId: swapTarget.id
+                };
+              }
+              const overlaps = otherPlayersOnLine.some((p: any) => Math.abs(basePX - p.position[0]) < 0.7);
+              if (overlaps) {
+                return {
+                  previewX: basePX,
+                  isSwap: false,
+                  isBlocked: true,
+                  swapPlayerId: null
+                };
+              }
+              return {
+                previewX: basePX,
+                isSwap: false,
+                isBlocked: false,
+                swapPlayerId: null
+              };
+            };
 
-        return (
-          <group 
-            key={slot.id} 
-            position={[slot.position[0], 0.025, slot.position[2]]}
-          >
-            {/* Base Ring Ring */}
-            <mesh 
-              rotation={[-Math.PI / 2, 0, 0]}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isHomeSlot && onSlotClick) {
-                  onSlotClick(slot.id);
-                }
-              }}
-              onPointerOver={(e) => {
-                e.stopPropagation();
-                setHoveredSlotId(slot.id);
-              }}
-              onPointerOut={(e) => {
-                e.stopPropagation();
-                setHoveredSlotId(null);
-              }}
-            >
-              <ringGeometry args={[0.3, 0.38, 32]} />
-              <meshBasicMaterial 
-                color={ringColor} 
-                transparent 
-                opacity={ringOpacity} 
-                side={THREE.DoubleSide}
-              />
-            </mesh>
+            return (
+              <group key={segment.id}>
+                {/* Wide visible positioning band flat on the ground with rounded corners and feathered soft-light edges */}
+                <mesh 
+                  ref={el => { if (el) segmentRefs.current[segment.id] = el; }}
+                  position={[centerX, 0.02, segment.z]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  renderOrder={2}
+                >
+                  <planeGeometry args={[length, 0.8]} />
+                  <meshBasicMaterial 
+                    map={segment.color === '#3498db' ? homeTexture : awayTexture}
+                    transparent
+                    opacity={isHovered ? 0.75 : (isValid ? 0.42 : 0.08)}
+                    side={THREE.DoubleSide}
+                    depthWrite={false}
+                  />
+                </mesh>
 
-            {/* Inner disc indicating line type */}
-            <mesh 
-              rotation={[-Math.PI / 2, 0, 0]}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isHomeSlot && onSlotClick) {
-                  onSlotClick(slot.id);
-                }
-              }}
-              onPointerOver={() => setHoveredSlotId(slot.id)}
-              onPointerOut={() => setHoveredSlotId(null)}
-            >
-              <circleGeometry args={[0.29]} />
-              <meshBasicMaterial 
-                color={
-                  !isHomeSlot ? '#ff3f34' :
-                  slot.lineType === 'DEF' ? '#3498db' : 
-                  slot.lineType === 'MID' ? '#f1c40f' : '#e74c3c'
-                } 
-                transparent 
-                opacity={isHovered ? (isHomeSlot ? 0.45 : 0.25) : 0.1} 
-              />
-            </mesh>
+                {/* Wide invisible interaction plane (perfect hit-testing / high tolerance clicking) */}
+                <mesh 
+                  position={[centerX, 0.025, segment.z]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  onPointerOver={(e) => {
+                    if ((e.nativeEvent as any).pointerType === 'mouse' && (e.buttons & 2)) return;
+                    if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
+                    if (!isValid) return;
+                    e.stopPropagation();
+                    setHoveredSegmentId(segment.id);
+                    setHoveredX(e.point.x);
+                  }}
+                  onPointerMove={(e) => {
+                    if ((e.nativeEvent as any).pointerType === 'mouse' && (e.buttons & 2)) return;
+                    if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
+                    if (!isValid) return;
+                    e.stopPropagation();
+                    setHoveredX(e.point.x);
+                  }}
+                  onPointerOut={(e) => {
+                    if ((e.nativeEvent as any).pointerType === 'mouse' && (e.buttons & 2)) return;
+                    if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
+                    e.stopPropagation();
+                    setHoveredSegmentId(null);
+                    setHoveredX(null);
+                  }}
+                  onClick={isValid ? (e) => {
+                    if ((e.nativeEvent as any).pointerType === 'mouse' && e.button !== 0) return;
+                    if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
+                    e.stopPropagation();
+                    const state = getPositionState(e.point.x);
+                    if (state.isBlocked) return; // Block click if space is tight!
 
-            {/* Pulsating animation overlay for hovered slot */}
-            {isHovered && (
-              <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[0.38, 0.45, 32]} />
-                <meshBasicMaterial 
-                  color={isHomeSlot ? '#00d2ff' : '#ff3f34'} 
-                  transparent 
-                  opacity={0.4 + Math.sin(Date.now() * 0.01) * 0.2} 
-                />
-              </mesh>
-            )}
-          </group>
-        );
-      })}
+                    const clampedX = state.previewX;
+                    const sameLineSlots = ALL_SLOTS.filter(s => 
+                      s.team === segment.team && 
+                      Math.abs(s.position[2] - segment.z) < 0.05
+                    );
+                    let nearestSlot = sameLineSlots[0];
+                    let minDistance = Infinity;
+                    sameLineSlots.forEach(s => {
+                      const dist = Math.abs(s.position[0] - clampedX);
+                      if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestSlot = s;
+                      }
+                    });
+
+                    if (nearestSlot) {
+                      if (onLineClick) {
+                        onLineClick(nearestSlot.id, clampedX);
+                      } else if (onSlotClick) {
+                        onSlotClick(nearestSlot.id);
+                      }
+                    }
+                  } : undefined}
+                >
+                  <planeGeometry args={[length, 1.2]} />
+                  <meshBasicMaterial 
+                    transparent
+                    opacity={0}
+                    depthWrite={false}
+                    side={THREE.DoubleSide}
+                  />
+                </mesh>
+
+                {/* Improved, high-end white & team-colored positioning preview circle */}
+                {isHovered && hoveredX !== null && selectedPlayerId && (() => {
+                  const state = getPositionState(hoveredX);
+
+                  if (state.isBlocked) {
+                    return (
+                      <group position={[state.previewX, 0.235, segment.z]}>
+                        {/* Red warning ring */}
+                        <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                          <ringGeometry args={[0.3, 0.38, 32]} />
+                          <meshBasicMaterial 
+                            color="#ff3f34" 
+                            transparent 
+                            opacity={0.95}
+                            side={THREE.DoubleSide}
+                            depthWrite={false}
+                            depthTest={false}
+                          />
+                        </mesh>
+                        <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                          <circleGeometry args={[0.29]} />
+                          <meshBasicMaterial 
+                            color="#ff3f34" 
+                            transparent 
+                            opacity={0.25}
+                            depthWrite={false}
+                            depthTest={false}
+                          />
+                        </mesh>
+                        {/* Red crossed planes forming a beautiful flat "X" inside the circle */}
+                        <group position={[0, 0.005, 0]}>
+                          <mesh rotation={[-Math.PI / 2, 0, Math.PI / 4]} renderOrder={101} raycast={() => null}>
+                            <planeGeometry args={[0.26, 0.05]} />
+                            <meshBasicMaterial color="#ff3f34" side={THREE.DoubleSide} depthWrite={false} depthTest={false} />
+                          </mesh>
+                          <mesh rotation={[-Math.PI / 2, 0, -Math.PI / 4]} renderOrder={101} raycast={() => null}>
+                            <planeGeometry args={[0.26, 0.05]} />
+                            <meshBasicMaterial color="#ff3f34" side={THREE.DoubleSide} depthWrite={false} depthTest={false} />
+                          </mesh>
+                        </group>
+                      </group>
+                    );
+                  }
+
+                  if (state.isSwap) {
+                    return (
+                      <group position={[state.previewX, 0.235, segment.z]}>
+                        {/* Enlarged green ring indicating swap target */}
+                        <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                          <ringGeometry args={[0.36, 0.44, 32]} />
+                          <meshBasicMaterial 
+                            color="#00e676" 
+                            transparent 
+                            opacity={0.95}
+                            side={THREE.DoubleSide}
+                            depthWrite={false}
+                            depthTest={false}
+                          />
+                        </mesh>
+                        <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                          <circleGeometry args={[0.35]} />
+                          <meshBasicMaterial 
+                            color="#00e676" 
+                            transparent 
+                            opacity={0.2}
+                            depthWrite={false}
+                            depthTest={false}
+                          />
+                        </mesh>
+                      </group>
+                    );
+                  }
+
+                  return (
+                    <group position={[state.previewX, 0.235, segment.z]}>
+                      <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                        <ringGeometry args={[0.3, 0.38, 32]} />
+                        <meshBasicMaterial 
+                          color="#ffffff" 
+                          transparent 
+                          opacity={0.95}
+                          side={THREE.DoubleSide}
+                          depthWrite={false}
+                          depthTest={false}
+                        />
+                      </mesh>
+                      <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                        <circleGeometry args={[0.29]} />
+                        <meshBasicMaterial 
+                          color={segment.color} 
+                          transparent 
+                          opacity={0.4}
+                          depthWrite={false}
+                          depthTest={false}
+                        />
+                      </mesh>
+                      <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={() => null}>
+                        <ringGeometry args={[0.38, 0.45, 32]} />
+                        <meshBasicMaterial 
+                          color="#ffffff" 
+                          transparent 
+                          opacity={0.4 + Math.sin(Date.now() * 0.015) * 0.25} 
+                          depthWrite={false}
+                          depthTest={false}
+                        />
+                      </mesh>
+                    </group>
+                  );
+                })()}
+              </group>
+            );
+          })}
+        </group>
+      )}
     </group>
   );
 };

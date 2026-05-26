@@ -83,6 +83,71 @@ const AppContent: React.FC = () => {
 
   const [isMuted, setIsMuted] = useState(false);
   const [sfxVolume, setSfxVolume] = useState(0.5);
+  const [debugTouchCount, setDebugTouchCount] = useState(0);
+
+  const [debugMouseState, setDebugMouseState] = useState<'Nenhum' | 'Esquerdo' | 'Direito' | 'Meio'>('Nenhum');
+  const [debugButtons, setDebugButtons] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleTouch = (e: TouchEvent) => {
+      const len = e.touches ? e.touches.length : 0;
+      setDebugTouchCount(len);
+      console.log(`%c[Telemetry TOUCH] ${e.type} | count: ${len}`, 'color: #00d2ff; font-weight: bold;');
+    };
+    const handleMouseDown = (e: MouseEvent) => {
+      setDebugButtons(e.buttons || 0);
+      console.log(`%c[Telemetry MOUSE] mousedown | button: ${e.button} | buttons: ${e.buttons} | clientX: ${e.clientX} | clientY: ${e.clientY}`, 'color: #ff9f43; font-weight: bold;');
+      if (e.button === 0) setDebugMouseState('Esquerdo');
+      else if (e.button === 2) setDebugMouseState('Direito');
+      else if (e.button === 1) setDebugMouseState('Meio');
+    };
+    const handleMouseUp = (e: MouseEvent) => {
+      setDebugButtons(e.buttons || 0);
+      console.log(`%c[Telemetry MOUSE] mouseup | button: ${e.button} | buttons: ${e.buttons}`, 'color: #ff9f43; font-weight: bold;');
+      setDebugMouseState('Nenhum');
+    };
+    const handlePointerDown = (e: PointerEvent) => {
+      setDebugButtons(e.buttons || 0);
+      console.log(`%c[Telemetry POINTER] pointerdown | id: ${e.pointerId} | type: ${e.pointerType} | button: ${e.button} | buttons: ${e.buttons}`, 'color: #10ac84; font-weight: bold;');
+    };
+    const handlePointerUp = (e: PointerEvent) => {
+      setDebugButtons(e.buttons || 0);
+      console.log(`%c[Telemetry POINTER] pointerup | id: ${e.pointerId} | type: ${e.pointerType} | button: ${e.button} | buttons: ${e.buttons}`, 'color: #10ac84; font-weight: bold;');
+    };
+    const handlePointerMove = (e: PointerEvent) => {
+      if (e.buttons !== undefined) {
+        setDebugButtons(e.buttons);
+      }
+    };
+    const handleContextMenu = (e: MouseEvent) => {
+      console.log(`%c[Telemetry CONTEXTMENU] contextmenu fired`, 'color: #ee5253; font-weight: bold; background: #2f0000;');
+    };
+
+    window.addEventListener('touchstart', handleTouch, { passive: true });
+    window.addEventListener('touchmove', handleTouch, { passive: true });
+    window.addEventListener('touchend', handleTouch, { passive: true });
+    window.addEventListener('touchcancel', handleTouch, { passive: true });
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouch);
+      window.removeEventListener('touchmove', handleTouch);
+      window.removeEventListener('touchend', handleTouch);
+      window.removeEventListener('touchcancel', handleTouch);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -184,12 +249,30 @@ const AppContent: React.FC = () => {
   // Gate só bloqueia quando mobile COM suporte a fullscreen e ainda não entrou
   const showFullscreenGate = isMobile && supportsFullscreen && !isFullscreen;
 
-  // Dynamic Google Font Injection
+  // Dynamic Google Font Injection and Multi-Touch Tracking
   useEffect(() => {
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
+
+    if (typeof window !== 'undefined') {
+      (window as any).activeTouchesCount = 0;
+      const handleTouch = (e: TouchEvent) => {
+        (window as any).activeTouchesCount = e.touches ? e.touches.length : 0;
+      };
+      window.addEventListener('touchstart', handleTouch, { passive: true });
+      window.addEventListener('touchend', handleTouch, { passive: true });
+      window.addEventListener('touchcancel', handleTouch, { passive: true });
+
+      return () => {
+        document.head.removeChild(link);
+        window.removeEventListener('touchstart', handleTouch);
+        window.removeEventListener('touchend', handleTouch);
+        window.removeEventListener('touchcancel', handleTouch);
+      };
+    }
+
     return () => {
       document.head.removeChild(link);
     };
@@ -283,7 +366,11 @@ const AppContent: React.FC = () => {
       )}
 
       {/* 3D Game Canvas */}
-      <div className="absolute inset-0 z-0">
+      <div 
+        className="absolute inset-0 z-0" 
+        style={{ touchAction: 'none' }}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         {phase !== GamePhase.MENU && (
           <Scene 
             phase={phase}
@@ -545,6 +632,7 @@ const AppContent: React.FC = () => {
           onClose={() => setSystemMessage(null)}
         />
       )}
+
     </div>
   );
 };

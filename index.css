@@ -271,36 +271,154 @@ input[type="range"]::-moz-range-thumb:hover {
   }
 }
 
+/* Custom Blocker labels responsive states */
+.hud-blocker-desktop {
+  display: inline;
+}
+.hud-blocker-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .hud-confirm-btn {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    font-size: 10px !important;
+  }
+  .hud-confirm-btn svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    LANDSCAPE COMPRESS & SCALING FOR MOBILE (max-height: 500px)
 ───────────────────────────────────────────────────────────────────────────── */
 @media (max-height: 500px) {
-  /* Scale down the bottom player card */
-  .hud-player-card {
-    padding: 10px !important;
-    border-radius: 16px !important;
+  /* Scale down the bottom player card and set narrow width to prevent obstruction */
+  .hud-player-card,
+  .reduced-player-card {
+    width: 220px !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+    border-width: 1px !important;
+  }
+
+  .hud-prep-container {
+    padding: 6px !important;
   }
   
-  .hud-player-card .space-y-3,
-  .hud-player-card .space-y-4 {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    gap: 6px !important;
+  .hud-player-card .gap-2,
+  .hud-player-card .gap-3,
+  .hud-player-card .gap-4 {
+    gap: 4px !important;
   }
   
-  .hud-player-card h3 {
+  /* Reduce header player text size */
+  .hud-player-card .hud-player-title {
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+  }
+  
+  .hud-player-card .w-10.h-10 {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
     font-size: 11px !important;
   }
   
   .hud-player-card input[type="range"] {
-    height: 16px !important;
+    height: 12px !important;
   }
   
-  .hud-player-card button {
+  /* Shrink utility buttons (chevrons, captains, captain badge) but NOT action buttons! */
+  .hud-player-card button:not(.hud-action-btn),
+  .hud-player-card .hud-captain-badge {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    border-radius: 6px !important;
+    font-size: 7.5px !important;
+  }
+
+  /* Specific styling for the blocker button itself */
+  .hud-player-card .hud-blocker-btn {
+    padding-top: 3.5px !important;
+    padding-bottom: 3.5px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    font-size: 8px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Compact the blocker block spacing */
+  .hud-player-card .hud-blocker-container {
+    margin-top: 0px !important;
+    padding-top: 0px !important;
+  }
+  
+  /* Compact angle adjust chevrons */
+  .hud-player-card .flex.items-center.gap-3 button {
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+  }
+  
+  /* Shrink all SVGs in HUD card to keep layout aligned */
+  .hud-player-card svg,
+  .reduced-player-card svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+  
+  /* Hide verbose text descriptions on mobile to maximize field space */
+  .hud-player-card p,
+  .hud-player-card span.italic {
+    display: none !important;
+  }
+
+  /* Reduce title and angle text sizes */
+  .hud-player-card .hud-title-text {
+    font-size: 8px !important;
+  }
+  .hud-player-card .hud-angle-text {
+    font-size: 8px !important;
+  }
+  .hud-player-card .hud-angle-text span:first-child {
+    font-size: 8px !important;
+  }
+  .hud-player-card .hud-angle-text span:last-child {
+    font-size: 8px !important;
+    padding: 1px 3px !important;
+  }
+
+  /* Blocker toggle responsive labels switching */
+  .hud-blocker-desktop {
+    display: none !important;
+  }
+  .hud-blocker-mobile {
+    display: inline !important;
+  }
+  
+  /* Compact recenter and confirm tactics buttons */
+  .hud-recenter-btn {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+  }
+  .hud-confirm-btn {
     padding-top: 6px !important;
     padding-bottom: 6px !important;
-    border-radius: 8px !important;
-    font-size: 8px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    font-size: 9px !important;
+  }
+  .hud-confirm-btn svg {
+    width: 11px !important;
+    height: 11px !important;
   }
 
   /* Compact top scoreboard & broadcast timer */
@@ -318,16 +436,6 @@ input[type="range"]::-moz-range-thumb:hover {
     padding-right: 10px !important;
   }
 
-  /* Compact confirm tactics button */
-  .hud-confirm-btn {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    border-radius: 12px !important;
-    font-size: 10px !important;
-  }
-
   /* Make Main Menu title smaller in landscape */
   .fullscreen-gate h1 {
     font-size: 2.2rem !important;
@@ -337,5 +445,14 @@ input[type="range"]::-moz-range-thumb:hover {
   .hidden.sm\:block {
     display: none !important;
   }
-
 }
+
+/* Disable double-tap-to-zoom globally on mobile and guarantee instant tap responses */
+.hud-prep-container, .hud-scoreboard-pill, .hud-timer-pill, .reduced-player-card, .hud-player-card, button {
+  touch-action: manipulation !important;
+}
+
+canvas {
+  touch-action: none !important;
+}
+

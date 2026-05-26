@@ -169,9 +169,19 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
             <p>
               🛡️ <strong>Preparação Tática:</strong> No início da partida e em resets gerais, você tem um tempo limite de **2 minutos** (120 segundos) para arrastar e soltar seus pinos de botão nos slots verdes brilhantes e montar sua muralha tática.
             </p>
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-350 text-[11px] leading-snug flex items-start gap-2">
-              <span className="text-amber-400 font-extrabold mt-0.5">⚠️</span>
-              <span><strong>LIMITE DE ATAQUE:</strong> É permitido posicionar **no máximo 3 jogadores de linha** na zona de ataque (somando a linha de ataque e a linha extra no campo do adversário). Isso evita o acúmulo excessivo de atacantes ("swarms") e ricochetes que prejudicam o goleiro!</span>
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-350 text-[11px] leading-snug flex flex-col gap-2">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-extrabold mt-0.5">⚠️</span>
+                <span><strong>FORMAÇÃO OBRIGATÓRIA:</strong> É obrigatório posicionar pelo menos **1 jogador de linha no ataque** e pelo menos **1 jogador de linha no meio-campo**.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-extrabold mt-0.5">🛡️</span>
+                <span><strong>LINHA EXTRA DEFENSIVA:</strong> Não se pode colocar mais que **2 jogadores de defesa** na sua linha extra de defesa (logo à frente da área).</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-extrabold mt-0.5">🔥</span>
+                <span><strong>LIMITE DE ATAQUE:</strong> É permitido posicionar no máximo **3 jogadores de linha** na zona de ataque (linha de ataque + linha extra do adversário).</span>
+              </div>
             </div>
             <p>
               ⚽ <strong>Regras após sofrer gols (Multiplayer):</strong>
