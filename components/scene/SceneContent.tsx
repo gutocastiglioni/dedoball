@@ -873,7 +873,7 @@ export const SceneContent: React.FC<SceneContentProps> = ({
     let activeSwapId: string | null = null;
     const playerA = selectedPlayerId ? (homePlayers.find(p => p.id === selectedPlayerId) || awayPlayers.find(p => p.id === selectedPlayerId)) : null;
 
-    if ((phase === GamePhase.PREPARATION || captainMoveMode !== null) && hoveredSegmentId !== null && hoveredX !== null && selectedPlayerId && playerA) {
+    if (captainMoveMode !== null && hoveredSegmentId !== null && hoveredX !== null && selectedPlayerId && playerA) {
       const segment = LINE_SEGMENTS.find(s => s.id === hoveredSegmentId);
       if (segment) {
         const activeTeamPlayers = segment.team === 'HOME' ? homePlayers : awayPlayers;
@@ -901,17 +901,19 @@ export const SceneContent: React.FC<SceneContentProps> = ({
     const segment = LINE_SEGMENTS.find(s => s.id === hoveredSegmentId);
     if (segment) {
       const activeTeamPlayers = segment.team === 'HOME' ? homePlayers : awayPlayers;
-      const otherPlayersOnLine = activeTeamPlayers.filter((pl: any) => 
+      const allOtherPlayersOnLine = activeTeamPlayers.filter((pl: any) => 
         pl.id !== selectedPlayerId && 
-        pl.number !== 1 && 
         Math.abs(pl.position[2] - segment.z) < 0.1
       );
+      const otherLinePlayersOnLine = allOtherPlayersOnLine.filter((pl: any) => pl.number !== 1);
       const previewX = Math.max(segment.xStart + 0.35, Math.min(segment.xEnd - 0.35, hoveredX));
-      const swapTarget = otherPlayersOnLine.find((pl: any) => Math.abs(previewX - pl.position[0]) < 0.35);
+      const swapTarget = (captainMoveMode !== null)
+        ? otherLinePlayersOnLine.find((pl: any) => Math.abs(previewX - pl.position[0]) < 0.35)
+        : null;
       if (swapTarget) {
         swapPlayerId = swapTarget.id;
       }
-      const overlaps = otherPlayersOnLine.some((pl: any) => Math.abs(previewX - pl.position[0]) < 0.7);
+      const overlaps = allOtherPlayersOnLine.some((pl: any) => Math.abs(previewX - pl.position[0]) < 0.7);
       const isBlocked = overlaps && !swapTarget; // Blocked only if not swapping!
       if (!isBlocked) {
         previewPosition = [previewX, 0.2, segment.z];
@@ -1019,7 +1021,7 @@ export const SceneContent: React.FC<SceneContentProps> = ({
                 if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
                 const activeGKTeam = 
                   ((Math.hypot(ball.velocity[0], ball.velocity[2]) < 0.1 || phase !== GamePhase.ACTION) && isGK && (isMultiplayer ? p.team === myRole : p.team === 'HOME') && gameMode === 'manual' && captainMoveMode === null) ? p.team : (phase === GamePhase.PREPARATION && isGK && gameMode !== 'manual') ? p.team :
-                  (captainMoveMode !== null && isGK && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode) && gameMode !== 'manual') ? p.team :
+                  (captainMoveMode !== null && isGK && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode)) ? p.team :
                   (gkMoveActiveTeam !== null && isGK && p.team === gkMoveActiveTeam && (!isMultiplayer || myRole === gkMoveActiveTeam) && gameMode !== 'manual') ? p.team : null;
 
                 if (activeGKTeam) {
@@ -1047,7 +1049,8 @@ export const SceneContent: React.FC<SceneContentProps> = ({
                 e.stopPropagation();
 
                 const playerA = selectedPlayerId ? (homePlayers.find(pl => pl.id === selectedPlayerId) || awayPlayers.find(pl => pl.id === selectedPlayerId)) : null;
-                const isSwapTarget = selectedPlayerId && 
+                const isSwapTarget = (captainMoveMode !== null) &&
+                  selectedPlayerId && 
                   selectedPlayerId !== p.id && 
                   p.slotId && 
                   p.number !== 1 && 
@@ -1109,7 +1112,7 @@ export const SceneContent: React.FC<SceneContentProps> = ({
                 if (typeof window !== 'undefined' && (window as any).activeTouchesCount > 1) return;
                 const activeGKTeam = 
                   ((Math.hypot(ball.velocity[0], ball.velocity[2]) < 0.1 || phase !== GamePhase.ACTION) && isGK && (isMultiplayer ? p.team === myRole : p.team === 'HOME') && gameMode === 'manual' && captainMoveMode === null) ? p.team : (phase === GamePhase.PREPARATION && isGK && gameMode !== 'manual') ? p.team :
-                  (captainMoveMode !== null && isGK && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode) && gameMode !== 'manual') ? p.team :
+                  (captainMoveMode !== null && isGK && p.team === captainMoveMode && (!isMultiplayer || myRole === captainMoveMode)) ? p.team :
                   (gkMoveActiveTeam !== null && isGK && p.team === gkMoveActiveTeam && (!isMultiplayer || myRole === gkMoveActiveTeam) && gameMode !== 'manual') ? p.team : null;
 
                 if (activeGKTeam) {
@@ -1137,7 +1140,8 @@ export const SceneContent: React.FC<SceneContentProps> = ({
                 e.stopPropagation();
 
                 const playerA = selectedPlayerId ? (homePlayers.find(pl => pl.id === selectedPlayerId) || awayPlayers.find(pl => pl.id === selectedPlayerId)) : null;
-                const isSwapTarget = selectedPlayerId && 
+                const isSwapTarget = (captainMoveMode !== null) &&
+                  selectedPlayerId && 
                   selectedPlayerId !== p.id && 
                   p.slotId && 
                   p.number !== 1 && 

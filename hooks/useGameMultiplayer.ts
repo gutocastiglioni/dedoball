@@ -648,12 +648,15 @@ export const useGameMultiplayer = ({
           if (isPrepRoomStatus || isPrepGamePhase) {
             console.log("%c[Multiplayer] Both players ready! Starting/resuming game...", "color: #2ecc71; font-weight: bold;");
             
-            const nextStatus = 'Partida Iniciada! Vez do Time Casa (Você).';
+            const nextTurn = room.gameState?.turn || 'HOME';
+            const nextStatus = nextTurn === 'HOME'
+              ? 'Partida Iniciada! Vez do Time Casa.'
+              : 'Partida Iniciada! Vez do Time Visitante.';
             
             const freshBall: BallState = {
               position: [0, 0.11, 0],
               velocity: [0, 0, 0],
-              possession: 'HOME',
+              possession: isPrepRoomStatus ? 'HOME' : nextTurn,
               lastTouchedByPlayerId: null,
               isKickoff: true,
               speedMultiplier: 1
@@ -673,7 +676,7 @@ export const useGameMultiplayer = ({
                 homeFlicksRemaining: 3,
                 awayFlicksRemaining: 3,
                 phase: GamePhase.ACTION,
-                actionStatus: nextStatus,
+                actionStatus: 'Partida Iniciada! Vez do Time Casa.',
                 lastGoalScorer: room.gameState?.lastGoalScorer || null,
                 consecutiveGoalsCount: room.gameState?.consecutiveGoalsCount || 0,
                 gkMoveActiveTeam: null,

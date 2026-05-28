@@ -599,6 +599,11 @@ export const useGameTransitions = ({
 
   // Handle Ball Stopped
   const handleBallStopped = useCallback((stoppedPosition: [number, number, number]) => {
+    if (phaseRef.current === GamePhase.PREPARATION || phaseRef.current === GamePhase.GAME_OVER) {
+      console.log("%c[Game Loop] Ball stopped but phase is PREPARATION or GAME_OVER. Ignoring.", "color: #7f8c8d;");
+      return;
+    }
+
     const currentHomeFlicks = homeFlicksRemainingRef.current;
     const currentAwayFlicks = awayFlicksRemainingRef.current;
     
@@ -632,7 +637,7 @@ export const useGameTransitions = ({
     let nextAwayFlicks = currentAwayFlicks;
     let nextTurnValue = turnRef.current;
     let nextGameTimeValue = Math.floor((gameTimeSecondsRef.current / matchDurationRef.current) * 90);
-    let nextPhaseValue = phaseRef.current;
+    let nextPhaseValue: GamePhase = phaseRef.current;
     let nextStatusValue = actionStatus;
     let nextScoresValue = scoresRef.current;
 

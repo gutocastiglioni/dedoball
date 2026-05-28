@@ -359,7 +359,15 @@ const Pitch: React.FC<PitchProps> = ({
 
             const getPositionState = (x: number) => {
               const basePX = Math.max(segment.xStart + 0.35, Math.min(segment.xEnd - 0.35, x));
-              const swapTarget = otherPlayersOnLine.find((p: any) => Math.abs(basePX - p.position[0]) < 0.35);
+              const allOtherPlayersOnLine = activeTeamPlayers.filter((p: any) => 
+                p.id !== selectedPlayerId && 
+                Math.abs(p.position[2] - segment.z) < 0.1
+              );
+              const otherLinePlayersOnLine = allOtherPlayersOnLine.filter((p: any) => p.number !== 1);
+              const swapTarget = (captainMoveMode !== null) 
+                ? otherLinePlayersOnLine.find((p: any) => Math.abs(basePX - p.position[0]) < 0.35)
+                : null;
+
               if (swapTarget) {
                 return {
                   previewX: swapTarget.position[0],
@@ -368,7 +376,7 @@ const Pitch: React.FC<PitchProps> = ({
                   swapPlayerId: swapTarget.id
                 };
               }
-              const overlaps = otherPlayersOnLine.some((p: any) => Math.abs(basePX - p.position[0]) < 0.7);
+              const overlaps = allOtherPlayersOnLine.some((p: any) => Math.abs(basePX - p.position[0]) < 0.7);
               if (overlaps) {
                 return {
                   previewX: basePX,

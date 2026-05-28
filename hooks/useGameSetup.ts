@@ -243,6 +243,7 @@ export const useGameSetup = ({
         gkMoveActiveTeamRef.current = null;
         setGkMoveTimer(null);
         gkMoveTimerRef.current = null;
+        setSelectedPlayerId(null);
       });
 
       // Sync to Firebase if multiplayer
@@ -275,29 +276,58 @@ export const useGameSetup = ({
 
       const teamPlayers = concedingTeam === 'HOME' ? homePlayersRef.current : awayPlayersRef.current;
       const movingPlayer = teamPlayers.find(p => p.id === playerId);
-      const canMove = movingPlayer?.isCaptain;
-      if (!canMove) return; // Only captain
+      const isGK = movingPlayer?.number === 1;
+      const canMove = movingPlayer?.isCaptain || isGK;
+      if (!canMove) return;
 
       const targetSlot = ALL_SLOTS.find(s => s.id === slotId);
       if (!targetSlot) return;
       if (targetSlot.team !== concedingTeam) return;
-      if (targetSlot.lineType === 'GK') return;
+      
+      if (isGK) {
+        if (targetSlot.lineType !== 'GK' && gameMode !== 'manual') return;
+      } else {
+        if (targetSlot.lineType === 'GK') return;
+      }
 
       const targetX = customX !== undefined ? customX : targetSlot.position[0];
       const targetPos: [number, number, number] = [targetX, 0.2, targetSlot.position[2]];
 
-      const isOccupied = teamPlayers.some(p => 
+      const conflictPlayer = teamPlayers.find(p => 
         p.id !== playerId && 
         p.slotId !== null && 
         Math.abs(p.position[2] - targetPos[2]) < 0.1 &&
         Math.abs(p.position[0] - targetPos[0]) < 0.7
       );
-      if (isOccupied) return;
+
+      const isSwapAllowed = conflictPlayer && 
+        movingPlayer && 
+        movingPlayer.number !== 1 && 
+        conflictPlayer.number !== 1;
+
+      if (conflictPlayer && !isSwapAllowed) {
+        return; // GK cannot swap or be swapped
+      }
 
       // Check if placing the player here exceeds the 3 attacking players limit
-      const simulatedPlayers = teamPlayers.map(p =>
-        p.id === playerId ? { ...p, slotId, position: targetPos } : p
-      );
+      const simulatedPlayers = teamPlayers.map(p => {
+        if (p.id === playerId) {
+          return { ...p, slotId, position: targetPos };
+        }
+        if (isSwapAllowed && conflictPlayer && p.id === conflictPlayer.id) {
+          const swapSlotId = movingPlayer.slotId;
+          const swapPos: [number, number, number] = movingPlayer.position
+            ? [...movingPlayer.position]
+            : [0, 0.2, concedingTeam === 'HOME' ? -5.5 : 5.5];
+          return {
+            ...p,
+            slotId: swapSlotId ?? null,
+            position: swapPos
+          };
+        }
+        return p;
+      });
+
       const attCount = simulatedPlayers.filter(p => {
         if (p.number === 1) return false; // exclude GK
         if (!p.slotId) return false;
@@ -322,9 +352,23 @@ export const useGameSetup = ({
       }
 
       const setPlayers = concedingTeam === 'HOME' ? setHomePlayers : setAwayPlayers;
-      setPlayers(prev => prev.map(p =>
-        p.id === playerId ? { ...p, slotId, position: targetPos } : p
-      ));
+      setPlayers(prev => prev.map(p => {
+        if (p.id === playerId) {
+          return { ...p, slotId, position: targetPos };
+        }
+        if (isSwapAllowed && conflictPlayer && p.id === conflictPlayer.id) {
+          const swapSlotId = movingPlayer.slotId;
+          const swapPos: [number, number, number] = movingPlayer.position
+            ? [...movingPlayer.position]
+            : [0, 0.2, concedingTeam === 'HOME' ? -5.5 : 5.5];
+          return {
+            ...p,
+            slotId: swapSlotId ?? null,
+            position: swapPos
+          };
+        }
+        return p;
+      }));
       setSelectedPlayerId(null);
       return;
     }
@@ -354,122 +398,115 @@ export const useGameSetup = ({
     if (isHome && targetSlot.team !== 'HOME') return;
     if (!isHome && targetSlot.team !== 'AWAY') return;
 
-    const setPlayers = isHome ? setHomePlayers : setAwayPlayers;
+    const targetX = customX !== undefined ? customX : targetSlot.position[0];
+    const targetPos: [number, number, number] = [targetX, 0.2, targetSlot.position[2]];
 
-    setPlayers(prev => {
-      const targetX = customX !== undefined ? customX : targetSlot.position[0];
-      const targetPos: [number, number, number] = [targetX, 0.2, targetSlot.position[2]];
+    const teamPlayers = isHome ? homePlayersRef.current : awayPlayersRef.current;
 
-      const conflictPlayer = prev.find(p => 
-        p.id !== playerId && 
-        p.slotId !== null && 
-        Math.abs(p.position[2] - targetPos[2]) < 0.1 &&
-        Math.abs(p.position[0] - targetPos[0]) < 0.7
-      );
+    // 1. Conflict checking
+    const conflictPlayer = teamPlayers.find(p => 
+      p.id !== playerId && 
+      p.slotId !== null && 
+      Math.abs(p.position[2] - targetPos[2]) < 0.1 &&
+      Math.abs(p.position[0] - targetPos[0]) < 0.7
+    );
 
-      const isDefensiveSlot = (slotPos: [number, number, number]) =>
-        isHome ? slotPos[2] < 0 : slotPos[2] > 0;
+    if (conflictPlayer) {
+      return; // Overlap blocked, keep selection!
+    }
 
-      const simulatedPlayers = prev.map(p => {
-        if (p.id === playerId) {
-          const safeActionType =
-            p.actionType === 'SHOOT' && isDefensiveSlot(targetSlot.position)
-              ? 'CROSS' as ActionType
-              : p.actionType;
-          return { ...p, slotId, position: targetPos, actionType: safeActionType };
-        }
-        if (conflictPlayer && p.id === conflictPlayer.id) {
-          const currentMovingPlayer = prev.find(mp => mp.id === playerId)!;
-          const swapSlotId = currentMovingPlayer.slotId;
-          const swapPos: [number, number, number] = currentMovingPlayer.position
-            ? [...currentMovingPlayer.position]
-            : [0, 0.2, isHome ? -5.5 : 5.5];
-          const safeActionType =
-            p.actionType === 'SHOOT' && isDefensiveSlot(swapPos)
-              ? 'CROSS' as ActionType
-              : p.actionType;
-          return {
-            ...p,
-            slotId: swapSlotId ?? null,
-            position: swapPos,
-            actionType: safeActionType
-          };
-        }
-        return p;
-      });
+    const isDefensiveSlot = (slotPos: [number, number, number]) =>
+      isHome ? slotPos[2] < 0 : slotPos[2] > 0;
 
-      const attCount = simulatedPlayers.filter(p => {
-        if (p.number === 1) return false; // exclude GK
-        const z = p.position[2];
-        if (isHome) {
-          return Math.abs(z - 3.93) < 0.1 || Math.abs(z - 6.7) < 0.1;
-        } else {
-          return Math.abs(z - (-3.93)) < 0.1 || Math.abs(z - (-6.7)) < 0.1;
-        }
-      }).length;
-
-      if (attCount > 3) {
-        if (isHome) {
-          setSystemMessage({
-            title: 'Limite de Atacantes Excedido',
-            message: 'A regra do jogo permite no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra adversária). Mova um atacante para trás antes de posicionar outro jogador no ataque.',
-            type: 'warning'
-          });
-        }
-        return prev;
+    // 2. Build simulated players array
+    const simulatedPlayers = teamPlayers.map(p => {
+      if (p.id === playerId) {
+        const safeActionType =
+          p.actionType === 'SHOOT' && isDefensiveSlot(targetSlot.position)
+            ? 'CROSS' as ActionType
+            : p.actionType;
+        return { ...p, slotId, position: targetPos, actionType: safeActionType };
       }
-
-      if (attCount < 1) {
-        if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
-          setSystemMessage({
-            title: 'Ataque Obrigatório',
-            message: 'Sua tática precisa ter pelo menos 1 jogador no ataque. Avance outro jogador para o ataque antes de tirar este.',
-            type: 'warning'
-          });
-        }
-        return prev;
-      }
-
-      const midCount = simulatedPlayers.filter(p => {
-        if (p.number === 1) return false; // exclude GK
-        const z = p.position[2];
-        if (isHome) {
-          return Math.abs(z - (-2.36)) < 0.1 || Math.abs(z - 0.79) < 0.1;
-        } else {
-          return Math.abs(z - 2.36) < 0.1 || Math.abs(z - (-0.79)) < 0.1;
-        }
-      }).length;
-
-      if (midCount < 1) {
-        if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
-          setSystemMessage({
-            title: 'Meio-campo Obrigatório',
-            message: 'Sua tática precisa ter pelo menos 1 jogador no meio-campo. Recue outro jogador para o meio antes de tirar este.',
-            type: 'warning'
-          });
-        }
-        return prev;
-      }
-
-      const extraDefCount = simulatedPlayers.filter(p => {
-        if (p.number === 1) return false; // exclude GK
-        const z = p.position[2];
-        return Math.abs(z - (isHome ? -6.7 : 6.7)) < 0.1;
-      }).length;
-
-      if (extraDefCount > 2) {
-        if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
-          setSystemMessage({
-            title: 'Limite da Linha Extra Defensiva Excedido',
-            message: 'A regra do jogo permite no máximo 2 jogadores de linha na sua linha extra defensiva. Mova um defensor para fora da linha extra antes de colocar outro.',
-            type: 'warning'
-          });
-        }
-        return prev;
-      }
-
-      return simulatedPlayers;
+      return p;
     });
+
+    // 3. Validation: Attacker Count Limit
+    const attCount = simulatedPlayers.filter(p => {
+      if (p.number === 1) return false; // exclude GK
+      const z = p.position[2];
+      if (isHome) {
+        return Math.abs(z - 3.93) < 0.1 || Math.abs(z - 6.7) < 0.1;
+      } else {
+        return Math.abs(z - (-3.93)) < 0.1 || Math.abs(z - (-6.7)) < 0.1;
+      }
+    }).length;
+
+    if (attCount > 3) {
+      if (isHome) {
+        setSystemMessage({
+          title: 'Limite de Atacantes Excedido',
+          message: 'A regra do jogo permite no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra adversária). Mova um atacante para trás antes de posicionar outro jogador no ataque.',
+          type: 'warning'
+        });
+      }
+      return; // Keep selection!
+    }
+
+    // 4. Validation: Mandatory Attacker (at least 1)
+    if (attCount < 1) {
+      if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
+        setSystemMessage({
+          title: 'Ataque Obrigatório',
+          message: 'Sua tática precisa ter pelo menos 1 jogador no ataque. Avance outro jogador para o ataque antes de tirar este.',
+          type: 'warning'
+        });
+      }
+      return; // Keep selection!
+    }
+
+    // 5. Validation: Mandatory Midfielder (at least 1)
+    const midCount = simulatedPlayers.filter(p => {
+      if (p.number === 1) return false; // exclude GK
+      const z = p.position[2];
+      if (isHome) {
+        return Math.abs(z - (-2.36)) < 0.1 || Math.abs(z - 0.79) < 0.1;
+      } else {
+        return Math.abs(z - 2.36) < 0.1 || Math.abs(z - (-0.79)) < 0.1;
+      }
+    }).length;
+
+    if (midCount < 1) {
+      if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
+        setSystemMessage({
+          title: 'Meio-campo Obrigatório',
+          message: 'Sua tática precisa ter pelo menos 1 jogador no meio-campo. Recue outro jogador para o meio antes de tirar este.',
+          type: 'warning'
+        });
+      }
+      return; // Keep selection!
+    }
+
+    // 6. Validation: Extra Defensive Line Limit (at most 2)
+    const extraDefCount = simulatedPlayers.filter(p => {
+      if (p.number === 1) return false; // exclude GK
+      const z = p.position[2];
+      return Math.abs(z - (isHome ? -6.7 : 6.7)) < 0.1;
+    }).length;
+
+    if (extraDefCount > 2) {
+      if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
+        setSystemMessage({
+          title: 'Limite da Linha Extra Defensiva Excedido',
+          message: 'A regra do jogo permite no máximo 2 jogadores de linha na sua linha extra defensiva. Mova um defensor para fora da linha extra antes de colocar outro.',
+          type: 'warning'
+        });
+      }
+      return; // Keep selection!
+    }
+
+    // All validations passed! Update state and reset selection.
+    const setPlayers = isHome ? setHomePlayers : setAwayPlayers;
+    setPlayers(simulatedPlayers);
     setSelectedPlayerId(null);
   };
 

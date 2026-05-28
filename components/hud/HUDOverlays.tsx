@@ -418,40 +418,61 @@ const HUDOverlays: React.FC = () => {
                 <Shield size={14} className="text-amber-400 animate-pulse" />
               </div>
 
-              <div className="bg-zinc-900/95 border border-amber-800/50 rounded-2xl md:rounded-3xl p-4 md:p-5 shadow-[0_0_40px_rgba(217,119,6,0.25)]">
+              <div className={isMobile 
+                ? "bg-zinc-900/95 border border-amber-800/50 rounded-xl p-2.5 shadow-lg w-full flex flex-col gap-2 pointer-events-auto"
+                : "bg-zinc-900/95 border border-amber-800/50 rounded-2xl md:rounded-3xl p-4 md:p-5 shadow-[0_0_40px_rgba(217,119,6,0.25)] pointer-events-auto"
+              }>
                 {/* Instruction row */}
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-amber-950/60 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
-                    <Shield size={18} className="text-amber-400" />
-                  </div>
-                  <p className="text-[11px] md:text-xs text-zinc-300 font-semibold leading-relaxed">
-                    Arraste seu <span className="text-amber-400 font-black">Goleiro</span> para qualquer slot de seu campo ou confirme para mantê-lo estático na posição atual.
+                {isMobile ? (
+                  <p className="text-[10px] text-zinc-300 font-semibold text-center leading-tight">
+                    Arraste seu <span className="text-amber-400 font-black">Goleiro</span> ou confirme a posição.
                   </p>
-                </div>
-
-                {/* Pulsing countdown timer for goalkeeper repositioning */}
-                {gkMoveTimer !== null && (
-                  <div className={`flex items-center justify-center gap-1.5 px-3 py-2 mb-4 rounded-xl border font-black text-xs transition-all duration-300 ${
-                    gkMoveTimer <= 3 
-                      ? 'bg-rose-950/80 border-rose-800/50 text-rose-450 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.15)]' 
-                      : 'bg-amber-955/60 border-amber-800/40 text-amber-400 animate-pulse'
-                  }`}>
-                    <Hourglass size={13} className={gkMoveTimer <= 3 ? 'animate-spin text-rose-500' : 'animate-spin text-amber-500'} style={{ animationDuration: '2.5s' }} />
-                    <span>TEMPO RESTANTE: {gkMoveTimer}s</span>
+                ) : (
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-xl bg-amber-950/60 border border-amber-700/40 flex items-center justify-center flex-shrink-0">
+                      <Shield size={18} className="text-amber-400" />
+                    </div>
+                    <p className="text-[11px] md:text-xs text-zinc-300 font-semibold leading-relaxed">
+                      Arraste seu <span className="text-amber-400 font-black">Goleiro</span> para qualquer slot de seu campo ou confirme para mantê-lo estático na posição atual.
+                    </p>
                   </div>
                 )}
 
-                {/* Confirm button */}
-                <button
-                  onClick={() => {
-                    SoundManager.playUIClick();
-                    confirmGkPosition();
-                  }}
-                  className="w-full py-3.5 rounded-xl md:rounded-2xl font-black tracking-widest uppercase text-xs flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-[0_4px_25px_rgba(217,119,6,0.45)] hover:shadow-[0_4px_30px_rgba(217,119,6,0.6)] active:scale-98"
-                >
-                  <CheckCircle2 size={15} />
-                  CONFIRMAR POSIÇÃO
-                </button>
+                <div className={isMobile ? "flex items-center gap-2 w-full" : "flex flex-col gap-4"}>
+                  {/* Pulsing countdown timer for goalkeeper repositioning */}
+                  {gkMoveTimer !== null && (
+                    <div className={isMobile
+                      ? `flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border font-black text-[9px] transition-all duration-300 ${
+                          gkMoveTimer <= 3 
+                            ? 'bg-rose-950/80 border-rose-800/50 text-rose-450 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.15)]' 
+                            : 'bg-amber-955/60 border-amber-800/40 text-amber-400 animate-pulse'
+                        } flex-1`
+                      : `flex items-center justify-center gap-1.5 px-3 py-2 mb-4 rounded-xl border font-black text-xs transition-all duration-300 ${
+                          gkMoveTimer <= 3 
+                            ? 'bg-rose-950/80 border-rose-800/50 text-rose-450 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.15)]' 
+                            : 'bg-amber-955/60 border-amber-800/40 text-amber-400 animate-pulse'
+                        }`
+                    }>
+                      <Hourglass size={isMobile ? 11 : 13} className={gkMoveTimer <= 3 ? 'animate-spin text-rose-500' : 'animate-spin text-amber-500'} style={{ animationDuration: '2.5s' }} />
+                      <span>{isMobile ? `${gkMoveTimer}s` : `TEMPO RESTANTE: {gkMoveTimer}s`}</span>
+                    </div>
+                  )}
+
+                  {/* Confirm button */}
+                  <button
+                    onClick={() => {
+                      SoundManager.playUIClick();
+                      confirmGkPosition();
+                    }}
+                    className={isMobile
+                      ? "flex-1 py-1.5 rounded-lg font-black tracking-wide uppercase text-[9px] flex items-center justify-center gap-1 transition-all bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-md active:scale-98"
+                      : "w-full py-3.5 rounded-xl md:rounded-2xl font-black tracking-widest uppercase text-xs flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-[0_4px_25px_rgba(217,119,6,0.45)] hover:shadow-[0_4px_30px_rgba(217,119,6,0.6)] active:scale-98"
+                    }
+                  >
+                    <CheckCircle2 size={isMobile ? 11 : 15} />
+                    {isMobile ? "CONFIRMAR" : "CONFIRMAR POSIÇÃO"}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

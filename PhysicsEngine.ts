@@ -427,15 +427,18 @@ export const updateBallPhysics = (
         let finalVy: number;
 
         if (isManualMode) {
-          // Keep incoming speed but attenuate it to lose inertia/momentum (e.g., 0.75x)
           const incomingSpeed = Math.hypot(vx, vz);
-          finalSpeed = Math.max(1.2, incomingSpeed * 0.75); // Lose 25% speed, keep a minimum of 1.2 so it doesn't freeze on tiny hits
           
-          if (p.actionType === 'PASS') {
-            finalVy = 0.0;
+          if (p.actionType === 'SHOOT') {
+            finalSpeed = Math.max(1.5, incomingSpeed * 1.15); // Shots get a light acceleration (15% boost)
+            finalVy = 1.25;
+          } else if (p.actionType === 'CROSS') {
+            finalSpeed = Math.max(1.2, incomingSpeed * 1.075); // Crosses get half of the shot boost (7.5% boost)
+            finalVy = 2.5;
           } else {
-            // Slight manual vertical lift (half of standard)
-            finalVy = p.actionType === 'SHOOT' ? 1.25 : 2.5;
+            // PASS: ground play, loses 25% speed
+            finalSpeed = Math.max(1.2, incomingSpeed * 0.75);
+            finalVy = 0.0;
           }
         } else {
           // Standard/automatic mode: boost to action-specific speed

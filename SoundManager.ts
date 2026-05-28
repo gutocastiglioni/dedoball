@@ -150,6 +150,27 @@ class SoundManager {
     if (!(await this.resumeContext()) || !this.ctx || !this.masterGain) return;
     SoundSynth.playUIClick(this.ctx, this.masterGain);
   };
+ 
+  public playUIError = async (): Promise<void> => {
+    if (!(await this.resumeContext()) || !this.ctx || !this.masterGain) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+      
+      gain.gain.setValueAtTime(this.sfxVolume * 0.35, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+      
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.16);
+    } catch {
+      this.playUIClick();
+    }
+  };
 
   public playTimerTick = async (isUrgent: boolean = false): Promise<void> => {
     if (!(await this.resumeContext()) || !this.ctx || !this.masterGain) return;

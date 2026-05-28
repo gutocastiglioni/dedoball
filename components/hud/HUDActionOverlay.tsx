@@ -10,10 +10,13 @@ const HUDActionOverlay: React.FC = () => {
     isIAThinking,
     isMultiplayer,
     turnTimer,
+    gkMoveActiveTeam,
   } = useGameStateContext();
 
   const isFoul = actionStatus.startsWith('Falta!');
   const isBallSelected = selectedPlayerId === 'ball';
+
+  if (gkMoveActiveTeam !== null) return null;
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 w-full max-w-md px-4 pointer-events-none flex flex-col items-center gap-3 animate-fadeIn">
