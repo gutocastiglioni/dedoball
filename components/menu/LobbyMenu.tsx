@@ -431,7 +431,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <Settings size={12} className="w-3 h-3" />
                 <span className="text-[6.5px] font-black tracking-wider leading-none text-center">{t('lobby.settings')}</span>
               </button>
-            </div>     </div>
+            </div>
           </div>
 
           {/* 2. RIGHT CONTENT AREA */}
@@ -624,7 +624,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
         <div className="absolute bottom-3.5 right-4 z-20 pointer-events-none select-none flex items-center gap-1.5 text-[10.5px] font-bold text-zinc-500 uppercase tracking-wider leading-none">
           <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
           <span className="text-zinc-800 font-black">&bull;</span>
-          <span className="text-zinc-400 font-black">v0.9.5</span>
+          <span className="text-zinc-400 font-black">v1.0.0</span>
         </div>
       </div>
     );
@@ -834,7 +834,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v0.9.5</span>
+              <span>v1.0.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -956,14 +956,13 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               {language === 'pt' ? 'Cancelar e Excluir Sala' : 'Cancel & Delete Room'}
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-650 uppercase tracking-widest select-none">
-              <span>v0.9.5</span>
+              <span>v1.0.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
           </div>          </div>
 
         </div>
-      </div>
     );
   };
 
