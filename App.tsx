@@ -362,7 +362,7 @@ const AppContent: React.FC = () => {
               TABLEBALL
             </h1>
             <p className="text-zinc-400 text-xs font-semibold tracking-wide">
-              Online button football
+              {language === 'pt' ? 'Futebol de botão online' : 'Online button football'}
             </p>
             <span className="text-[10px] font-bold text-zinc-600 tracking-widest uppercase mt-0.5">
               v1.0.0
