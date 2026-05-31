@@ -11,7 +11,7 @@ import HUDOverlays from './components/hud/HUDOverlays';
 import { FloatingHUDActionMenu } from './components/scene/FloatingHUDActionMenu';
 // import HUDTelemetryLog from './components/hud/HUDTelemetryLog';
 import { useIsMobile } from './hooks/useIsMobile';
-import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen } from 'lucide-react';
+import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen, Globe } from 'lucide-react';
 import SoundManager from './SoundManager';
 import RulesModal from './components/RulesModal';
 import SystemAlertModal from './components/SystemAlertModal';
@@ -81,6 +81,9 @@ const AppContent: React.FC = () => {
     captainMoveMode,
     isMultiplayer,
     myRole,
+    language,
+    changeLanguage,
+    t,
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
@@ -321,13 +324,13 @@ const AppContent: React.FC = () => {
           {/* Heading and subtext */}
           <div className="flex flex-col items-center gap-2 max-w-xs">
             <h2 className="text-2xl font-black italic tracking-tighter uppercase bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent animate-pulseGlow">
-              GIRE O CELULAR
+              {t('app.rotatePhone')}
             </h2>
             <p className="text-zinc-300 text-xs font-semibold leading-relaxed">
-              Tableball é jogado na horizontal para melhor campo de visão e jogabilidade.
+              {t('app.landscapeRequired')}
             </p>
             <span className="text-[9px] text-cyan-400/80 font-black tracking-widest uppercase mt-2.5 animate-pulse">
-              Modo Paisagem Requerido
+              {t('app.landscapeMode')}
             </span>
           </div>
         </div>
@@ -359,18 +362,18 @@ const AppContent: React.FC = () => {
               TABLEBALL
             </h1>
             <p className="text-zinc-400 text-xs font-semibold tracking-wide">
-              Futebol de botão online
+              Online button football
             </p>
             <span className="text-[10px] font-bold text-zinc-600 tracking-widest uppercase mt-0.5">
-              v0.9.5
+              v1.0.0
             </span>
           </div>
 
           <div className="flex flex-col items-center gap-2">
             <div className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black tracking-widest uppercase text-sm shadow-[0_4px_25px_rgba(6,182,212,0.45)] animate-pulse">
-              Toque para Jogar
+              {t('app.tapToPlay')}
             </div>
-            <span className="text-[10px] text-zinc-550 font-semibold">Entrará em tela cheia automaticamente</span>
+            <span className="text-[10px] text-zinc-550 font-semibold">{t('app.fullscreenAuto')}</span>
           </div>
         </div>
       )}
@@ -474,7 +477,7 @@ const AppContent: React.FC = () => {
             className="hud-recenter-btn py-3.5 md:py-4 px-6 md:px-8 bg-zinc-900/90 hover:bg-zinc-800/95 border border-zinc-700 text-cyan-400 font-bold tracking-widest uppercase rounded-2xl shadow-2xl backdrop-blur-lg transform transition-all active:scale-98 flex items-center justify-center gap-2 text-xs md:text-sm animate-scaleUp"
           >
             <Navigation size={14} className="rotate-45" />
-            RECENTRALIZAR
+            {t('app.recenter')}
           </button>
         </div>
       )}
@@ -503,7 +506,7 @@ const AppContent: React.FC = () => {
                   : 'text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900/60 border border-transparent'
               }`}
               style={{ width: isMobile ? '28px' : '44px', height: isMobile ? '28px' : '44px', borderRadius: isMobile ? '8px' : '14px' }}
-              title="Ajustes de Jogo"
+              title={t('app.gameSettings')}
             >
               <Settings size={isMobile ? 12 : 18} className={`transition-transform duration-700 ease-out ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
@@ -520,7 +523,7 @@ const AppContent: React.FC = () => {
                   : 'text-zinc-400 hover:text-cyan-400 hover:bg-zinc-900/60 border border-transparent'
               }`}
               style={{ width: isMobile ? '28px' : '44px', height: isMobile ? '28px' : '44px', borderRadius: isMobile ? '8px' : '14px' }}
-              title="Regras do Jogo"
+              title={t('app.gameRules')}
             >
               <Info size={isMobile ? 12 : 18} />
             </button>
@@ -530,7 +533,7 @@ const AppContent: React.FC = () => {
           {isExpanded && (
             <div 
               className="bg-zinc-950/90 border border-zinc-800 text-zinc-300 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-col justify-between animate-scaleUp animate-duration-200"
-              style={{ padding: isMobile ? '10px' : '16px', width: isMobile ? '190px' : '260px', height: isMobile ? '260px' : '335px' }}
+              style={{ padding: isMobile ? '10px' : '16px', width: isMobile ? '190px' : '260px', height: isMobile ? '310px' : '415px' }}
               onMouseLeave={() => {
                 if (!isMobile) setIsExpanded(false);
               }}
@@ -539,12 +542,12 @@ const AppContent: React.FC = () => {
               <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-2 w-full">
                 <span className="text-[10px] font-black tracking-widest text-cyan-400 uppercase flex items-center gap-1">
                   <Settings size={11} className="animate-spin-slow" />
-                  AJUSTES DO JOGO
+                  {t('app.gameSettings')}
                 </span>
                 <button
                   onClick={handleToggleMute}
                   className="hover:text-cyan-400 active:scale-90 transition-all duration-200"
-                  title={isMuted ? "Desmutar tudo" : "Mutar tudo"}
+                  title={isMuted ? (language === 'pt' ? "Desmutar tudo" : "Unmute all") : (language === 'pt' ? "Mutar tudo" : "Mute all")}
                 >
                   {isMuted ? (
                     <VolumeX size={14} className="text-zinc-550 hover:text-cyan-400 transition-colors" />
@@ -561,7 +564,7 @@ const AppContent: React.FC = () => {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
                     <div className="flex items-center gap-1.5">
                       <Zap size={11} className="text-cyan-400" />
-                      <span>Efeitos (SFX)</span>
+                      <span>{t('app.sfxVolume')}</span>
                     </div>
                     <span>{isMuted ? 0 : Math.round(sfxVolume * 100)}%</span>
                   </div>
@@ -584,7 +587,7 @@ const AppContent: React.FC = () => {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
                     <div className="flex items-center gap-1.5">
                       <Users size={11} className="text-cyan-400" />
-                      <span>Torcida</span>
+                      <span>{t('app.crowdVolume')}</span>
                     </div>
                     <span>{isMuted ? 0 : Math.round(crowdVolume * 100)}%</span>
                   </div>
@@ -608,7 +611,7 @@ const AppContent: React.FC = () => {
                 <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
                   <div className="flex items-center gap-1.5">
                     <Video size={11} className="text-cyan-400" />
-                    <span>Modo de Câmera</span>
+                    <span>{t('app.cameraMode')}</span>
                   </div>
                 </div>
                 
@@ -621,7 +624,7 @@ const AppContent: React.FC = () => {
                         : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    Seguir Bola
+                    {t('app.followBall')}
                   </button>
                   <button
                     onClick={() => changeCameraMode('fixed')}
@@ -631,14 +634,52 @@ const AppContent: React.FC = () => {
                         : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    Câmera Livre
+                    {t('app.freeCamera')}
                   </button>
                 </div>
                 <span className="text-[9.5px] text-zinc-550 leading-tight">
                   {cameraMode === 'dynamic' 
-                    ? 'Acompanha a bola com suavização extra anti-tontura.' 
-                    : 'A câmera fica livre e estável. Ela não segue a bola e não redefine sozinha.'}
+                    ? t('app.cameraDynamicDesc') 
+                    : t('app.cameraFixedDesc')}
                 </span>
+              </div>
+
+              {/* Seção Idioma / Language */}
+              <div className="flex flex-col gap-1.5 w-full border-t border-zinc-800/80 pt-2.5 mt-0.5">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                  <div className="flex items-center gap-1.5">
+                    <Globe size={11} className="text-cyan-400" />
+                    <span>Idioma / Language</span>
+                  </div>
+                </div>
+                <div className="flex bg-zinc-900/95 border border-zinc-800/60 p-0.5 rounded-lg w-full relative">
+                  <button
+                    onClick={() => {
+                      SoundManager.playUIClick();
+                      changeLanguage('en');
+                    }}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      language === 'en'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => {
+                      SoundManager.playUIClick();
+                      changeLanguage('pt');
+                    }}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      language === 'pt'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    PT
+                  </button>
+                </div>
               </div>
 
               {/* Seção 3: Regras */}
@@ -650,7 +691,7 @@ const AppContent: React.FC = () => {
                 className="w-full mt-2.5 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 active:from-cyan-500/40 active:to-blue-500/40 border border-cyan-500/30 hover:border-cyan-500/50 text-cyan-400 font-extrabold text-[10px] tracking-wider uppercase rounded-xl shadow-lg transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5"
               >
                 <BookOpen size={12} />
-                REGRAS DO JOGO
+                {t('app.gameRules')}
               </button>
             </div>
           )}

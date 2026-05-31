@@ -157,7 +157,10 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
     cameraMode,
     changeCameraMode,
     setShowRulesModal,
-    setSystemMessage
+    setSystemMessage,
+    language,
+    changeLanguage,
+    t
   } = useGameStateContext();
   const isMobile = useIsMobile();
 
@@ -264,7 +267,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                             ? 'bg-cyan-500/20 border border-cyan-500/35 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
                             : 'border border-transparent'
                         }`}
-                        title={kit === 'home' ? 'Uniforme Casa (Home)' : 'Uniforme Fora (Away)'}
+                        title={kit === 'home' ? t('lobby.homeKit') : t('lobby.awayKit')}
                       >
                         {renderJerseyMiniSVG(uniform.primaryColor, uniform.secondaryColor, uniform.pattern)}
                       </button>
@@ -276,11 +279,11 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <div
                   onClick={() => setShowProfileModal(true)}
                   className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-95 transition-all duration-200 rounded-full pl-4 pr-3 py-0.5 shadow-md cursor-pointer pointer-events-auto group/profile h-[30px]"
-                  title="Customizar Perfil, Time e Uniforme"
+                  title={t('lobby.customiseProfile')}
                 >
                   {/* Left: Team Name */}
                   <span className="text-[8px] xs:text-[9px] font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
-                    {userProfile?.teamName || 'Meu Time'}
+                    {userProfile?.teamName || t('lobby.myTeam')}
                   </span>
 
                   {/* Center: Separated Circular Shield (Escudo) */}
@@ -322,8 +325,8 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                       e.stopPropagation();
                       logout();
                     }}
-                    className="text-zinc-500 hover:text-rose-400 transition-all p-0.5 pointer-events-auto hover:scale-110 relative z-10 ml-0.5"
-                    title="Sair"
+                    className="text-zinc-550 hover:text-rose-455 transition-all p-0.5 pointer-events-auto hover:scale-110 relative z-10 ml-0.5"
+                    title={t('lobby.logout')}
                   >
                     <LogOut size={10} className="w-2.5 h-2.5" />
                   </button>
@@ -335,14 +338,14 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black rounded-full text-[8.5px] xs:text-[9.5px] uppercase tracking-wider transition-all h-[30px] shadow-md"
               >
                 <LogIn size={10} className="w-2.5 h-2.5" />
-                <span>Entrar</span>
+                <span>{t('lobby.enter')}</span>
               </button>
             )}
 
             <button
               onClick={toggleFullscreen}
               className="text-zinc-500 hover:text-cyan-400 transition-all bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center h-[30px] w-[30px] flex-shrink-0 shadow-md hover:border-cyan-500/30"
-              title="Tela Cheia"
+              title={isFullscreen ? t('lobby.exitFullscreen') : t('lobby.fullscreen')}
             >
               {isFullscreen ? <Minimize2 size={11} className="w-[11px] h-[11px]" /> : <Maximize2 size={11} className="w-[11px] h-[11px]" />}
             </button>
@@ -353,15 +356,14 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
         <div className="w-full flex-grow flex flex-row gap-2 overflow-hidden h-[calc(100%-2.5rem)]">
           {/* 1. LEFT SIDEBAR MENU */}
           <div className="w-[65px] xs:w-[80px] h-full flex flex-col justify-between items-center bg-zinc-950/70 border border-zinc-800/60 p-1 rounded-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] backdrop-blur-md z-10 flex-shrink-0">
-            
-            {/* Navigation Buttons Stack */}
+                      {/* Navigation Buttons Stack */}
             <div className="w-full flex flex-col gap-1 my-auto">
               {[
-                { id: 'solo', label: 'SOLO', icon: Target, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' },
-                { id: 'multi', label: 'ONLINE', icon: Globe, activeColor: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' },
-                { id: 'tournament', label: 'COPA', icon: Trophy, activeColor: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' },
-                { id: 'ranking', label: 'RANKING', icon: Award, activeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-400' },
-                { id: 'history', label: 'HISTÓRICO', icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-405' }
+                { id: 'solo', label: t('lobby.solo'), icon: Target, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' },
+                { id: 'multi', label: t('lobby.online'), icon: Globe, activeColor: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' },
+                { id: 'tournament', label: t('lobby.copa'), icon: Trophy, activeColor: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' },
+                { id: 'ranking', label: t('lobby.ranking'), icon: Award, activeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-400' },
+                { id: 'history', label: t('lobby.history'), icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-405' }
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isSelected = currentMenuTab === tab.id && !showSettingsPopup;
@@ -373,8 +375,8 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                       setShowSettingsPopup(false);
                       if (tab.id === 'tournament') {
                         setSystemMessage({
-                          title: 'EM BREVE',
-                          message: 'O modo Mata-Mata estará disponível em breve! Fique atento às próximas atualizações.',
+                          title: t('app.comingSoon'),
+                          message: t('app.mataMataSoon'),
                           type: 'info'
                         });
                         return;
@@ -409,7 +411,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 className="py-1.5 px-0.5 rounded-lg border border-transparent flex flex-col items-center justify-center gap-0.5 text-[7px] font-black tracking-wider transition-all duration-300 hover:scale-102 w-full text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/40"
               >
                 <Info size={12} className="w-3 h-3" />
-                <span className="text-[6.5px] font-black tracking-wider leading-none text-center">REGRAS</span>
+                <span className="text-[6.5px] font-black tracking-wider leading-none text-center">{t('lobby.rules')}</span>
               </button>
 
               {/* Ajustes Button */}
@@ -427,9 +429,9 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 `}
               >
                 <Settings size={12} className="w-3 h-3" />
-                <span className="text-[6.5px] font-black tracking-wider leading-none text-center">AJUSTES</span>
+                <span className="text-[6.5px] font-black tracking-wider leading-none text-center">{t('lobby.settings')}</span>
               </button>
-            </div>
+            </div>     </div>
           </div>
 
           {/* 2. RIGHT CONTENT AREA */}
@@ -450,7 +452,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5 mb-3 w-full">
                 <span className="text-xs font-black tracking-widest text-cyan-400 uppercase flex items-center gap-1.5">
                   <Settings size={13} />
-                  AJUSTES DO JOGO
+                  {t('app.gameSettings')}
                 </span>
                 <button
                   onClick={() => {
@@ -461,7 +463,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   className="hover:text-cyan-400 active:scale-90 transition-all duration-200"
                 >
                   {isMuted ? (
-                    <VolumeX size={16} className="text-zinc-500 hover:text-cyan-400 transition-colors" />
+                    <VolumeX size={16} className="text-zinc-550 hover:text-cyan-400 transition-colors" />
                   ) : (
                     <Volume2 size={16} className="text-cyan-400 hover:text-cyan-300 transition-colors" />
                   )}
@@ -475,7 +477,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
                     <div className="flex items-center gap-1.5">
                       <Zap size={11} className="text-cyan-400" />
-                      <span>Efeitos (SFX)</span>
+                      <span>{t('app.sfxVolume')}</span>
                     </div>
                     <span>{isMuted ? 0 : Math.round(sfxVolume * 100)}%</span>
                   </div>
@@ -506,7 +508,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
                     <div className="flex items-center gap-1.5">
                       <Users size={11} className="text-cyan-400" />
-                      <span>Torcida</span>
+                      <span>{t('app.crowdVolume')}</span>
                     </div>
                     <span>{isMuted ? 0 : Math.round(crowdVolume * 100)}%</span>
                   </div>
@@ -538,7 +540,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
                   <div className="flex items-center gap-1.5">
                     <Video size={11} className="text-cyan-400" />
-                    <span>Modo de Câmera</span>
+                    <span>{t('app.cameraMode')}</span>
                   </div>
                 </div>
                 
@@ -551,7 +553,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                         : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    Seguir Bola
+                    {t('app.followBall')}
                   </button>
                   <button
                     onClick={() => changeCameraMode('fixed')}
@@ -561,7 +563,45 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                         : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    Câmera Livre
+                    {t('app.freeCamera')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Seção Idioma / Language */}
+              <div className="flex flex-col gap-2 w-full border-t border-zinc-800/80 pt-3 mt-3">
+                <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                  <div className="flex items-center gap-1.5">
+                    <Globe size={11} className="text-cyan-400" />
+                    <span>Idioma / Language</span>
+                  </div>
+                </div>
+                <div className="flex bg-zinc-900/95 border border-zinc-800/60 p-0.5 rounded-lg w-full relative">
+                  <button
+                    onClick={() => {
+                      SoundManager.playUIClick();
+                      changeLanguage('en');
+                    }}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      language === 'en'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => {
+                      SoundManager.playUIClick();
+                      changeLanguage('pt');
+                    }}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all duration-300 ${
+                      language === 'pt'
+                        ? 'bg-cyan-500 text-zinc-950 shadow-md scale-100 font-extrabold'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    PT
                   </button>
                 </div>
               </div>
@@ -574,7 +614,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 }}
                 className="w-full mt-4 py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-805 text-zinc-300 font-black rounded-xl text-[10px] uppercase tracking-wider transition-all"
               >
-                Confirmar e Fechar
+                {t('app.confirmClose')}
               </button>
             </div>
           </div>
@@ -605,7 +645,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 TABLEBALL
               </h1>
               <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest leading-none hidden sm:block">
-                FUTEBOL DE BOTÃO
+                {language === 'pt' ? 'FUTEBOL DE BOTÃO' : 'BUTTON FOOTBALL'}
               </span>
             </div>
 
@@ -627,10 +667,10 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                             ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/35 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
                             : 'text-zinc-500 hover:text-zinc-300 border border-transparent hover:scale-102'
                         }`}
-                        title={kit === 'home' ? 'Uniforme Casa (Home)' : 'Uniforme Fora (Away)'}
+                        title={kit === 'home' ? t('lobby.homeKit') : t('lobby.awayKit')}
                       >
                         {renderJerseyMiniSVG(uniform.primaryColor, uniform.secondaryColor, uniform.pattern)}
-                        <span className="text-[9px] tracking-wider">{kit === 'home' ? 'Casa' : 'Fora'}</span>
+                        <span className="text-[9px] tracking-wider">{kit === 'home' ? t('lobby.home') : t('lobby.away')}</span>
                       </button>
                     );
                   })}
@@ -640,11 +680,11 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <div
                   onClick={() => setShowProfileModal(true)}
                   className="hidden sm:flex items-center gap-3 bg-zinc-900/80 border border-zinc-800 hover:bg-zinc-800/85 hover:border-zinc-700/80 active:scale-[0.98] transition-all duration-200 rounded-full pl-5 md:pl-7 pr-4 md:pr-6 py-1 shadow-md cursor-pointer pointer-events-auto group/profile h-[30px] md:h-[38px]"
-                  title="Customizar Perfil, Time e Uniforme"
+                  title={t('lobby.customiseProfile')}
                 >
                   {/* Left: Team Name */}
                   <span className="text-[10px] md:text-xs font-black text-zinc-300 group-hover/profile:text-cyan-400 transition-colors uppercase tracking-wide whitespace-nowrap">
-                    {userProfile?.teamName || 'Meu Time'}
+                    {userProfile?.teamName || t('lobby.myTeam')}
                   </span>
 
                   {/* Center: Separated Circular Shield (Escudo) */}
@@ -687,7 +727,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                       logout();
                     }}
                     className="text-zinc-550 hover:text-rose-450 transition-all p-1 pointer-events-auto hover:scale-110 relative z-10"
-                    title="Sair da Conta"
+                    title={t('lobby.logoutAccount')}
                   >
                     <LogOut size={13} />
                   </button>
@@ -697,7 +737,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <button
                   onClick={toggleFullscreen}
                   className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full border border-zinc-800/80 bg-zinc-950/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 text-zinc-400 hover:text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_4px_12px_rgba(0,0,0,0.4)] hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all duration-355 hover:scale-110 active:scale-90 pointer-events-auto group relative"
-                  title={isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'}
+                  title={isFullscreen ? t('lobby.exitFullscreen') : t('lobby.fullscreen')}
                 >
                   {isFullscreen ? (
                     <Minimize2 size={14} className="group-hover:rotate-12 transition-transform duration-300" />
@@ -715,7 +755,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 <button
                   onClick={toggleFullscreen}
                   className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full border border-zinc-800/80 bg-zinc-950/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 text-zinc-400 hover:text-cyan-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_4px_12px_rgba(0,0,0,0.4)] hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all duration-355 hover:scale-110 active:scale-90 pointer-events-auto group relative"
-                  title={isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'}
+                  title={isFullscreen ? t('lobby.exitFullscreen') : t('lobby.fullscreen')}
                 >
                   {isFullscreen ? (
                     <Minimize2 size={14} className="group-hover:rotate-12 transition-transform duration-300" />
@@ -732,7 +772,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                   className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-full text-xs font-bold transition-all hover:scale-105 active:scale-95 shadow-md pointer-events-auto"
                 >
                   <GoogleIcon />
-                  Entrar com o Google
+                  {t('lobby.googleSignIn')}
                 </button>
               </div>
             )}
@@ -741,12 +781,12 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           {/* TAB NAVIGATION BAR */}
           <div className="w-full grid grid-cols-6 gap-1.5 bg-zinc-950/80 border border-zinc-800/60 p-1.5 rounded-2xl shadow-inner">
             {[
-              { id: 'solo', label: 'MODO SOLO', icon: Target, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' },
+              { id: 'solo', label: language === 'pt' ? 'MODO SOLO' : 'SOLO MODE', icon: Target, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' },
               { id: 'multi', label: 'MULTIPLAYER', icon: Globe, activeColor: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' },
-              { id: 'tournament', label: 'MATA-MATA', icon: Trophy, activeColor: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' },
+              { id: 'tournament', label: language === 'pt' ? 'MATA-MATA' : 'TOURNAMENT', icon: Trophy, activeColor: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400' },
               { id: 'ranking', label: 'RANKING', icon: Award, activeColor: 'bg-purple-500/20 border-purple-500/40 text-purple-400' },
-              { id: 'history', label: 'HISTÓRICO', icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-450' },
-              { id: 'rules', label: 'REGRAS', icon: Info, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' }
+              { id: 'history', label: language === 'pt' ? 'HISTÓRICO' : 'HISTORY', icon: History, activeColor: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-450' },
+              { id: 'rules', label: language === 'pt' ? 'REGRAS' : 'RULES', icon: Info, activeColor: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' }
             ].map((tab) => {
               const Icon = tab.icon;
               const isSelected = tab.id === 'rules' ? false : currentMenuTab === tab.id;
@@ -759,8 +799,8 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                       setShowRulesModal(true);
                     } else if (tab.id === 'tournament') {
                       setSystemMessage({
-                        title: 'EM BREVE',
-                        message: 'O modo Mata-Mata estará disponível em breve! Fique atento às próximas atualizações.',
+                        title: t('app.comingSoon'),
+                        message: t('app.mataMataSoon'),
                         type: 'info'
                       });
                     } else if (tab.id !== 'solo' && !activeUser) {
@@ -827,15 +867,19 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           <div className="text-center space-y-1">
             <span className="text-[10px] md:text-xs font-black text-cyan-400 tracking-[0.2em] uppercase">Multiplayer Online</span>
             <h2 className="text-2xl md:text-3xl font-black text-zinc-100 uppercase tracking-tight">
-              Lobby de Espera
+              {language === 'pt' ? 'Lobby de Espera' : 'Waiting Lobby'}
             </h2>
-            <p className="text-xs text-zinc-400 font-medium">Aguardando o adversário entrar na sala para iniciar a partida.</p>
+            <p className="text-xs text-zinc-400 font-medium">
+              {language === 'pt' ? 'Aguardando o adversário entrar na sala para iniciar a partida.' : 'Waiting for opponent to join the room to start the match.'}
+            </p>
           </div>
 
           {/* Room details card */}
           <div className="w-full bg-zinc-900/60 border border-zinc-850 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-3">
             <div className="flex flex-col items-center md:items-start">
-              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Nome da Sala</span>
+              <span className="text-[9px] font-black text-zinc-550 uppercase tracking-widest">
+                {language === 'pt' ? 'Nome da Sala' : 'Room Name'}
+              </span>
               <span className="text-sm font-bold text-zinc-200">{currentRoom?.name}</span>
             </div>
             
@@ -843,12 +887,12 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               {currentRoom?.password ? (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.05)]">
                   <Lock size={12} className="text-amber-500" />
-                  <span>Senha: <strong className="font-black tracking-widest ml-1">{currentRoom.password}</strong></span>
+                  <span>{language === 'pt' ? 'Senha:' : 'Password:'} <strong className="font-black tracking-widest ml-1">{currentRoom.password}</strong></span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(6,182,212,0.05)]">
                   <Globe size={12} className="text-cyan-400" />
-                  <span>Sala Pública</span>
+                  <span>{language === 'pt' ? 'Sala Pública' : 'Public Room'}</span>
                 </div>
               )}
             </div>
@@ -866,14 +910,16 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
                 {hostPlayer?.photoURL ? (
                   <img src={hostPlayer.photoURL} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <svg xmlns="http://www.w3.org/2500/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 )}
               </div>
               
               <span className="text-sm font-black text-zinc-200 uppercase tracking-wide truncate max-w-full">
-                {hostPlayer?.displayName || 'Criador da Sala'}
+                {hostPlayer?.displayName || (language === 'pt' ? 'Criador da Sala' : 'Room Creator')}
               </span>
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Pronto para o Jogo</span>
+              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                {language === 'pt' ? 'Pronto para o Jogo' : 'Ready for Game'}
+              </span>
             </div>
 
             {/* VS Badge */}
@@ -890,8 +936,12 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               </div>
               
               <div className="text-center space-y-1 mt-2">
-                <span className="text-xs font-black text-cyan-400 animate-pulse tracking-wide uppercase">Aguardando Rival...</span>
-                <p className="text-[10px] text-zinc-550 font-bold">Divulgando sala no lobby global</p>
+                <span className="text-xs font-black text-cyan-400 animate-pulse tracking-wide uppercase">
+                  {language === 'pt' ? 'Aguardando Rival...' : 'Waiting for Opponent...'}
+                </span>
+                <p className="text-[10px] text-zinc-550 font-bold">
+                  {language === 'pt' ? 'Divulgando sala no lobby global' : 'Listing room in global lobby'}
+                </p>
               </div>
             </div>
 
@@ -903,14 +953,14 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               onClick={() => resetMatch()}
               className="px-6 py-2.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/40 hover:text-rose-200 text-rose-400 font-black rounded-xl text-xs uppercase tracking-widest transition-all duration-300 w-full max-w-xs shadow-md hover:scale-102 active:scale-98"
             >
-              Cancelar e Excluir Sala
+              {language === 'pt' ? 'Cancelar e Excluir Sala' : 'Cancel & Delete Room'}
             </button>
-            <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-600 uppercase tracking-widest select-none">
+            <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-650 uppercase tracking-widest select-none">
               <span>v0.9.5</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
-          </div>
+          </div>          </div>
 
         </div>
       </div>

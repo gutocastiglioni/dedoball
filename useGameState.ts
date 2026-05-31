@@ -10,6 +10,7 @@ import {
 } from './firebaseMultiplayer';
 import SoundManager from './SoundManager';
 import { INITIAL_BALL } from './gameConstants';
+import { translations } from './translations';
 
 // Export constants for backwards-compatibility
 export { FIELD_WIDTH, FIELD_LENGTH, HALF_WIDTH, HALF_LENGTH, ALL_SLOTS, ETHNICITIES } from './gameConstants';
@@ -23,6 +24,38 @@ import { useGameMultiplayer } from './hooks/useGameMultiplayer';
 
 export const useGameState = () => {
   // Local States
+  const [language, setLanguageState] = useState<'en' | 'pt'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('tableball_language') as 'en' | 'pt') || 'en';
+    }
+    return 'en';
+  });
+
+  const changeLanguage = useCallback((lang: 'en' | 'pt') => {
+    setLanguageState(lang);
+    localStorage.setItem('tableball_language', lang);
+  }, []);
+
+  const t = useCallback((key: string, replacements?: Record<string, string | number>) => {
+    const keys = key.split('.');
+    let value: any = translations[language];
+    for (const k of keys) {
+      if (value && typeof value === 'object') {
+        value = value[k];
+      } else {
+        value = undefined;
+        break;
+      }
+    }
+    let result = value !== undefined ? value : key;
+    if (replacements && typeof result === 'string') {
+      Object.entries(replacements).forEach(([k, v]) => {
+        result = result.replace(`{${k}}`, String(v));
+      });
+    }
+    return result;
+  }, [language]);
+
   const [phase, setPhase] = useState<GamePhase>(GamePhase.MENU);
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.MEDIUM);
   const [homeKitConfig, setHomeKitConfig] = useState<UniformConfig | undefined>(undefined);
@@ -574,6 +607,11 @@ export const useGameState = () => {
     joinTournament: multiplayerHook.handleJoinTournament,
     startTournament: multiplayerHook.handleStartTournament,
     playTournamentMatch: multiplayerHook.handlePlayTournamentMatch,
-    joinTournamentMatch: multiplayerHook.handleJoinTournamentMatch
+    joinTournamentMatch: multiplayerHook.handleJoinTournamentMatch,
+
+    // Language i18n
+    language,
+    changeLanguage,
+    t
   };
 };
