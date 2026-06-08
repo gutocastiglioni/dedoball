@@ -29,6 +29,7 @@ interface UseGameAIParams {
   lastGoalScorerRef: React.MutableRefObject<Team | null>;
   consecutiveGoalsCountRef: React.MutableRefObject<number>;
   getTeamMaxBlockers: (team: Team, currentScorer: Team | null, currentCount: number) => number;
+  isBannerActive: boolean;
 }
 
 export const useGameAI = ({
@@ -55,7 +56,8 @@ export const useGameAI = ({
   setAwayFlicksRemaining,
   lastGoalScorerRef,
   consecutiveGoalsCountRef,
-  getTeamMaxBlockers
+  getTeamMaxBlockers,
+  isBannerActive
 }: UseGameAIParams) => {
 
   // IA Setup (Preparation Phase)
@@ -144,7 +146,7 @@ export const useGameAI = ({
       "color: #e55039; font-weight: bold;"
     );
 
-    if (phase === GamePhase.ACTION && turn === 'AWAY' && !isIAThinkingRef.current && !isBallMoving && gkMoveActiveTeam === null) {
+    if (phase === GamePhase.ACTION && turn === 'AWAY' && !isIAThinkingRef.current && !isBallMoving && gkMoveActiveTeam === null && !isBannerActive) {
       console.log("%c[Dedoball IA] Conditions met! IA starts planning shot...", "color: #e55039; font-weight: bold; background: #2d1f18; padding: 2px 4px;");
       isIAThinkingRef.current = true;
       setIsIAThinking(true);
@@ -262,7 +264,7 @@ export const useGameAI = ({
         setIsIAThinking(false);
       };
     }
-  }, [phase, turn, difficulty, isBallMoving, isMultiplayer, setBall, setAwayFlicksRemaining, addGameLog, isIAThinkingRef, setIsIAThinking, turnRef, phaseRef, ballRef, awayPlayersRef, gameMode, gkMoveActiveTeam, awayFlicksRemainingRef]);
+  }, [phase, turn, difficulty, isBallMoving, isMultiplayer, setBall, setAwayFlicksRemaining, addGameLog, isIAThinkingRef, setIsIAThinking, turnRef, phaseRef, ballRef, awayPlayersRef, gameMode, gkMoveActiveTeam, awayFlicksRemainingRef, isBannerActive]);
 
   return {
     setupIAPreparation

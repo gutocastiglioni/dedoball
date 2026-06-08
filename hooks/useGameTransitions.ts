@@ -72,6 +72,8 @@ interface UseGameTransitionsParams {
     nextScores: { home: number; away: number };
   } | null>;
   wasKickoffRef: React.MutableRefObject<boolean>;
+  injuryTimeRef: React.MutableRefObject<'none' | 'halftime' | 'fulltime'>;
+  setInjuryTimeSync: (val: 'none' | 'halftime' | 'fulltime') => void;
   homePlayers: PlayerConfig[];
   homePlayersRef: React.MutableRefObject<PlayerConfig[]>;
   awayPlayers: PlayerConfig[];
@@ -158,6 +160,8 @@ export const useGameTransitions = ({
   captainMoveModeRef,
   pendingGoalDataRef,
   wasKickoffRef,
+  injuryTimeRef,
+  setInjuryTimeSync,
   homePlayers,
   homePlayersRef,
   awayPlayers,
@@ -198,12 +202,26 @@ export const useGameTransitions = ({
 
     if (isFairnessActive) {
       nextPhase = GamePhase.PREPARATION;
-      nextStatus = `Vantagem Tática Ativada! Time adversário marcou ${nextCount} gols seguidos. Posicione até 4 Bloqueadores (Stopper Extra).`;
+      if (isMultiplayer) {
+        nextStatus = concedingTeam === myRole
+          ? `Vantagem Tática Ativada! Você sofreu ${nextCount} gols seguidos. Posicione até 4 Bloqueadores (Stopper Extra).`
+          : `Vantagem Tática Ativada! Oponente sofreu ${nextCount} gols seguidos.`;
+      } else {
+        nextStatus = concedingTeam === 'HOME'
+          ? `Vantagem Tática Ativada! Você sofreu ${nextCount} gols seguidos. Posicione até 4 Bloqueadores (Stopper Extra).`
+          : `Vantagem Tática Ativada! A IA sofreu ${nextCount} gols seguidos.`;
+      }
     } else {
       nextPhase = GamePhase.ACTION;
-      nextStatus = concedingTeam === 'HOME'
-        ? 'Gol sofrido! Saída de bola: chute do meio campo.'
-        : 'GOLAÇO! Saída de bola da IA.';
+      if (isMultiplayer) {
+        nextStatus = concedingTeam === myRole
+          ? 'Gol sofrido! Saída de bola: seu chute do meio campo.'
+          : 'GOLAÇO! Saída de bola do oponente.';
+      } else {
+        nextStatus = concedingTeam === 'HOME'
+          ? 'Gol sofrido! Saída de bola: seu chute do meio campo.'
+          : 'GOLAÇO! Saída de bola da IA.';
+      }
     }
 
     flushSync(() => {
@@ -505,10 +523,11 @@ export const useGameTransitions = ({
     isMultiplayer, roomId, myRole, syncGameStateToFirebase, addGameLog, setBall, setTurn, setActionStatus, setHomeFlicksRemaining, setAwayFlicksRemaining, setHomeReady, setAwayReady, turnRef, myRoleRef, homeFlicksRemainingRef, awayFlicksRemainingRef, ballRef, scoresRef, gameTimeRef, homePlayersRef, awayPlayersRef, phaseRef
   ]);
 
-  // Handle Ball Stopped
+  // Handle Half Time
   const handleHalfTime = useCallback(() => {
     console.log("%c[Game Loop] ⏰ HALF-TIME reached! Pausing game, resetting ball to center.", "color: #d35400; font-weight: bold;");
     SoundManager.playRefereeWhistle('half');
+    setInjuryTimeSync('none');
     
     const freshBall: BallState = {
       position: [0, 0.11, 0],
@@ -519,6 +538,7 @@ export const useGameTransitions = ({
       speedMultiplier: 1
     };
 
+    const halfTimeSecs = Math.floor(matchDurationRef.current / 2);
     const nextStatus = isMultiplayer
       ? 'Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff do Visitante (AWAY).'
       : 'Fim do primeiro tempo! O segundo tempo inicia com posse e kickoff da IA.';
@@ -534,6 +554,8 @@ export const useGameTransitions = ({
       setAwayFlicksSync(3);
       setHomeReady(false);
       setAwayReady(false);
+      setGameTimeSecondsSync(halfTimeSecs);
+      setGameTimeSync(45);
     });
 
     if (isMultiplayer && roomId) {
@@ -551,11 +573,13 @@ export const useGameTransitions = ({
         true
       );
     }
-  }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog, setBallSync, setTurnSync, setPhaseSync, setActionStatus, setHomeFlicksSync, setAwayFlicksSync, setHomeReady, setAwayReady, homePlayersRef, awayPlayersRef, scoresRef]);
+  }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog, setBallSync, setTurnSync, setPhaseSync, setActionStatus, setHomeFlicksSync, setAwayFlicksSync, setHomeReady, setAwayReady, homePlayersRef, awayPlayersRef, scoresRef, setInjuryTimeSync, setGameTimeSecondsSync, setGameTimeSync, matchDurationRef]);
 
+  // Handle Full Time
   const handleFullTime = useCallback(() => {
     console.log("%c[Game Loop] ⏰ FULL-TIME reached! GAME OVER.", "color: #c0392b; font-weight: bold;");
     SoundManager.playRefereeWhistle('full');
+    setInjuryTimeSync('none');
 
     const nextScores = scoresRef.current;
     let nextStatus = '';
@@ -578,6 +602,8 @@ export const useGameTransitions = ({
       setBallSync(freshBall);
       setPhaseSync(GamePhase.GAME_OVER);
       setActionStatus(nextStatus);
+      setGameTimeSecondsSync(matchDurationRef.current);
+      setGameTimeSync(90);
     });
 
     if (isMultiplayer && roomId) {
@@ -595,10 +621,21 @@ export const useGameTransitions = ({
         true
       );
     }
-  }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog, setBallSync, setPhaseSync, setActionStatus, ballRef, scoresRef, homePlayersRef, awayPlayersRef, turnRef, homeFlicksRemainingRef, awayFlicksRemainingRef]);
+  }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog, setBallSync, setPhaseSync, setActionStatus, ballRef, scoresRef, homePlayersRef, awayPlayersRef, turnRef, homeFlicksRemainingRef, awayFlicksRemainingRef, setInjuryTimeSync, setGameTimeSecondsSync, setGameTimeSync, matchDurationRef]);
 
   // Handle Ball Stopped
   const handleBallStopped = useCallback((stoppedPosition: [number, number, number]) => {
+    // If injury time is pending, resolve halftime or fulltime NOW (ball just stopped)
+    const currentInjuryTime = injuryTimeRef.current;
+    if (currentInjuryTime !== 'none') {
+      console.log(`%c[Game Loop] ⏰ Injury time resolved: ${currentInjuryTime}. Ball stopped at [${stoppedPosition.map(n=>n.toFixed(2)).join(', ')}]`, 'color: #e74c3c; font-weight: bold; background: #2c0000; padding: 4px 8px;');
+      if (currentInjuryTime === 'halftime') {
+        handleHalfTime();
+      } else {
+        handleFullTime();
+      }
+      return;
+    }
     if (phaseRef.current === GamePhase.PREPARATION || phaseRef.current === GamePhase.GAME_OVER) {
       console.log("%c[Game Loop] Ball stopped but phase is PREPARATION or GAME_OVER. Ignoring.", "color: #7f8c8d;");
       return;
@@ -824,9 +861,13 @@ export const useGameTransitions = ({
       if (isFairnessActive) {
         console.log(`%c[Goal Event] Entering Tactical Advantage Preparation. Conceding team = ${concedingTeam}`, "color: #2ecc71; font-weight: bold;");
         
-        const moveStatus = concedingTeam === 'HOME'
-          ? '🛡️ Vantagem Tática Ativada! Posicione seu time completo e defina seus Bloqueadores.'
-          : '⏳ IA definindo sua escalação tática (Vantagem Tática)...';
+        const moveStatus = isMultiplayer
+          ? (concedingTeam === myRole
+              ? '🛡️ Vantagem Tática Ativada! Posicione seu time completo e defina seus Bloqueadores.'
+              : '⏳ Oponente definindo escalação tática (Vantagem Tática)...')
+          : (concedingTeam === 'HOME'
+              ? '🛡️ Vantagem Tática Ativada! Posicione seu time completo e defina seus Bloqueadores.'
+              : '⏳ IA definindo sua escalação tática (Vantagem Tática)...');
 
         flushSync(() => {
           setCaptainMoveMode(null);
@@ -865,9 +906,13 @@ export const useGameTransitions = ({
 
         pendingGoalDataRef.current = { concedingTeam, nextCount, nextScores };
         
-        const moveStatus = concedingTeam === 'HOME'
-          ? '👑 Pause Break! Reposicione seu Capitão se quiser, depois confirme.'
-          : '⏳ IA decidindo posição do capitão...';
+        const moveStatus = isMultiplayer
+          ? (concedingTeam === myRole
+              ? '👑 Pause Break! Reposicione seu Capitão se quiser, depois confirme.'
+              : '⏳ Oponente decidindo posição do capitão...')
+          : (concedingTeam === 'HOME'
+              ? '👑 Pause Break! Reposicione seu Capitão se quiser, depois confirme.'
+              : '⏳ IA decidindo posição do capitão...');
 
         flushSync(() => {
           setCaptainMoveMode(concedingTeam);

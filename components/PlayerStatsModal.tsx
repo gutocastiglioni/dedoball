@@ -61,7 +61,7 @@ const renderTeamCrest = (player: any, sizeClass: string = "w-10 h-10", extraBord
 };
 
 const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) => {
-  const { activeUser, leaderboard, matchHistory, userProfile } = useGameStateContext();
+  const { activeUser, leaderboard, matchHistory, userProfile, t, language } = useGameStateContext();
   const isMobile = useIsMobile();
   // Local state to keep fetched/latest player details
   const [playerData, setPlayerData] = useState(player);
@@ -151,7 +151,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
       return (
         <div className="grid grid-cols-3 text-center text-[11px] font-bold text-zinc-400 py-1.5 border-b border-zinc-900/50">
           <span>{formattedMy}</span>
-          <span className="text-zinc-600 text-[9px] uppercase tracking-wider font-semibold">Empate</span>
+          <span className="text-zinc-600 text-[9px] uppercase tracking-wider font-semibold">{t('modals.stats.drawText')}</span>
           <span>{formattedOpp}</span>
         </div>
       );
@@ -206,7 +206,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
 
             <div className="text-left flex flex-col justify-center min-w-0">
               <h3 className="text-xs sm:text-sm font-extrabold text-zinc-100 uppercase tracking-wide truncate leading-none">
-                {playerData.teamName || `${(playerData.username || playerData.displayName || 'Jogador').toUpperCase()} FC`}
+                {playerData.teamName || `${(playerData.username || playerData.displayName || (language === 'pt' ? 'Jogador' : 'Player')).toUpperCase()} FC`}
               </h3>
               <div className="flex items-center gap-1.5 mt-1 leading-none text-[9px] sm:text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
                 <span>{playerData.username || playerData.displayName}</span>
@@ -227,7 +227,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                 `}
               >
                 <Activity size={10} />
-                Estatísticas
+                {t('modals.stats.statsTab')}
               </button>
               <button
                 onClick={() => { SoundManager.playUIClick(); setActiveTab('h2h'); }}
@@ -239,7 +239,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                 `}
               >
                 <Swords size={10} />
-                Confronto
+                {t('modals.stats.h2hTab')}
               </button>
             </div>
             
@@ -262,16 +262,16 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
               {/* Stats Highlights Row */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-2.5 text-center shadow-inner">
-                  <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-500 block mb-0.5">Jogos</span>
+                  <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-500 block mb-0.5">{t('modals.stats.games')}</span>
                   <span className="text-sm font-black text-zinc-200">{oppGames}</span>
                 </div>
                 <div className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-2.5 text-center shadow-inner">
-                  <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-500 block mb-0.5">Aproveitam.</span>
+                  <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-500 block mb-0.5">{t('modals.stats.performanceShort')}</span>
                   <span className="text-sm font-black text-cyan-400">{oppPerf.toFixed(0)}%</span>
                 </div>
                 <div className="bg-zinc-900/30 border border-zinc-900 rounded-xl p-2.5 text-center shadow-inner">
-                  <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-500 block mb-0.5">Pontos</span>
-                  <span className="text-sm font-black text-purple-400">{(playerData.points || 0)} PTS</span>
+                  <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-500 block mb-0.5">{t('modals.stats.points')}</span>
+                  <span className="text-sm font-black text-purple-400">{(playerData.points || 0)} {t('modals.stats.pts')}</span>
                 </div>
               </div>
 
@@ -281,19 +281,19 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                   {/* Left Column (Match Results) */}
                   <div className="divide-y divide-zinc-900/50">
                     <div className="grid grid-cols-2 text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 pb-1.5 border-b border-zinc-900 mb-1">
-                      <span className="text-left">Resultado</span>
-                      <span className="text-right">Qtd</span>
+                      <span className="text-left">{t('modals.stats.result')}</span>
+                      <span className="text-right">{t('modals.stats.qty')}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-[10px] font-bold">
-                      <span className="text-zinc-400 uppercase tracking-wide">Vitórias</span>
+                      <span className="text-zinc-400 uppercase tracking-wide">{t('modals.stats.wins')}</span>
                       <span className="font-black text-emerald-400">{(playerData.wins || 0)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-[10px] font-bold">
-                      <span className="text-zinc-400 uppercase tracking-wide">Empates</span>
+                      <span className="text-zinc-400 uppercase tracking-wide">{t('modals.stats.draws')}</span>
                       <span className="font-black text-zinc-300">{(playerData.draws || 0)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-[10px] font-bold">
-                      <span className="text-zinc-400 uppercase tracking-wide">Derrotas</span>
+                      <span className="text-zinc-400 uppercase tracking-wide">{t('modals.stats.losses')}</span>
                       <span className="font-black text-rose-400">{(playerData.losses || 0)}</span>
                     </div>
                   </div>
@@ -301,19 +301,19 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                   {/* Right Column (Goals Metrics) */}
                   <div className="divide-y divide-zinc-900/50 mt-4 sm:mt-0">
                     <div className="grid grid-cols-2 text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 pb-1.5 border-b border-zinc-900 mb-1">
-                      <span className="text-left">Gols</span>
-                      <span className="text-right">Qtd</span>
+                      <span className="text-left">{t('modals.stats.goals')}</span>
+                      <span className="text-right">{t('modals.stats.qty')}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-[10px] font-bold">
-                      <span className="text-zinc-400 uppercase tracking-wide">Gols Feitos</span>
+                      <span className="text-zinc-400 uppercase tracking-wide">{t('modals.stats.goalsScored')}</span>
                       <span className="font-black text-indigo-400">{(playerData.goalsScored || 0)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-[10px] font-bold">
-                      <span className="text-zinc-400 uppercase tracking-wide">Gols Sofridos</span>
+                      <span className="text-zinc-400 uppercase tracking-wide">{t('modals.stats.goalsConceded')}</span>
                       <span className="font-black text-orange-400">{(playerData.goalsConceded || 0)}</span>
                     </div>
                     <div className="flex justify-between items-center py-2 text-[10px] font-bold">
-                      <span className="text-zinc-400 uppercase tracking-wide">Saldo de Gols</span>
+                      <span className="text-zinc-400 uppercase tracking-wide">{t('modals.stats.goalDifference')}</span>
                       <span className={`font-black ${(playerData.goalsScored || 0) - (playerData.goalsConceded || 0) >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                         {(playerData.goalsScored || 0) - (playerData.goalsConceded || 0)}
                       </span>
@@ -325,12 +325,12 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
 
               {/* Player's Recent Match History List */}
               <div className="space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block text-left">Últimos Jogos de {playerData.username || playerData.displayName}</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block text-left">{t('modals.stats.recentMatchesOf', { name: playerData.username || playerData.displayName })}</span>
                 
                 {loadingHistory ? (
                   <div className="py-8 flex flex-col items-center justify-center gap-2">
                     <svg className="animate-spin w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Carregando partidas...</span>
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">{t('modals.stats.loadingMatches')}</span>
                   </div>
                 ) : opponentHistory.length > 0 ? (
                   <div className="space-y-1.5">
@@ -358,21 +358,21 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                             <div>
                               <div className="flex items-baseline gap-1.5 truncate max-w-[120px] xs:max-w-[180px] sm:max-w-[240px]">
                                 <h4 className="text-[10.5px] font-black uppercase truncate">
-                                  {opponentInfo.teamName || `${(opponentInfo.username || opponentInfo.displayName || 'Jogador').toUpperCase()} FC`}
+                                  {opponentInfo.teamName || `${(opponentInfo.username || opponentInfo.displayName || (language === 'pt' ? 'Jogador' : 'Player')).toUpperCase()} FC`}
                                 </h4>
                                 <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider whitespace-nowrap">
                                   {opponentInfo.username || opponentInfo.displayName}
                                 </span>
                               </div>
                               <span className="text-[7.5px] font-bold text-zinc-500 uppercase flex items-center gap-0.5 mt-0.5">
-                                <Calendar size={8} /> {new Date(match.timestamp).toLocaleDateString('pt-BR')}
+                                <Calendar size={8} /> {new Date(match.timestamp).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')}
                               </span>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2">
                             <span className={`text-[7px] font-black px-1 py-0.5 rounded ${match.isTournament ? 'bg-yellow-950 border border-yellow-900 text-yellow-400' : 'bg-indigo-950 border border-indigo-900 text-indigo-400'}`}>
-                              {match.isTournament ? 'COPA' : 'LIGA'}
+                              {match.isTournament ? t('modals.stats.cup') : t('modals.stats.league')}
                             </span>
                             <div className="flex items-center gap-1.5 bg-zinc-950/60 border border-zinc-800/80 px-2 py-0.5 rounded-lg font-black text-[9.5px] tabular-nums text-white">
                               <span className={isWin ? 'text-emerald-400' : 'text-zinc-400'}>{match.myGoals}</span>
@@ -387,7 +387,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                 ) : (
                   <div className="py-6 bg-zinc-900/10 border border-zinc-900 rounded-2xl text-center flex flex-col items-center justify-center text-zinc-500 font-bold">
                     <History size={20} className="opacity-30 mb-1" />
-                    <span className="text-[10px] font-semibold">Nenhuma peleja registrada.</span>
+                    <span className="text-[10px] font-semibold">{t('modals.stats.noMatches')}</span>
                   </div>
                 )}
               </div>
@@ -400,7 +400,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
               {!activeUser ? (
                 <div className="py-8 bg-zinc-900/10 border border-zinc-900 rounded-2xl text-center flex flex-col items-center justify-center text-zinc-500 font-bold">
                   <ShieldAlert size={20} className="opacity-30 mb-1" />
-                  <span className="text-[10px] font-semibold">Faça login para comparar o histórico H2H.</span>
+                  <span className="text-[10px] font-semibold">{t('modals.stats.loginToCompareH2H')}</span>
                 </div>
               ) : (
                 <>
@@ -410,14 +410,14 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                       <div className="text-center min-w-0 px-1 flex flex-col justify-center items-center">
                         <div className="flex flex-wrap items-baseline justify-center gap-x-1 max-w-full">
                           <span className="font-black text-zinc-300 uppercase tracking-wide truncate">
-                            {myProfile?.teamName || "VOCÊ"}
+                            {myProfile?.teamName || (language === 'pt' ? "VOCÊ" : "YOU")}
                           </span>
                           <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-wider whitespace-nowrap">
                             {userProfile?.username || myProfile?.username || activeUser?.displayName}
                           </span>
                         </div>
                       </div>
-                      <span className="text-zinc-400 self-center">ESTATÍSTICA</span>
+                      <span className="text-zinc-400 self-center">{t('modals.stats.statistic')}</span>
                       <div className="text-center min-w-0 px-1 flex flex-col justify-center items-center">
                         <div className="flex flex-wrap items-baseline justify-center gap-x-1 max-w-full">
                           <span className="font-black text-zinc-300 uppercase tracking-wide truncate">
@@ -432,42 +432,42 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
 
                     <div className="space-y-2.5">
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">POSIÇÃO DO RANKING</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.rankingPosition')}</span>
                         {renderCompare(myRankPosition === '--' ? 999 : Number(myRankPosition), rankPosition === '--' ? 999 : Number(rankPosition), false, true)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">PONTOS</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.points')}</span>
                         {renderCompare(myProfile?.points || 0, playerData.points || 0)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">APROVEITAMENTO GERAL</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.overallPerformance')}</span>
                         {renderCompare(myPerf, oppPerf, true)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">VITÓRIAS</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.wins')}</span>
                         {renderCompare(myProfile?.wins || 0, playerData.wins || 0)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">EMPATES</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.draws')}</span>
                         {renderCompare(myProfile?.draws || 0, playerData.draws || 0)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">DERROTAS (MENOR É MELHOR)</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.lossesLowerBetter')}</span>
                         {renderCompare(myProfile?.losses || 0, playerData.losses || 0, false, true)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">GOLS MARCADOS</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.goalsScoredUpper')}</span>
                         {renderCompare(myProfile?.goalsScored || 0, playerData.goalsScored || 0)}
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">GOLS SOFRIDOS (MENOR É MELHOR)</span>
+                        <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest block text-center">{t('modals.stats.goalsConcededLowerBetter')}</span>
                         {renderCompare(myProfile?.goalsConceded || 0, playerData.goalsConceded || 0, false, true)}
                       </div>
                     </div>
@@ -475,25 +475,25 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
 
                   {/* H2H Balance Board */}
                   <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-3.5 space-y-3">
-                    <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block text-center">SALDO DE CONFRONTOS DIRETOS</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block text-center">{t('modals.stats.h2hBalance')}</span>
                     <div className="grid grid-cols-3 gap-2 text-center items-center">
                       <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-2.5">
-                        <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider block">Suas Vitórias</span>
+                        <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider block">{t('modals.stats.yourWins')}</span>
                         <span className="text-sm font-black text-emerald-400">{h2hWins}</span>
                       </div>
                       <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-2.5">
-                        <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider block">Empates</span>
+                        <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider block">{t('modals.stats.draws')}</span>
                         <span className="text-sm font-black text-zinc-400">{h2hDraws}</span>
                       </div>
                       <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-2.5">
-                        <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider block">Suas Derrotas</span>
+                        <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider block">{t('modals.stats.yourLosses')}</span>
                         <span className="text-sm font-black text-rose-400">{h2hLosses}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400 border-t border-zinc-800/60 pt-2.5">
                       <div className="flex items-center gap-1">
-                        <span>Aproveitamento:</span>
+                        <span>{t('modals.stats.performanceColon')}</span>
                         <span className="text-purple-400 font-black">
                           {h2hMatches.length > 0 
                             ? `${((h2hWins * 3 + h2hDraws) / (h2hMatches.length * 3) * 100).toFixed(1)}%` 
@@ -502,7 +502,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span>Saldo de Gols:</span>
+                        <span>{t('modals.stats.goalDifferenceColon')}</span>
                         <span className={`font-black ${h2hGoalsScored - h2hGoalsConceded >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                           {h2hGoalsScored - h2hGoalsConceded >= 0 ? '+' : ''}{h2hGoalsScored - h2hGoalsConceded}
                         </span>
@@ -512,7 +512,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
 
                   {/* List of Direct Matches */}
                   <div className="space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block text-left">Partidas Diretas</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block text-left">{t('modals.stats.directMatches')}</span>
                     {h2hMatches.length > 0 ? (
                       <div className="space-y-1.5">
                         {h2hMatches.map((match: any) => {
@@ -531,10 +531,10 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                             >
                               <div>
                                 <span className="text-[7.5px] font-bold text-zinc-500 uppercase flex items-center gap-0.5 mb-0.5">
-                                  <Calendar size={8} /> {new Date(match.timestamp).toLocaleDateString('pt-BR')}
+                                  <Calendar size={8} /> {new Date(match.timestamp).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')}
                                 </span>
                                 <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">
-                                  {match.isTournament ? 'Campeonato Dedobol (Copa)' : 'Liga Regular Dedobol'}
+                                  {match.isTournament ? t('modals.stats.dedobolCup') : t('modals.stats.regularLeague')}
                                 </span>
                               </div>
 
@@ -552,7 +552,7 @@ const PlayerStatsModal: React.FC<PlayerStatsModalProps> = ({ player, onClose }) 
                     ) : (
                       <div className="py-6 bg-zinc-900/10 border border-zinc-900 rounded-2xl text-center flex flex-col items-center justify-center text-zinc-500 font-bold">
                         <Swords size={20} className="opacity-30 mb-1" />
-                        <span className="text-[10px] font-semibold">Nenhum confronto direto registrado ainda.</span>
+                        <span className="text-[10px] font-semibold">{t('modals.stats.noH2hMatches')}</span>
                       </div>
                     )}
                   </div>

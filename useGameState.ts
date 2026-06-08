@@ -117,11 +117,14 @@ export const useGameState = () => {
   const [lastGoalScorer, setLastGoalScorer] = useState<Team | null>(null);
   const [consecutiveGoalsCount, setConsecutiveGoalsCount] = useState<number>(0);
   const [captainMoveMode, setCaptainMoveMode] = useState<Team | null>(null);
+  const [injuryTime, setInjuryTime] = useState<'none' | 'halftime' | 'fulltime'>('none');
   const [swapPlayerId, setSwapPlayerId] = useState<string | null>(null);
 
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [rulesAutoTriggered, setRulesAutoTriggered] = useState(false);
   const [systemMessage, setSystemMessage] = useState<{ title: string; message: string; type?: 'info' | 'error' | 'success' | 'warning' } | null>(null);
+  const [isBannerActive, setIsBannerActive] = useState(false);
+  const [currentMenuTab, setCurrentMenuTab] = useState<'solo' | 'multi' | 'tournament' | 'ranking' | 'history'>('solo');
 
   const setSelectedPlayerId = useCallback((id: string | null) => {
     if (id === null || id === 'ball') {
@@ -160,6 +163,7 @@ export const useGameState = () => {
   const matchDurationRef = useRef(matchDuration);
   const gameTimeSecondsRef = useRef(gameTimeSeconds);
   const wasKickoffRef = useRef(false);
+  const injuryTimeRef = useRef<'none' | 'halftime' | 'fulltime'>('none');
   const turnTimerRef = useRef<number | null>(null);
 
   const gameModeRef = useRef<'standard' | 'manual'>('standard');
@@ -318,6 +322,7 @@ export const useGameState = () => {
   useEffect(() => { awayFlicksRemainingRef.current = awayFlicksRemaining; }, [awayFlicksRemaining]);
   useEffect(() => { matchDurationRef.current = matchDuration; }, [matchDuration]);
   useEffect(() => { gameTimeSecondsRef.current = gameTimeSeconds; }, [gameTimeSeconds]);
+  useEffect(() => { injuryTimeRef.current = injuryTime; }, [injuryTime]);
   useEffect(() => { ballRef.current = ball; }, [ball]);
   useEffect(() => { turnRef.current = turn; }, [turn]);
   useEffect(() => { myRoleRef.current = myRole; }, [myRole]);
@@ -333,6 +338,11 @@ export const useGameState = () => {
       SoundManager.playRefereeWhistle('gameover');
     }
   }, [phase]);
+
+  const setInjuryTimeSync = (val: 'none' | 'halftime' | 'fulltime') => {
+    injuryTimeRef.current = val;
+    setInjuryTime(val);
+  };
 
   // Composed Sub-Hooks Invocations
   const multiplayerHook = useGameMultiplayer({
@@ -368,7 +378,10 @@ export const useGameState = () => {
     tournament, setTournament, homeKitConfig, setHomeKitConfig, awayKitConfig, setAwayKitConfig,
     isLeavingRef, setSystemMessage, addGameLog,
     initializeTeams: () => setupHook.initializeTeams(),
-    resetMatch: () => resetMatch()
+    resetMatch: () => resetMatch(),
+    injuryTime,
+    injuryTimeRef,
+    setInjuryTimeSync
   });
 
   const setupHook = useGameSetup({
@@ -396,7 +409,8 @@ export const useGameState = () => {
     isMultiplayer, ball, ballRef, setBall,
     awayPlayers, setAwayPlayers, awayPlayersRef, gameMode, gkMoveActiveTeam, addGameLog,
     awayFlicksRemainingRef, setAwayFlicksRemaining, lastGoalScorerRef, consecutiveGoalsCountRef,
-    getTeamMaxBlockers: setupHook.getTeamMaxBlockers
+    getTeamMaxBlockers: setupHook.getTeamMaxBlockers,
+    isBannerActive
   });
 
   const transitionHook = useGameTransitions({
@@ -412,6 +426,7 @@ export const useGameState = () => {
     consecutiveGoalsCount, consecutiveGoalsCountRef, setConsecutiveGoalsCount,
     actionStatus, setActionStatus, isIAThinking, homeReady, setHomeReady, awayReady, setAwayReady,
     setSelectedPlayerId, setCaptainMoveMode, captainMoveModeRef, pendingGoalDataRef, wasKickoffRef,
+    injuryTimeRef, setInjuryTimeSync,
     homePlayers, homePlayersRef, awayPlayers, awayPlayersRef, setSystemMessage, addGameLog,
     enforceBlockerLimit: setupHook.enforceBlockerLimit,
     syncGameStateToFirebase: multiplayerHook.syncGameStateToFirebase
@@ -423,6 +438,7 @@ export const useGameState = () => {
     gkMoveTimer, setGkMoveTimer, setGkMoveActiveTeam, gkMoveTimerRef, gkMoveActiveTeamRef,
     gameTimeSeconds, setGameTimeSeconds, gameTimeSecondsRef, setGameTime, gameTimeRef,
     matchDuration, matchDurationRef, captainMoveMode, homeReady, awayReady, turn, currentRoom,
+    injuryTime, setInjuryTimeSync,
     triggerActiveTurnTimeout: multiplayerHook.triggerActiveTurnTimeout,
     triggerTimeoutDefeat: multiplayerHook.triggerTimeoutDefeat,
     triggerWO: multiplayerHook.triggerWO,
@@ -474,12 +490,22 @@ export const useGameState = () => {
     if (isMultiplayer && roomId && myRole) {
       leaveMultiplayerRoom(roomId, myRole);
     }
+    
+    // Define o tab correto do lobby ao retornar
+    if (isMultiplayer) {
+      setCurrentMenuTab('multi');
+    } else if (activeTournamentId) {
+      setCurrentMenuTab('tournament');
+    }
+
     setPhase(GamePhase.MENU);
     setScores({ home: 0, away: 0 });
     setLastGoalScorer(null);
     setConsecutiveGoalsCount(0);
     lastGoalScorerRef.current = null;
     consecutiveGoalsCountRef.current = 0;
+    setInjuryTime('none');
+    injuryTimeRef.current = 'none';
     setCaptainMoveMode(null);
     captainMoveModeRef.current = null;
     pendingGoalDataRef.current = null;
@@ -507,6 +533,8 @@ export const useGameState = () => {
   return {
     phase,
     setPhase,
+    currentMenuTab,
+    setCurrentMenuTab,
     difficulty,
     setDifficulty,
     scores,
@@ -566,6 +594,9 @@ export const useGameState = () => {
     setRulesAutoTriggered,
     systemMessage,
     setSystemMessage,
+    isBannerActive,
+    setIsBannerActive,
+    injuryTime,
     prepTimer,
     turnTimer,
     swapPlayerId,
@@ -597,6 +628,7 @@ export const useGameState = () => {
     logout: logoutFirebase,
     createRoom: multiplayerHook.handleCreateRoom,
     joinRoom: multiplayerHook.handleJoinRoom,
+    triggerForfeit: multiplayerHook.triggerForfeit,
 
     // Tournament exports
     activeTournamentId,

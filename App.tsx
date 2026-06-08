@@ -8,13 +8,15 @@ import HUDHeader from './components/hud/HUDHeader';
 import HUDPreparationPanel from './components/hud/HUDPreparationPanel';
 import HUDActionOverlay from './components/hud/HUDActionOverlay';
 import HUDOverlays from './components/hud/HUDOverlays';
+import HUDMatchEventBanner from './components/hud/HUDMatchEventBanner';
 import { FloatingHUDActionMenu } from './components/scene/FloatingHUDActionMenu';
 // import HUDTelemetryLog from './components/hud/HUDTelemetryLog';
 import { useIsMobile } from './hooks/useIsMobile';
-import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen, Globe } from 'lucide-react';
+import { Navigation, Volume2, VolumeX, Zap, Users, Settings, Video, Info, BookOpen, Globe, LogOut } from 'lucide-react';
 import SoundManager from './SoundManager';
 import RulesModal from './components/RulesModal';
 import SystemAlertModal from './components/SystemAlertModal';
+import ConfirmationModal from './components/ConfirmationModal';
 import { Canvas, useFrame } from '@react-three/fiber';
 import Pitch from './components/Pitch';
 
@@ -83,6 +85,7 @@ const AppContent: React.FC = () => {
     myRole,
     language,
     changeLanguage,
+    triggerForfeit,
     t,
   } = useGameStateContext();
 
@@ -90,6 +93,7 @@ const AppContent: React.FC = () => {
   const [isPortrait, setIsPortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const [isMuted, setIsMuted] = useState(false);
   const [sfxVolume, setSfxVolume] = useState(0.5);
@@ -362,7 +366,7 @@ const AppContent: React.FC = () => {
               TABLEBALL
             </h1>
             <p className="text-zinc-400 text-xs font-semibold tracking-wide">
-              {language === 'pt' ? 'Futebol de botão online' : 'Online button football'}
+              Online button football
             </p>
             <span className="text-[10px] font-bold text-zinc-600 tracking-widest uppercase mt-0.5">
               v1.0.0
@@ -433,6 +437,7 @@ const AppContent: React.FC = () => {
           {phase === GamePhase.PREPARATION && <HUDPreparationPanel />}
           {phase === GamePhase.ACTION && <HUDActionOverlay />}
           <HUDOverlays />
+          <HUDMatchEventBanner />
           {/* <HUDTelemetryLog /> */}
         </>
       )}
@@ -527,6 +532,21 @@ const AppContent: React.FC = () => {
             >
               <Info size={isMobile ? 12 : 18} />
             </button>
+
+            {/* Leave Game Button — Multiplayer Only */}
+            {isMultiplayer && (
+              <button
+                onClick={() => {
+                  SoundManager.playUIClick();
+                  setShowLeaveConfirm(true);
+                }}
+                className="flex items-center justify-center transition-all duration-300 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30"
+                style={{ width: isMobile ? '28px' : '44px', height: isMobile ? '28px' : '44px', borderRadius: isMobile ? '8px' : '14px' }}
+                title={language === 'pt' ? 'Abandonar Partida' : 'Forfeit Match'}
+              >
+                <LogOut size={isMobile ? 12 : 18} />
+              </button>
+            )}
           </div>
 
           {/* Floating Settings Card Panel */}
@@ -718,6 +738,25 @@ const AppContent: React.FC = () => {
           message={systemMessage.message}
           type={systemMessage.type}
           onClose={() => setSystemMessage(null)}
+        />
+      )}
+
+      {/* Leave / Forfeit Confirmation Modal */}
+      {showLeaveConfirm && (
+        <ConfirmationModal
+          title={language === 'pt' ? 'ABANDONAR PARTIDA?' : 'FORFEIT MATCH?'}
+          message={
+            language === 'pt'
+              ? 'Se você sair agora, o oponente vencerá por abandono (W.O.) e os pontos serão calculados normalmente. Tem certeza?'
+              : 'If you leave now, the opponent wins by forfeit (W.O.) and stats will be saved. Are you sure?'
+          }
+          confirmLabel={language === 'pt' ? 'SAIR' : 'LEAVE'}
+          cancelLabel={language === 'pt' ? 'CANCELAR' : 'CANCEL'}
+          onConfirm={() => {
+            setShowLeaveConfirm(false);
+            triggerForfeit();
+          }}
+          onCancel={() => setShowLeaveConfirm(false)}
         />
       )}
 

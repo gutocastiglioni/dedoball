@@ -456,3 +456,57 @@ canvas {
   touch-action: none !important;
 }
 
+/* Match Banner animations */
+@keyframes matchOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes matchOverlayOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes matchBandIn {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  40% {
+    transform: scaleY(1.02);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes matchBandOut {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+.animate-matchOverlayIn {
+  animation: matchOverlayIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-matchOverlayOut {
+  animation: matchOverlayOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-matchBandIn {
+  animation: matchBandIn 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.animate-matchBandOut {
+  animation: matchBandOut 0.4s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+

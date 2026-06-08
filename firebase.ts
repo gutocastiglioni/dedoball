@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, 
   User, 
   GoogleAuthProvider, 
-  signInWithPopup, 
+  signInWithPopup,
   signOut 
 } from 'firebase/auth';
 import { 
@@ -43,7 +43,7 @@ export const googleProvider = new GoogleAuthProvider();
 
 // Re-export Auth types and functions
 export { 
-  signInWithPopup, 
+  signInWithPopup,
   signOut, 
   onAuthStateChanged, 
   signInAnonymously 

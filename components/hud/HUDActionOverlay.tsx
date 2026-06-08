@@ -11,9 +11,11 @@ const HUDActionOverlay: React.FC = () => {
     isMultiplayer,
     turnTimer,
     gkMoveActiveTeam,
+    language,
+    t,
   } = useGameStateContext();
 
-  const isFoul = actionStatus.startsWith('Falta!');
+  const isFoul = actionStatus.startsWith('Falta!') || actionStatus.startsWith('Foul!');
   const isBallSelected = selectedPlayerId === 'ball';
 
   if (gkMoveActiveTeam !== null) return null;
@@ -30,15 +32,17 @@ const HUDActionOverlay: React.FC = () => {
                   ⚽
                 </div>
                 <div>
-                  <h3 className="text-xs md:text-sm font-black tracking-wider uppercase text-zinc-100">BOLA DE JOGO</h3>
+                  <h3 className="text-xs md:text-sm font-black tracking-wider uppercase text-zinc-100">
+                    {language === 'pt' ? 'BOLA DE JOGO' : 'GAME BALL'}
+                  </h3>
                   <span className="inline-flex items-center gap-1 text-[8px] md:text-[9px] font-bold text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded-full border border-cyan-900/40 mt-0.5 shadow-[0_0_8px_rgba(6,182,212,0.2)]">
-                    SELECIONADA
+                    {language === 'pt' ? 'SELECIONADA' : 'SELECTED'}
                   </span>
                 </div>
               </div>
             </div>
             <p className="text-[11px] md:text-xs text-zinc-300 leading-relaxed font-semibold text-center py-0.5 md:py-1">
-              🎯 Clique na bola, puxe para trás (estilingue) e solte para dar o peteleco!
+              {t('hud.ballSelectionGuide')}
             </p>
           </div>
         </div>
@@ -57,15 +61,15 @@ const HUDActionOverlay: React.FC = () => {
                     : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]'
               }`} />
               <span className="text-zinc-400 tracking-wider font-semibold">
-                TEMPO DO SEU PETELECO ({turn === 'HOME' ? 'CASA' : 'VISITANTE'})
+                {turn === 'HOME' ? t('hud.homeFlickTime') : t('hud.awayFlickTime')}
               </span>
             </div>
             <span className={`font-black text-xs md:text-sm tabular-nums tracking-wide px-2 py-0.5 rounded-md ${
               turnTimer <= 5 
-                ? 'text-rose-400 bg-rose-950/40 border border-rose-500/20 scale-105 animate-pulse' 
+                ? 'text-rose-400 bg-rose-955/40 border border-rose-500/20 scale-105 animate-pulse' 
                 : turn === 'HOME' 
                   ? 'text-cyan-400 bg-cyan-950/40 border border-cyan-500/20' 
-                  : 'text-orange-400 bg-orange-950/40 border border-orange-500/20'
+                  : 'text-orange-400 bg-orange-955/40 border border-orange-500/20'
             }`}>
               {turnTimer}s
             </span>
@@ -87,12 +91,12 @@ const HUDActionOverlay: React.FC = () => {
           <p className="text-[9px] md:text-[10px] text-center font-medium tracking-wide">
             {turn === myRole ? (
               turnTimer <= 5 ? (
-                <span className="text-rose-400 font-black animate-pulse">⏰ SEU TURNO ESTÁ ACABANDO! JOGUE LOGO!</span>
+                <span className="text-rose-400 font-black animate-pulse">{t('hud.turnRunningOut')}</span>
               ) : (
-                <span className="text-zinc-400">É a sua vez! Faça o seu peteleco antes do estouro do tempo.</span>
+                <span className="text-zinc-400">{t('hud.turnInstructions')}</span>
               )
             ) : (
-              <span className="text-zinc-500 font-semibold italic">Aguardando o peteleco do oponente...</span>
+              <span className="text-zinc-500 font-semibold italic">{t('hud.waitingOpponent')}</span>
             )}
           </p>
         </div>
@@ -106,7 +110,7 @@ const HUDActionOverlay: React.FC = () => {
         <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] transition-colors duration-300 ${
           isFoul ? 'text-rose-500' : 'text-cyan-400'
         }`}>
-          {isFoul ? '⚠️ INFRAÇÃO DETECTADA' : 'INFORMAÇÕES DE CAMPO'}
+          {isFoul ? t('hud.detectionAlert') : t('hud.gameInfo')}
         </span>
         <p className="text-[11px] md:text-xs text-zinc-300 font-semibold leading-relaxed">
           {actionStatus}

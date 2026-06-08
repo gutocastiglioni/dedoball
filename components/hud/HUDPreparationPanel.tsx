@@ -35,7 +35,8 @@ const HUDPreparationPanel: React.FC = () => {
     myRole,
     lastGoalScorer,
     consecutiveGoalsCount,
-    swapPlayerId
+    swapPlayerId,
+    t
   } = useGameStateContext();
 
   const [blockingLimitError, setBlockingLimitError] = useState(false);
@@ -74,13 +75,13 @@ const HUDPreparationPanel: React.FC = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[7.5px] font-black text-emerald-450 uppercase tracking-widest leading-none mb-0.5 flex items-center gap-1">
-                    🔄 JOGADOR A SER SUBSTITUÍDO
+                    {t('hud.playerToBeReplaced')}
                   </span>
                   <span className="text-[11px] font-extrabold text-zinc-300">Nº {swapPlayer.number} — {swapPlayer.isCaptain ? 'Capitão' : 'Jogador de Linha'}</span>
                 </div>
               </div>
               <div className="text-[8px] font-black tracking-widest text-emerald-400 bg-emerald-950/50 border border-emerald-900/60 px-2 py-1 rounded-lg uppercase">
-                {swapPlayer.number === 1 ? 'GOLEIRO' : 'LINHA'}
+                {swapPlayer.number === 1 ? t('hud.gkRole') : t('hud.lineRole')}
               </div>
             </div>
           )}
@@ -296,7 +297,7 @@ const HUDPreparationPanel: React.FC = () => {
             className="hud-recenter-btn w-full py-2.5 md:py-3 px-5 md:px-7 bg-zinc-900/90 hover:bg-zinc-800/95 border border-zinc-700 text-cyan-400 font-bold tracking-widest uppercase rounded-xl md:rounded-2xl shadow-lg transform transition-all active:scale-98 flex items-center justify-center gap-2 text-xs md:text-sm animate-scaleUp pointer-events-auto"
           >
             <Navigation size={14} className="rotate-45" />
-            RECENTRALIZAR
+            {t('app.recenter')}
           </button>
         )}
         <button
@@ -304,7 +305,7 @@ const HUDPreparationPanel: React.FC = () => {
           className="hud-confirm-btn w-full py-3.5 md:py-5 px-6 md:px-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black tracking-widest uppercase rounded-2xl md:rounded-3xl shadow-[0_4px_30px_rgba(16,185,129,0.35)] hover:shadow-[0_4px_35px_rgba(16,185,129,0.5)] transform transition-all active:scale-98 flex items-center justify-center gap-2 text-xs md:text-sm"
         >
           <CheckCircle2 size={16} className="md:w-[18px] md:h-[18px]" />
-          CONFIRMAR TÁTICA
+          {t('hud.confirmTactic')}
         </button>
       </div>
     </div>

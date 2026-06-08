@@ -44,6 +44,7 @@ export interface Room {
     consecutiveGoalsCount?: number;
     gkMoveActiveTeam?: Team | null;
     gkMoveTimer?: number | null;
+    injuryTime?: 'none' | 'halftime' | 'fulltime';
   };
 }
 
@@ -73,11 +74,11 @@ export interface Tournament {
 export const signInGoogle = async () => {
   const result = await signInWithPopup(auth, googleProvider);
   const user = result.user;
-  
+
   // Register user stats in DB if they do not exist
   const userRef = ref(db, `users/${user.uid}`);
   const snap = await get(userRef);
-  
+
   if (!snap.exists()) {
     await set(userRef, {
       uid: user.uid,
@@ -114,6 +115,8 @@ export const signInGoogle = async () => {
   }
   return user;
 };
+
+
 
 export const logoutFirebase = async () => {
   await signOut(auth);

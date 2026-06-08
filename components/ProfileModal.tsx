@@ -12,7 +12,7 @@ interface ProfileModalProps {
 }
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-  const { activeUser } = useGameStateContext();
+  const { activeUser, language, t } = useGameStateContext();
   const isMobile = useIsMobile();
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -116,8 +116,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
       setSelectedUniformItem('shirt');
       if (userProfile) {
         setEditUsername(userProfile.username || activeUser.displayName || '');
-        setEditTeamName(userProfile.teamName || 'Meu Time');
-        setEditAbbreviation(userProfile.abbreviation || (userProfile.teamName ? userProfile.teamName.substring(0, 3).toUpperCase() : 'MEU'));
+        setEditTeamName(userProfile.teamName || (language === 'pt' ? 'Meu Time' : 'My Team'));
+        setEditAbbreviation(userProfile.abbreviation || (userProfile.teamName ? userProfile.teamName.substring(0, 3).toUpperCase() : (language === 'pt' ? 'MEU' : 'MYT')));
         if (userProfile.uniform) {
           const u = userProfile.uniform;
           setEditPrimaryColor(u.primaryColor || '#1e3799');
@@ -154,9 +154,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         }
         setLogoPreview(userProfile.logoUrl || null);
       } else {
-        setEditUsername(activeUser.displayName || 'Jogador');
-        setEditTeamName('Meu Time');
-        setEditAbbreviation('MEU');
+        setEditUsername(activeUser.displayName || (language === 'pt' ? 'Jogador' : 'Player'));
+        setEditTeamName(language === 'pt' ? 'Meu Time' : 'My Team');
+        setEditAbbreviation(language === 'pt' ? 'MEU' : 'MYT');
         setEditPrimaryColor('#1e3799');
         setEditSecondaryColor('#ffffff');
         setEditPattern('solid');
@@ -325,7 +325,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
           <div className="flex items-center gap-2.5">
             <img src={activeUser.photoURL || ''} alt="" className="w-6 h-6 rounded-full border border-cyan-500/40" referrerPolicy="no-referrer" />
             <div className="flex items-baseline gap-2">
-              <h2 className={`font-black tracking-wider text-zinc-200 uppercase ${isMobile ? 'text-[11px]' : 'text-sm'}`}>Perfil & Uniforme</h2>
+              <h2 className={`font-black tracking-wider text-zinc-200 uppercase ${isMobile ? 'text-[11px]' : 'text-sm'}`}>{language === 'pt' ? 'Perfil & Uniforme' : 'Profile & Kit'}</h2>
               <span className={`font-semibold ${isMobile ? 'text-[9px] text-zinc-600' : 'text-xs text-zinc-500'}`}>{activeUser.email}</span>
             </div>
           </div>
@@ -364,7 +364,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                 onClick={() => { SoundManager.playUIClick(); onClose(); setSelectedLogoBlob(null); }}
                 className="flex-1 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-xl text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-center active:scale-98"
               >
-                Cancelar
+                {language === 'pt' ? 'Cancelar' : 'Cancel'}
               </button>
               <button
                 type="button"
@@ -375,9 +375,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                 {isSavingProfile ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Salvando...
+                    {language === 'pt' ? 'Salvando...' : 'Saving...'}
                   </span>
-                ) : 'Salvar Perfil'}
+                ) : (language === 'pt' ? 'Salvar Perfil' : 'Save Profile')}
               </button>
             </div>
           </div>
@@ -387,7 +387,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
             <div className="flex-1 flex flex-col min-h-0 gap-3">
               <div className="flex items-center justify-between flex-shrink-0">
                 <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500 block">
-                  Uniforme ({currentKitType === 'home' ? 'Casa' : 'Fora'})
+                  {language === 'pt' 
+                    ? `Uniforme (${currentKitType === 'home' ? 'Casa' : 'Fora'})` 
+                    : `Kit (${currentKitType === 'home' ? 'Home' : 'Away'})`}
                 </span>
                 <button
                   type="button"
@@ -395,7 +397,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
                   className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-zinc-800 hover:border-cyan-500/50 rounded-lg text-[9px] font-black uppercase text-cyan-400 hover:text-cyan-300 transition-all hover:scale-105 active:scale-95"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                  Alternar
+                  {language === 'pt' ? 'Alternar' : 'Toggle'}
                 </button>
               </div>
               

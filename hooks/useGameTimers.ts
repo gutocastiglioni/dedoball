@@ -40,6 +40,8 @@ interface UseGameTimersParams {
   triggerWO: () => void;
   handleHalfTime: () => void;
   handleFullTime: () => void;
+  injuryTime: 'none' | 'halftime' | 'fulltime';
+  setInjuryTimeSync: (val: 'none' | 'halftime' | 'fulltime') => void;
 }
 
 export const useGameTimers = ({
@@ -78,8 +80,12 @@ export const useGameTimers = ({
   triggerTimeoutDefeat,
   triggerWO,
   handleHalfTime,
-  handleFullTime
+  handleFullTime,
+  injuryTime,
+  setInjuryTimeSync
 }: UseGameTimersParams) => {
+
+  const ballMoving = Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05;
 
   // Real-time ticking effect for active player turn timer (30s) - Multiplayer Only
   useEffect(() => {
@@ -88,7 +94,6 @@ export const useGameTimers = ({
       return;
     }
 
-    const ballMoving = Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05;
     if (ballMoving) {
       setTurnTimer(null);
       return;
@@ -102,7 +107,13 @@ export const useGameTimers = ({
     // Initialize timer to 30s when it's null and ball is stopped
     setTurnTimer(prev => (prev === null ? 30 : prev));
 
+    let lastTick = Date.now();
     const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      if (elapsed < 1000) return;
+      lastTick = now;
+
       setTurnTimer(prev => {
         if (prev === null) return 30;
         if (prev <= 1) {
@@ -124,10 +135,10 @@ export const useGameTimers = ({
 
         return nextVal;
       });
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [phase, ball.velocity, turn, isMultiplayer, myRole, opponentDisconnected, triggerActiveTurnTimeout, setTurnTimer]);
+  }, [phase, ballMoving, turn, isMultiplayer, myRole, opponentDisconnected, triggerActiveTurnTimeout, setTurnTimer]);
 
   // Gerenciamento dinâmico dos timers de Preparação Tática e Capitão
   useEffect(() => {
@@ -154,7 +165,13 @@ export const useGameTimers = ({
     // Pausa o cronômetro de preparação se o oponente sofrer desconexão
     if (opponentDisconnected) return;
 
+    let lastTick = Date.now();
     const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      if (elapsed < 1000) return;
+      lastTick = now;
+
       setPrepTimer(prev => {
         if (prev === null) {
           clearInterval(interval);
@@ -179,7 +196,7 @@ export const useGameTimers = ({
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [prepTimer, isMultiplayer, opponentDisconnected, triggerTimeoutDefeat, homeReady, awayReady, myRole, phase, captainMoveMode, setPrepTimer]);
@@ -188,7 +205,13 @@ export const useGameTimers = ({
   useEffect(() => {
     if (!opponentDisconnected || !isMultiplayer || !roomId) return;
 
+    let lastTick = Date.now();
     const timer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      if (elapsed < 1000) return;
+      lastTick = now;
+
       setDisconnectCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
@@ -200,8 +223,6 @@ export const useGameTimers = ({
             if (isHome) {
               // Host resets room back to waiting and removes Guest
               update(roomRef, { status: 'waiting' });
-              const guestAwayRef = ref(db, `rooms/${roomId}/players/away`);
-              const presenceAwayRef = ref(db, `rooms/${roomId}/presence/away`);
               // Trigger deletes
               update(ref(db, `rooms/${roomId}`), {
                 'players/away': null,
@@ -217,7 +238,7 @@ export const useGameTimers = ({
         }
         return prev - 1;
       });
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(timer);
   }, [opponentDisconnected, isMultiplayer, roomId, currentRoom?.status, triggerWO, myRoleRef, setDisconnectCountdown]);
@@ -226,7 +247,13 @@ export const useGameTimers = ({
   useEffect(() => {
     if (gkMoveTimer === null || gkMoveTimer <= 0) return;
 
+    let lastTick = Date.now();
     const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      if (elapsed < 1000) return;
+      lastTick = now;
+
       setGkMoveTimer(prev => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
@@ -254,7 +281,7 @@ export const useGameTimers = ({
         
         return nextVal;
       });
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [gkMoveTimer === null, isMultiplayer, roomId, myRole, setGkMoveTimer, setGkMoveActiveTeam, gkMoveTimerRef, gkMoveActiveTeamRef]);
@@ -262,13 +289,15 @@ export const useGameTimers = ({
   // Real-time ticking effect while ball is moving
   useEffect(() => {
     if (phase !== GamePhase.ACTION) return;
-
-    const ballMoving = Math.hypot(ball.velocity[0], ball.velocity[2]) > 0.05;
     if (!ballMoving) return;
 
+    let lastTick = Date.now();
     const interval = setInterval(() => {
-      const isMaster = !isMultiplayer || myRole === 'HOME';
-      
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      if (elapsed < 1000) return;
+      lastTick = now;
+
       setGameTimeSeconds(prev => {
         const nextSec = prev + 1;
         gameTimeSecondsRef.current = nextSec;
@@ -278,21 +307,27 @@ export const useGameTimers = ({
         gameTimeRef.current = nextMin;
 
         const halfTimeLimit = Math.floor(matchDurationRef.current / 2);
-        
+
         if (!isMultiplayer || myRole === 'HOME') {
-          if (nextSec >= matchDurationRef.current) {
-            clearInterval(interval);
-            setTimeout(() => handleFullTime(), 0);
-          } else if (nextSec === halfTimeLimit && prev < halfTimeLimit) {
-            clearInterval(interval);
-            setTimeout(() => handleHalfTime(), 0);
+          if (nextSec >= matchDurationRef.current && injuryTime === 'none') {
+            // Full time: activate injury time, keep ball rolling
+            setInjuryTimeSync('fulltime');
+            if (isMultiplayer && roomId) {
+              update(ref(db, `rooms/${roomId}/gameState`), { injuryTime: 'fulltime' });
+            }
+          } else if (nextSec >= halfTimeLimit && nextSec < matchDurationRef.current && prev < halfTimeLimit && injuryTime === 'none') {
+            // Half time: activate injury time, keep ball rolling
+            setInjuryTimeSync('halftime');
+            if (isMultiplayer && roomId) {
+              update(ref(db, `rooms/${roomId}/gameState`), { injuryTime: 'halftime' });
+            }
           }
         }
 
         return nextSec;
       });
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [phase, ball.velocity, isMultiplayer, myRole, handleHalfTime, handleFullTime, setGameTimeSeconds, matchDurationRef, setGameTime, gameTimeRef, gameTimeSecondsRef]);
+  }, [phase, ballMoving, isMultiplayer, myRole, injuryTime, setInjuryTimeSync, handleHalfTime, handleFullTime, setGameTimeSeconds, matchDurationRef, setGameTime, gameTimeRef, gameTimeSecondsRef]);
 };

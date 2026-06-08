@@ -113,6 +113,9 @@ interface UseGameMultiplayerParams {
   addGameLog: (message: string, type: GameLogEntry['type']) => void;
   initializeTeams: () => void;
   resetMatch: () => void;
+  injuryTime: 'none' | 'halftime' | 'fulltime';
+  injuryTimeRef: React.MutableRefObject<'none' | 'halftime' | 'fulltime'>;
+  setInjuryTimeSync: (val: 'none' | 'halftime' | 'fulltime') => void;
 }
 
 export const useGameMultiplayer = ({
@@ -214,7 +217,10 @@ export const useGameMultiplayer = ({
   setSystemMessage,
   addGameLog,
   initializeTeams,
-  resetMatch
+  resetMatch,
+  injuryTime,
+  injuryTimeRef,
+  setInjuryTimeSync
 }: UseGameMultiplayerParams) => {
 
   const refreshHistoryAndLeaderboard = useCallback(async (uid: string) => {
@@ -263,7 +269,8 @@ export const useGameMultiplayer = ({
         lastGoalScorer: lastGoalScorerRef.current,
         consecutiveGoalsCount: consecutiveGoalsCountRef.current,
         gkMoveActiveTeam: gkMoveActiveTeamRef.current,
-        gkMoveTimer: gkMoveTimerRef.current
+        gkMoveTimer: gkMoveTimerRef.current,
+        injuryTime: injuryTimeRef.current
       }
     };
 
@@ -739,6 +746,9 @@ export const useGameMultiplayer = ({
             setConsecutiveGoalsCount(room.gameState.consecutiveGoalsCount);
             consecutiveGoalsCountRef.current = room.gameState.consecutiveGoalsCount;
           }
+          if (room.gameState.injuryTime !== undefined) {
+            setInjuryTimeSync(room.gameState.injuryTime);
+          }
         }
       }
 
@@ -756,7 +766,7 @@ export const useGameMultiplayer = ({
     return () => {
       off(roomRef);
     };
-  }, [isMultiplayer, roomId, setOpponentDisconnected, setDisconnectCountdown, setGkMoveActiveTeamSync, setGkMoveTimerSync, setScoresSync, setTurnSync, setGameTimeSync, setGameTimeSecondsSync, setHomeFlicksSync, setAwayFlicksSync, setPhaseSync, setBallSync, setLastGoalScorer, setConsecutiveGoalsCount, setHomeReady, setAwayReady, setAwayPlayers, setHomePlayers, setOpponentInfo, setCurrentRoom, setPhase, setScores, initializeTeams, setBall, setActionStatus, setGameModeSync, setMatchDuration, matchDurationRef, phaseRef, myRoleRef, isLeavingRef, setSystemMessage, resetMatch, turnRef, lastGoalScorerRef, consecutiveGoalsCountRef]);
+  }, [isMultiplayer, roomId, setOpponentDisconnected, setDisconnectCountdown, setGkMoveActiveTeamSync, setGkMoveTimerSync, setScoresSync, setTurnSync, setGameTimeSync, setGameTimeSecondsSync, setHomeFlicksSync, setAwayFlicksSync, setPhaseSync, setBallSync, setLastGoalScorer, setConsecutiveGoalsCount, setHomeReady, setAwayReady, setAwayPlayers, setHomePlayers, setOpponentInfo, setCurrentRoom, setPhase, setScores, initializeTeams, setBall, setActionStatus, setGameModeSync, setMatchDuration, matchDurationRef, phaseRef, myRoleRef, isLeavingRef, setSystemMessage, resetMatch, turnRef, lastGoalScorerRef, consecutiveGoalsCountRef, setInjuryTimeSync]);
 
   // Monitoramento dinâmico de presença usando .info/connected
   useEffect(() => {
@@ -1049,11 +1059,74 @@ export const useGameMultiplayer = ({
     }
   };
 
+  // Abandono voluntário: dá vitória por W.O. ao oponente e salva as stats do jogador que sai
+  const triggerForfeit = useCallback(async () => {
+    if (!isMultiplayer || !roomId || !myRole || !activeUser) return;
+
+    const opponentRole: Team = myRole === 'HOME' ? 'AWAY' : 'HOME';
+    const currentScores = scoresRef.current;
+
+    // Opponent wins: ensure at least 3-0 from their perspective
+    let finalScores = { home: 0, away: 0 };
+    if (opponentRole === 'HOME') {
+      finalScores = { home: Math.max(3, currentScores.home), away: 0 };
+    } else {
+      finalScores = { home: 0, away: Math.max(3, currentScores.away) };
+    }
+
+    const nextStatus = `Vitória por Abandono do Time ${opponentRole === 'HOME' ? 'Casa' : 'Visitante'}! O adversário abandonou.`;
+
+    try {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      const snap = await get(roomRef);
+      if (snap.exists()) {
+        const room: Room = snap.val();
+        const homeP = room.players.home;
+        const awayP = room.players.away;
+
+        if (homeP && awayP) {
+          // Save leaving player's own stats (they get a loss)
+          const myGoals = myRole === 'HOME' ? finalScores.home : finalScores.away;
+          const oppGoals = myRole === 'HOME' ? finalScores.away : finalScores.home;
+          const oppPlayer = myRole === 'HOME' ? awayP : homeP;
+
+          const { updateLeaderboardAndHistory } = await import('../firebaseMultiplayer');
+          await updateLeaderboardAndHistory(
+            activeUser.uid,
+            oppPlayer.displayName,
+            oppPlayer.photoURL,
+            myGoals,
+            oppGoals,
+            !!activeTournamentId,
+            oppPlayer.uid
+          );
+        }
+
+        // Update room to GAME_OVER so opponent client detects the W.O. win and saves their own stats
+        await update(roomRef, {
+          status: 'ended',
+          'gameState/phase': GamePhase.GAME_OVER,
+          'gameState/scores': finalScores,
+          'gameState/actionStatus': nextStatus
+        });
+      }
+    } catch (err) {
+      console.error('[Forfeit] Error saving stats or updating room:', err);
+    }
+
+    // Leave locally after a short delay to ensure Firebase write propagates
+    isLeavingRef.current = true;
+    setTimeout(() => {
+      resetMatch();
+    }, 300);
+  }, [isMultiplayer, roomId, myRole, activeUser, scoresRef, activeTournamentId, isLeavingRef, resetMatch]);
+
   return {
     syncGameStateToFirebase,
     triggerWO,
     triggerTimeoutDefeat,
     triggerActiveTurnTimeout,
+    triggerForfeit,
     handleCreateRoom,
     handleJoinRoom,
     handleCreateTournament,

@@ -504,6 +504,28 @@ export const useGameSetup = ({
       return; // Keep selection!
     }
 
+    // 7. Validation: Total Defense Zone Limit (at most 5 across DEF + extra DEF lines)
+    const totalDefCount = simulatedPlayers.filter(p => {
+      if (p.number === 1) return false; // exclude GK
+      const z = p.position[2];
+      if (isHome) {
+        return Math.abs(z - (-5.5)) < 0.1 || Math.abs(z - (-6.7)) < 0.1;
+      } else {
+        return Math.abs(z - 5.5) < 0.1 || Math.abs(z - 6.7) < 0.1;
+      }
+    }).length;
+
+    if (totalDefCount > 5) {
+      if (!isMultiplayer || myRole === (isHome ? 'HOME' : 'AWAY')) {
+        setSystemMessage({
+          title: 'Limite de Defensores Excedido',
+          message: 'Você só pode posicionar no máximo 5 jogadores em suas linhas de defesa (linha defensiva + linha extra). Recue um atacante ou meio-campista antes de adicionar mais um defensor.',
+          type: 'warning'
+        });
+      }
+      return; // Keep selection!
+    }
+
     // All validations passed! Update state and reset selection.
     const setPlayers = isHome ? setHomePlayers : setAwayPlayers;
     setPlayers(simulatedPlayers);

@@ -29,7 +29,7 @@ const GoogleIcon = () => (
 );
 
 const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) => {
-  const { loginGoogle } = useGameStateContext();
+  const { loginGoogle, language, t } = useGameStateContext();
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleLogin = async () => {
@@ -44,13 +44,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) => {
       }
     } catch (err: any) {
       console.error(err);
-      let errMsg = 'Ocorreu um erro ao fazer login com o Google.';
+      let errMsg = language === 'pt' ? 'Ocorreu um erro ao fazer login com o Google.' : 'An error occurred while signing in with Google.';
       if (err.code === 'auth/configuration-not-found') {
-        errMsg = 'O provedor Google Auth não está ativado no Firebase Console para este projeto (auth/configuration-not-found). O administrador precisa ativar o Google Sign-In nas configurações do Firebase.';
+        errMsg = language === 'pt' 
+          ? 'O provedor Google Auth não está ativado no Firebase Console para este projeto (auth/configuration-not-found). O administrador precisa ativar o Google Sign-In nas configurações do Firebase.' 
+          : 'Google Auth provider is not enabled in the Firebase Console for this project (auth/configuration-not-found). The administrator needs to enable Google Sign-In in Firebase settings.';
       } else if (err.code === 'auth/popup-closed-by-user') {
-        errMsg = 'O pop-up de login foi fechado antes de concluir a autenticação.';
+        errMsg = language === 'pt' 
+          ? 'O pop-up de login foi fechado antes de concluir a autenticação.' 
+          : 'The login pop-up was closed before completing authentication.';
       } else if (err.message) {
-        errMsg = `Erro: ${err.message}`;
+        errMsg = language === 'pt' ? `Erro: ${err.message}` : `Error: ${err.message}`;
       }
       setLoginError(errMsg);
     }
@@ -64,7 +68,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) => {
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-300 transition-colors p-1.5 rounded-full hover:bg-zinc-900/60 font-black text-sm"
-          title="Fechar"
+          title={language === 'pt' ? 'Fechar' : 'Close'}
         >
           ✕
         </button>
@@ -74,17 +78,19 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) => {
         </div>
         
         <div className="space-y-1.5">
-          <h2 className="text-xl font-black tracking-wide text-zinc-100 uppercase">ÁREA RESTRITA</h2>
+          <h2 className="text-xl font-black tracking-wide text-zinc-100 uppercase">
+            {t('modals.login.restrictedTab')}
+          </h2>
           <p className="text-xs text-zinc-400 leading-relaxed font-semibold">
-            Para disputar partidas multiplayer, participar de torneios mata-mata, subir no ranking global e visualizar seu histórico, você precisa estar conectado à sua conta.
+            {t('modals.login.restrictedDesc')}
           </p>
         </div>
 
         {/* Error Message Section */}
         {loginError && (
-          <div className="bg-rose-950/40 border border-rose-900/50 p-4 rounded-2xl text-left space-y-1.5 text-rose-200 text-[11px] leading-relaxed animate-fadeIn">
+          <div className="bg-rose-955/40 border border-rose-900/50 p-4 rounded-2xl text-left space-y-1.5 text-rose-200 text-[11px] leading-relaxed animate-fadeIn">
             <span className="font-bold flex items-center gap-1.5 text-rose-450 uppercase tracking-wide">
-              <ShieldAlert size={14} className="text-rose-400" /> Falha na Autenticação
+              <ShieldAlert size={14} className="text-rose-400" /> {language === 'pt' ? 'Falha na Autenticação' : 'Authentication Failure'}
             </span>
             <p className="opacity-95">{loginError}</p>
           </div>
@@ -96,7 +102,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onSuccess }) => {
             className="w-full flex items-center justify-center gap-1.5 px-4 py-3 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 rounded-full text-xs font-bold transition-all hover:scale-102 active:scale-98 shadow-md"
           >
             <GoogleIcon />
-            Entrar com Google
+            {t('modals.login.googleSignIn')}
           </button>
         </div>
       </div>

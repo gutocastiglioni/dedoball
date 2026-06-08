@@ -160,7 +160,9 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
     setSystemMessage,
     language,
     changeLanguage,
-    t
+    t,
+    currentMenuTab,
+    setCurrentMenuTab
   } = useGameStateContext();
   const isMobile = useIsMobile();
 
@@ -179,8 +181,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
     activeUser?.displayName?.substring(0, 3).toUpperCase() || 
     'CAS';
 
-  // Tab navigation in menu
-  const [currentMenuTab, setCurrentMenuTab] = useState<'solo' | 'multi' | 'tournament' | 'ranking' | 'history'>('solo');
+  // Tab navigation is managed via GameStateContext
 
 
   // Restricted Access Login Modal states
@@ -335,10 +336,10 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             ) : (
               <button
                 onClick={() => handleLoginAttempt()}
-                className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black rounded-full text-[8.5px] xs:text-[9.5px] uppercase tracking-wider transition-all h-[30px] shadow-md"
+                className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-full text-[8px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md pointer-events-auto h-[30px]"
               >
-                <LogIn size={10} className="w-2.5 h-2.5" />
-                <span>{t('lobby.enter')}</span>
+                <GoogleIcon />
+                {t('lobby.googleSignIn')}
               </button>
             )}
 
@@ -624,8 +625,16 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
         <div className="absolute bottom-3.5 right-4 z-20 pointer-events-none select-none flex items-center gap-1.5 text-[10.5px] font-bold text-zinc-500 uppercase tracking-wider leading-none">
           <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
           <span className="text-zinc-800 font-black">&bull;</span>
-          <span className="text-zinc-400 font-black">v1.0.0</span>
+          <span className="text-zinc-400 font-black">v1.1.0</span>
         </div>
+
+        {/* Login Modal (Mobile) */}
+        {showLoginModal && (
+          <LoginModal
+            onClose={() => setShowLoginModal(false)}
+            onSuccess={handleLoginSuccess}
+          />
+        )}
       </div>
     );
   };
@@ -834,7 +843,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v1.0.0</span>
+              <span>v1.1.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -956,7 +965,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               {language === 'pt' ? 'Cancelar e Excluir Sala' : 'Cancel & Delete Room'}
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-650 uppercase tracking-widest select-none">
-              <span>v1.0.0</span>
+              <span>v1.1.0</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>

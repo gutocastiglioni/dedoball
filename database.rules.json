@@ -1,8 +1,7 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
     "users": {
+      ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid"
@@ -10,6 +9,7 @@
     },
     "rooms": {
       ".read": "auth != null",
+      ".write": "auth != null",
       "$roomId": {
         ".read": "auth != null",
         ".write": "auth != null"
@@ -17,6 +17,7 @@
     },
     "tournaments": {
       ".read": "auth != null",
+      ".write": "auth != null",
       "$tournamentId": {
         ".read": "auth != null",
         ".write": "auth != null"

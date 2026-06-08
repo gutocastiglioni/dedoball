@@ -13,9 +13,11 @@ import {
   Calendar,
   History,
   Percent,
-  ShieldAlert
+  ShieldAlert,
+  LogOut
 } from 'lucide-react';
 import SoundManager from '../../SoundManager';
+import ConfirmationModal from '../ConfirmationModal';
 
 interface HUDHeaderProps {
   isFullscreen: boolean;
@@ -39,6 +41,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
     awayFlicksRemaining,
     gameTime,
     resetMatch,
+    triggerForfeit,
     lastGoalScorer,
     consecutiveGoalsCount,
     gameTimeSeconds,
@@ -50,13 +53,17 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
     homeReady,
     awayReady,
     leaderboard,
-    matchHistory
+    matchHistory,
+    language,
+    injuryTime,
+    t
   } = useGameStateContext();
 
   const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpponentStatsOpen, setIsOpponentStatsOpen] = useState(false);
   const [submenuTab, setSubmenuTab] = useState<'stats' | 'h2h'>('stats');
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
@@ -97,20 +104,20 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
   const awayStopperActive = lastGoalScorer === 'HOME' && consecutiveGoalsCount >= 2;
 
   // Derived Info for HOME
-  const homeTeamName = userProfile?.teamName || 'MEU TIME';
+  const homeTeamName = userProfile?.teamName || t('lobby.myTeam').toUpperCase();
   const homeAbbreviation = userProfile?.abbreviation || 'CAS';
-  const homePlayerName = userProfile?.username || activeUser?.displayName || 'Jogador 1';
+  const homePlayerName = userProfile?.username || activeUser?.displayName || (language === 'pt' ? 'Jogador 1' : 'Player 1');
 
   // Derived Info for AWAY
   const awayTeamName = isMultiplayer 
-    ? (opponentProfile?.teamName || opponentInfo?.displayName?.toUpperCase() || 'VISITANTE')
-    : 'INTELIGÊNCIA ARTIFICIAL';
+    ? (opponentProfile?.teamName || opponentInfo?.displayName?.toUpperCase() || t('lobby.away').toUpperCase())
+    : (language === 'pt' ? 'INTELIGÊNCIA ARTIFICIAL' : 'ARTIFICIAL INTELLIGENCE');
   const awayAbbreviation = isMultiplayer 
     ? (opponentProfile?.abbreviation || opponentInfo?.displayName?.substring(0, 3).toUpperCase() || 'VIS')
-    : 'I.A.';
+    : (language === 'pt' ? 'I.A.' : 'A.I.');
   const awayPlayerName = isMultiplayer 
-    ? (opponentProfile?.username || opponentInfo?.displayName || 'Oponente')
-    : 'MÁQUINA';
+    ? (opponentProfile?.username || opponentInfo?.displayName || (language === 'pt' ? 'Oponente' : 'Opponent'))
+    : (language === 'pt' ? 'MÁQUINA' : 'COMPUTER');
 
   const homeGK = homePlayers?.find(p => p.number === 1);
   const awayGK = awayPlayers?.find(p => p.number === 1);
@@ -221,18 +228,21 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
         {/* Main Scoreboard Pill */}
         <div className={`hud-scoreboard-pill pointer-events-auto flex items-center bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-full shadow-2xl transition-all duration-300 ${isMobile ? 'px-2.5 py-1 gap-1 text-[10px]' : 'px-3 md:px-5 py-1.5 md:py-2.5 gap-1.5 md:gap-3'}`}>
           <button 
-            onClick={resetMatch}
-            className={`text-zinc-450 hover:text-rose-450 transition-colors rounded-full hover:bg-zinc-800/80 ${isMobile ? 'p-0.5 mr-0.5' : 'p-1 md:p-1.5 mr-1.5 md:mr-3'}`}
-            title="Voltar ao Menu"
+            onClick={() => {
+              SoundManager.playUIClick();
+              setShowLeaveConfirm(true);
+            }}
+            className={`text-zinc-450 hover:text-rose-455 transition-colors rounded-full hover:bg-zinc-800/80 ${isMobile ? 'p-0.5 mr-0.5' : 'p-1 md:p-1.5 mr-1.5 md:mr-3'}`}
+            title={language === 'pt' ? 'Sair da Partida' : 'Leave Match'}
           >
-            <RotateCcw size={isMobile ? 12 : 15} />
+            <LogOut size={isMobile ? 12 : 15} />
           </button>
 
           {/* Integrated Premium Glassmorphic Fullscreen Button in Scoreboard */}
           <button 
             onClick={toggleFullscreen}
             className={`text-zinc-450 hover:text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/20 border border-transparent transition-all duration-300 rounded-full flex items-center justify-center hover:scale-110 active:scale-90 relative group pointer-events-auto ${isMobile ? 'p-0.5 mr-1' : 'p-1.5 mr-2.5 md:mr-4'}`}
-            title={isFullscreen ? 'Sair da tela cheia' : 'Entrar em tela cheia'}
+            title={isFullscreen ? t('lobby.exitFullscreen') : t('lobby.fullscreen')}
           >
             {isFullscreen ? (
               <Minimize2 size={isMobile ? 11 : 14} className="group-hover:rotate-12 transition-transform duration-300" />
@@ -274,7 +284,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                         <span className="text-zinc-700 text-[10px] font-bold">|</span>
                         <span 
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 font-extrabold text-[8px] md:text-[9.5px] shadow-[0_0_8px_rgba(34,211,238,0.15)]`}
-                          title={`Goleiro: ${homeSaves} defesas (Lentidão de -${homeSaves}%)`}
+                          title={t('hud.goalkeeperSavesTooltip', { saves: homeSaves, fatigue: homeSaves })}
                         >
                           🧤 {homeSaves} (-{homeSaves}%)
                         </span>
@@ -292,7 +302,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
               {homeStreakActive && (
                 <span 
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-955/60 border border-orange-700/50 text-orange-450 font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.3)] text-[8px] md:text-[10px]"
-                  title={`Hot Streak! ${consecutiveGoalsCount} gols seguidos.`}
+                  title={language === 'pt' ? `Hot Streak! ${consecutiveGoalsCount} gols seguidos.` : `Hot Streak! ${consecutiveGoalsCount} goals in a row.`}
                 >
                   🔥 <span className="font-extrabold text-[7.5px] md:text-[9.5px]">{consecutiveGoalsCount}</span>
                 </span>
@@ -300,7 +310,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
               {homeStopperActive && (
                 <span 
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-955/60 border border-amber-700/50 text-amber-500 font-black animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.3)] text-[8px] md:text-[10px]"
-                  title="Stopper Extra! +1 Bloqueio disponível na preparação."
+                  title={language === 'pt' ? "Stopper Extra! +1 Bloqueio disponível na preparação." : "Extra Blocker! +1 Blocker available in preparation."}
                 >
                   🛡️ <span className="font-extrabold text-[7.5px] md:text-[9.5px]">+1</span>
                 </span>
@@ -366,7 +376,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
               {awayStreakActive && (
                 <span 
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-955/60 border border-orange-700/50 text-orange-450 font-black animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.3)] text-[8px] md:text-[10px]"
-                  title={`Hot Streak! ${consecutiveGoalsCount} gols seguidos.`}
+                  title={language === 'pt' ? `Hot Streak! ${consecutiveGoalsCount} gols seguidos.` : `Hot Streak! ${consecutiveGoalsCount} goals in a row.`}
                 >
                   🔥 <span className="font-extrabold text-[7.5px] md:text-[9.5px]">{consecutiveGoalsCount}</span>
                 </span>
@@ -374,7 +384,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
               {awayStopperActive && (
                 <span 
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-955/60 border border-amber-700/50 text-amber-500 font-black animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.3)] text-[8px] md:text-[10px]"
-                  title="Stopper Extra! +1 Bloqueio disponível na preparação."
+                  title={language === 'pt' ? "Stopper Extra! +1 Bloqueio disponível na preparação." : "Extra Blocker! +1 Blocker available in preparation."}
                 >
                   🛡️ <span className="font-extrabold text-[7.5px] md:text-[9.5px]">+1</span>
                 </span>
@@ -388,7 +398,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                       <>
                         <span 
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-955/60 border border-amber-800/40 text-amber-400 font-extrabold text-[8px] md:text-[9.5px] shadow-[0_0_8px_rgba(245,158,11,0.15)]`}
-                          title={`Goleiro: ${awaySaves} defesas (Lentidão de -${awaySaves}%)`}
+                          title={t('hud.goalkeeperSavesTooltip', { saves: awaySaves, fatigue: awaySaves })}
                         >
                           (-{awaySaves}%) {awaySaves} 🧤
                         </span>
@@ -426,13 +436,13 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
             {/* Header info */}
             {!isMultiplayer ? (
               <div className="text-center py-4">
-                <p className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider">Modo Solo</p>
-                <p className="text-[9px] text-zinc-500 mt-1">Estatísticas do ranking e confronto direto só estão disponíveis em partidas Multiplayer.</p>
+                <p className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider">{t('lobby.soloModeDesc')}</p>
+                <p className="text-[9px] text-zinc-500 mt-1">{t('lobby.soloModeStatsWarning')}</p>
               </div>
             ) : !opponentProfile ? (
               <div className="py-6 flex flex-col items-center justify-center gap-1.5">
                 <svg className="animate-spin w-4.5 h-4.5 text-cyan-400" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                <span className="text-[9px] font-bold text-zinc-650 uppercase tracking-widest">Carregando dados do rival...</span>
+                <span className="text-[9px] font-bold text-zinc-650 uppercase tracking-widest">{t('lobby.loadingOpponent')}</span>
               </div>
             ) : (
               <>
@@ -472,7 +482,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                     `}
                   >
                     <Activity size={10} />
-                    Estatísticas
+                    {language === 'pt' ? 'Estatísticas' : 'Statistics'}
                   </button>
                   <button
                     onClick={() => { SoundManager.playUIClick(); setSubmenuTab('h2h'); }}
@@ -484,7 +494,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                     `}
                   >
                     <Swords size={10} />
-                    Confrontos H2H
+                    {language === 'pt' ? 'Confrontos H2H' : 'H2H Matches'}
                   </button>
                 </div>
 
@@ -494,44 +504,44 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                     {/* Comparative Table */}
                     <div className="bg-zinc-900/10 border border-zinc-900/80 rounded-xl p-2.5 space-y-2">
                       <div className="grid grid-cols-3 text-center text-[8px] font-black uppercase tracking-wider text-zinc-550 pb-1 border-b border-zinc-900">
-                        <span className="truncate">VOCÊ</span>
-                        <span className="text-zinc-400">ESTATÍSTICA</span>
-                        <span className="truncate">OPONENTE</span>
+                        <span className="truncate">{language === 'pt' ? 'VOCÊ' : 'YOU'}</span>
+                        <span className="text-zinc-400">{language === 'pt' ? 'ESTATÍSTICA' : 'STATISTIC'}</span>
+                        <span className="truncate">{t('lobby.opponent').toUpperCase()}</span>
                       </div>
 
                       <div className="space-y-1.5">
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">POSIÇÃO RANKING</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{language === 'pt' ? 'POSIÇÃO RANKING' : 'RANKING POSITION'}</span>
                           {renderCompare(myRankPosition === '--' ? 999 : Number(myRankPosition), oppRankPosition === '--' ? 999 : Number(oppRankPosition), false, true)}
                         </div>
 
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">PONTOS</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{t('modals.stats.points')}</span>
                           {renderCompare(myProfile?.points || 0, opponentProfile.points || 0)}
                         </div>
 
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">APROVEITAMENTO GERAL</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{t('modals.stats.performance')}</span>
                           {renderCompare(myPerf, oppPerf, true)}
                         </div>
 
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">VITÓRIAS</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{t('modals.stats.wins')}</span>
                           {renderCompare(myProfile?.wins || 0, opponentProfile.wins || 0)}
                         </div>
 
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">DERROTAS (MENOR É MELHOR)</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{language === 'pt' ? 'DERROTAS (MENOR É MELHOR)' : 'LOSSES (LOWER IS BETTER)'}</span>
                           {renderCompare(myProfile?.losses || 0, opponentProfile.losses || 0, false, true)}
                         </div>
 
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">GOLS MARCADOS</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{t('modals.stats.goalsScored')}</span>
                           {renderCompare(myProfile?.goalsScored || 0, opponentProfile.goalsScored || 0)}
                         </div>
 
                         <div className="space-y-0.5">
-                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">GOLS SOFRIDOS (MENOR É MELHOR)</span>
+                          <span className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-widest block text-center">{language === 'pt' ? 'GOLS SOFRIDOS (MENOR É MELHOR)' : 'GOALS CONCEDED (LOWER IS BETTER)'}</span>
                           {renderCompare(myProfile?.goalsConceded || 0, opponentProfile.goalsConceded || 0, false, true)}
                         </div>
                       </div>
@@ -541,24 +551,32 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                   <div className="space-y-3 animate-scaleUp">
                     {/* H2H Balance Board */}
                     <div className="bg-zinc-900/20 border border-zinc-900 rounded-xl p-2.5 space-y-2">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 block text-center">Saldo de Confrontos Diretos</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 block text-center">
+                        {language === 'pt' ? 'Saldo de Confrontos Diretos' : 'Head-to-Head Record'}
+                      </span>
                       <div className="grid grid-cols-3 gap-1.5 text-center items-center">
                         <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-lg p-1.5">
-                          <span className="text-[7px] font-black text-zinc-550 uppercase tracking-wider block">Suas Vitórias</span>
+                          <span className="text-[7px] font-black text-zinc-550 uppercase tracking-wider block">
+                            {language === 'pt' ? 'Suas Vitórias' : 'Your Wins'}
+                          </span>
                           <span className="text-xs font-black text-emerald-450">{h2hWins}</span>
                         </div>
                         <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-lg p-1.5">
-                          <span className="text-[7px] font-black text-zinc-550 uppercase tracking-wider block">Empates</span>
+                          <span className="text-[7px] font-black text-zinc-550 uppercase tracking-wider block">
+                            {language === 'pt' ? 'Empates' : 'Draws'}
+                          </span>
                           <span className="text-xs font-black text-zinc-400">{h2hDraws}</span>
                         </div>
                         <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-lg p-1.5">
-                          <span className="text-[7px] font-black text-zinc-550 uppercase tracking-wider block">Suas Derrotas</span>
+                          <span className="text-[7px] font-black text-zinc-550 uppercase tracking-wider block">
+                            {language === 'pt' ? 'Suas Derrotas' : 'Your Losses'}
+                          </span>
                           <span className="text-xs font-black text-rose-455">{h2hLosses}</span>
                         </div>
                       </div>
 
                       <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 border-t border-zinc-900 pt-1.5">
-                        <span>Aproveitamento H2H:</span>
+                        <span>{language === 'pt' ? 'Aproveitamento H2H:' : 'H2H Performance:'}</span>
                         <span className="text-purple-400 font-black">
                           {h2hMatches.length > 0 
                             ? `${((h2hWins * 3 + h2hDraws) / (h2hMatches.length * 3) * 100).toFixed(1)}%` 
@@ -568,7 +586,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                       </div>
 
                       <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400">
-                        <span>Saldo de Gols H2H:</span>
+                        <span>{language === 'pt' ? 'Saldo de Gols H2H:' : 'H2H Goal Difference:'}</span>
                         <span className={`font-black ${h2hGoalsScored - h2hGoalsConceded >= 0 ? 'text-teal-400' : 'text-rose-500'}`}>
                           {h2hGoalsScored} GP x {h2hGoalsConceded} GC
                         </span>
@@ -577,7 +595,9 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
 
                     {/* H2H Matches list */}
                     <div className="space-y-1">
-                      <span className="text-[8px] font-black uppercase tracking-wider text-zinc-500 block text-left text-zinc-400">Partidas Diretas Recentes</span>
+                      <span className="text-[8px] font-black uppercase tracking-wider text-zinc-400 block text-left">
+                        {language === 'pt' ? 'Partidas Diretas Recentes' : 'Recent Head-to-Head Matches'}
+                      </span>
                       {h2hMatches.length > 0 ? (
                         <div className="space-y-1 max-h-[110px] overflow-y-auto pr-1 scrollbar-thin">
                           {h2hMatches.slice(0, 3).map((match: any) => {
@@ -596,10 +616,10 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                               >
                                 <div>
                                   <span className="text-[7px] font-bold text-zinc-550 uppercase flex items-center gap-0.5 mb-0.5">
-                                    <Calendar size={8} /> {new Date(match.timestamp).toLocaleDateString('pt-BR')}
+                                    <Calendar size={8} /> {new Date(match.timestamp).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US')}
                                   </span>
                                   <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-450 truncate max-w-[150px] block">
-                                    {match.isTournament ? 'Campeonato Copa' : 'Liga Regular'}
+                                    {match.isTournament ? (language === 'pt' ? 'Campeonato Copa' : 'Cup Tournament') : (language === 'pt' ? 'Liga Regular' : 'Regular League')}
                                   </span>
                                 </div>
 
@@ -615,7 +635,7 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
                       ) : (
                         <div className="py-4 bg-zinc-900/10 border border-zinc-900 rounded-xl text-center flex flex-col items-center justify-center text-zinc-650 font-bold">
                           <Swords size={14} className="opacity-30 mb-0.5" />
-                          <span className="text-[8.5px] font-semibold text-zinc-500">Nenhum confronto ainda.</span>
+                          <span className="text-[8.5px] font-semibold text-zinc-500">{language === 'pt' ? 'Nenhum confronto ainda.' : 'No matches yet.'}</span>
                         </div>
                       )}
                     </div>
@@ -627,67 +647,101 @@ const HUDHeader: React.FC<HUDHeaderProps> = ({ isFullscreen, toggleFullscreen })
         )}
       </div>
 
-      {/* TV-Broadcast-style Game Timer Pill */}
-      <div className={`hud-timer-pill pointer-events-auto flex items-center bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-full shadow-2xl text-[10px] md:text-xs font-black tracking-wide uppercase ${isMobile ? 'px-2.5 py-1 gap-1 text-[9px]' : 'px-4 py-2 md:px-5 md:py-2.5 gap-3 md:gap-4'}`}>
-        {phase === GamePhase.PREPARATION ? (
-          <div className={`flex items-center gap-1.5 ${isMultiplayer && !isReady && prepTimer !== null && prepTimer <= 15 ? 'text-rose-450 animate-pulse' : 'text-emerald-400'}`}>
-            <Clock size={isMobile ? 11 : 14} className={isMultiplayer && !isReady && prepTimer !== null && prepTimer <= 15 ? 'animate-bounce text-rose-500' : 'animate-pulse text-emerald-400'} />
-            <span className="tracking-wider text-[9px] md:text-xs font-black">
-              {isMultiplayer ? (
-                isReady ? (
-                  isMobile 
-                    ? `PRONTO! (${prepTimer !== null ? formatTime(prepTimer) : '--:--'})` 
-                    : `PRONTO! AGUARDANDO RIVAL... (${prepTimer !== null ? formatTime(prepTimer) : '--:--'})`
+      {/* TV-Broadcast-style Game Timer Container */}
+      <div className="flex flex-col items-center gap-1.5 pointer-events-none">
+        <div className={`hud-timer-pill pointer-events-auto flex items-center bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-full shadow-2xl text-[10px] md:text-xs font-black tracking-wide uppercase ${isMobile ? 'px-2.5 py-1 gap-1 text-[9px]' : 'px-4 py-2 md:px-5 md:py-2.5 gap-3 md:gap-4'}`}>
+          {phase === GamePhase.PREPARATION ? (
+            <div className={`flex items-center gap-1.5 ${isMultiplayer && !isReady && prepTimer !== null && prepTimer <= 15 ? 'text-rose-450 animate-pulse' : 'text-emerald-400'}`}>
+              <Clock size={isMobile ? 11 : 14} className={isMultiplayer && !isReady && prepTimer !== null && prepTimer <= 15 ? 'animate-bounce text-rose-500' : 'animate-pulse text-emerald-400'} />
+              <span className="tracking-wider text-[9px] md:text-xs font-black">
+                {isMultiplayer ? (
+                  isReady ? (
+                    isMobile 
+                      ? `${language === 'pt' ? 'PRONTO!' : 'READY!'} (${prepTimer !== null ? formatTime(prepTimer) : '--:--'})` 
+                      : `${language === 'pt' ? 'PRONTO! AGUARDANDO RIVAL...' : 'READY! WAITING FOR OPPONENT...'} (${prepTimer !== null ? formatTime(prepTimer) : '--:--'})`
+                  ) : (
+                    prepTimer !== null ? `${t('hud.prepTitle').toUpperCase()}: ${formatTime(prepTimer)}` : t('hud.prepTitle').toUpperCase()
+                  )
                 ) : (
-                  prepTimer !== null ? `PREPARAÇÃO: ${formatTime(prepTimer)}` : 'PREPARAÇÃO'
-                )
-              ) : (
-                isMobile ? 'PREPARAÇÃO' : 'PREPARAÇÃO TÁTICA (ILIMITADA)'
-              )}
-            </span>
-          </div>
-        ) : (
-          <div className={`flex items-center ${isMobile ? 'gap-1.5' : 'gap-2.5 md:gap-4'} text-zinc-300`}>
-            {/* Game Time (MM:SS / TotalMM:SS) */}
-            <div className={`flex items-center gap-1.5 bg-zinc-950/60 rounded-full border border-zinc-800/50 text-cyan-400 shadow-inner ${isMobile ? 'px-2 py-0.5' : 'px-3 py-1'}`}>
-              <Clock size={isMobile ? 10 : 12} className="text-cyan-500 animate-pulse" />
-              <span className={`font-black tracking-widest ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>
-                {formatTime(gameTimeSeconds)} <span className="opacity-40 text-zinc-550 font-medium">/</span> {formatTime(matchDuration)}
+                  isMobile ? t('hud.prepTitle').toUpperCase() : t('hud.unlimitedPrep')
+                )}
               </span>
             </div>
-            
-            {/* Status Indicator */}
-            <div className={`${isMobile ? 'hidden' : 'hidden sm:block'} text-[10px] font-bold text-zinc-550 border-l border-zinc-800 pl-4 uppercase flex items-center gap-1.5`}>
-              {isBallMoving ? (
-                <span className="text-emerald-400 flex items-center gap-1 text-[9px] md:text-xs font-black">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 animate-ping"></span>
-                  BOLA EM JOGO
+          ) : (
+            <div className={`flex items-center ${isMobile ? 'gap-1.5' : 'gap-2.5 md:gap-4'} text-zinc-300`}>
+              {/* Game Time (MM:SS / TotalMM:SS) */}
+              <div className={`flex items-center gap-1.5 bg-zinc-950/60 rounded-full border border-zinc-800/50 text-cyan-400 shadow-inner ${isMobile ? 'px-2 py-0.5' : 'px-3 py-1'}`}>
+                <Clock size={isMobile ? 10 : 12} className="text-cyan-500 animate-pulse" />
+                <span className={`font-black tracking-widest ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>
+                  {formatTime(gameTimeSeconds)} <span className="opacity-40 text-zinc-550 font-medium">/</span> {formatTime(matchDuration)}
                 </span>
-              ) : (
-                <span className="text-amber-500 flex items-center gap-1 text-[9px] md:text-xs font-black">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-450 animate-pulse"></span>
-                  TEMPO PARADO
-                </span>
-              )}
+              </div>
+              
+              {/* Status Indicator */}
+              <div className={`${isMobile ? 'hidden' : 'hidden sm:block'} text-[10px] font-bold text-zinc-550 border-l border-zinc-800 pl-4 uppercase flex items-center gap-1.5`}>
+                {isBallMoving ? (
+                  <span className="text-emerald-400 flex items-center gap-1 text-[9px] md:text-xs font-black">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-455 animate-ping"></span>
+                    {t('hud.ballInPlay')}
+                  </span>
+                ) : (
+                  <span className="text-amber-500 flex items-center gap-1 text-[9px] md:text-xs font-black">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-455 animate-pulse"></span>
+                    {t('hud.timeStopped')}
+                  </span>
+                )}
+              </div>
+              
+              {/* Active Turn Signal */}
+              <div className={`${isMobile ? '' : 'sm:border-l sm:border-zinc-800 sm:pl-4'} flex items-center`}>
+                {turn === myRole ? (
+                  <span className="text-emerald-400 animate-pulse flex items-center gap-1 text-[9px] md:text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-455 animate-ping"></span>
+                    <span>{t('hud.yourTurn')}</span>
+                  </span>
+                ) : (
+                  <span className="text-amber-500 animate-pulse flex items-center gap-1 text-[9px] md:text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-455 animate-ping"></span>
+                    <span>{t('hud.opponentTurn')}</span>
+                  </span>
+                )}
+              </div>
             </div>
-            
-            {/* Active Turn Signal */}
-            <div className={`${isMobile ? '' : 'sm:border-l sm:border-zinc-800 sm:pl-4'} flex items-center`}>
-              {turn === myRole ? (
-                <span className="text-emerald-400 animate-pulse flex items-center gap-1 text-[9px] md:text-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 animate-ping"></span>
-                  <span>SUA VEZ!</span>
-                </span>
-              ) : (
-                <span className="text-amber-500 animate-pulse flex items-center gap-1 text-[9px] md:text-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-450 animate-ping"></span>
-                  <span>OPONENTE...</span>
-                </span>
-              )}
-            </div>
+          )}
+        </div>
+        {/* Blinking Red Injury Time Badge */}
+        {phase !== GamePhase.PREPARATION && injuryTime !== 'none' && (
+          <div className="animate-pulse bg-red-650 border border-red-500 text-white font-black text-[8px] md:text-[9.5px] px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(239,68,68,0.7)] pointer-events-auto select-none tracking-widest uppercase">
+            {language === 'pt' ? 'ACRÉSCIMOS' : 'INJURY TIME'}
           </div>
         )}
       </div>
+
+      {showLeaveConfirm && (
+        <ConfirmationModal
+          title={language === 'pt' ? 'SAIR DA PARTIDA?' : 'LEAVE MATCH?'}
+          message={
+            isMultiplayer
+              ? (language === 'pt'
+                  ? 'Se você sair agora, o oponente vencerá por abandono (W.O.) e os pontos serão calculados normalmente. Tem certeza?'
+                  : 'If you leave now, the opponent wins by forfeit (W.O.) and stats will be saved. Are you sure?')
+              : (language === 'pt'
+                  ? 'Tem certeza que deseja sair desta partida?'
+                  : 'Are you sure you want to leave this match?')
+          }
+          confirmLabel={language === 'pt' ? 'SAIR' : 'LEAVE'}
+          cancelLabel={language === 'pt' ? 'CANCELAR' : 'CANCEL'}
+          onConfirm={() => {
+            setShowLeaveConfirm(false);
+            if (isMultiplayer) {
+              triggerForfeit();
+            } else {
+              resetMatch();
+            }
+          }}
+          onCancel={() => setShowLeaveConfirm(false)}
+        />
+      )}
     </div>
   );
 };

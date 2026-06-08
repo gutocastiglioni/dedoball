@@ -23,7 +23,7 @@ interface RulesModalProps {
 }
 
 const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
-  const { activeUser, setHasSeenRules, rulesAutoTriggered } = useGameStateContext();
+  const { activeUser, setHasSeenRules, rulesAutoTriggered, language, t } = useGameStateContext();
   const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -54,8 +54,8 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
   const pages = [
     {
-      title: "Controles & Direcionamento",
-      subtitle: "Dominando as ações de mirar e chutar",
+      title: language === 'pt' ? "Controles & Direcionamento" : "Controls & Aiming",
+      subtitle: language === 'pt' ? "Dominando as ações de mirar e chutar" : "Mastering aiming and shooting actions",
       icon: Target,
       color: "from-cyan-500 to-blue-600",
       content: (
@@ -71,10 +71,10 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                   TACKLE: 'border-purple-500/30 text-purple-400 bg-purple-950/20',
                 }[action];
                 const label = {
-                  PASS: 'PASSE',
-                  CROSS: 'CRUZAR',
-                  SHOOT: 'CHUTAR',
-                  TACKLE: 'DESARME',
+                  PASS: language === 'pt' ? 'PASSE' : 'PASS',
+                  CROSS: language === 'pt' ? 'CRUZAR' : 'CROSS',
+                  SHOOT: language === 'pt' ? 'CHUTAR' : 'SHOOT',
+                  TACKLE: language === 'pt' ? 'DESARME' : 'TACKLE',
                 }[action];
                 return (
                   <div key={action} className={`px-3 py-1.5 rounded-xl border text-[10px] font-black tracking-widest ${colors} shadow-md`}>
@@ -91,45 +91,45 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
               </div>
               <div className="w-[1px] h-14 border-l border-dashed border-cyan-400/80 my-1 relative flex flex-col justify-between items-center">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping absolute -top-1"></span>
-                <span className="w-1 h-1 rounded-full bg-cyan-400/80"></span>
-                <span className="w-1 h-1 rounded-full bg-cyan-400/80"></span>
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 absolute -bottom-1"></span>
               </div>
-              <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Mira Visual</span>
+              <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">
+                {language === 'pt' ? 'Mira Visual' : 'Visual Aiming'}
+              </span>
             </div>
           </div>
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              💡 <strong>Ações Disponíveis:</strong> Cada pino do seu time pode ser configurado para reagir de formas diferentes ao tocar na bola durante a partida:
+              💡 <strong>{language === 'pt' ? 'Ações Disponíveis:' : 'Available Actions:'}</strong> {language === 'pt' ? 'Cada pino do seu time pode ser configurado para reagir de formas diferentes ao tocar na bola durante a partida:' : 'Each button of your team can be configured to react in different ways when touching the ball during the match:'}
             </p>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-2 text-[11px] md:text-xs">
               <li className="flex gap-1.5 items-start">
                 <span className="text-emerald-400 font-extrabold">&bull;</span>
-                <span><strong>PASSE:</strong> Disparo rasteiro e controlado buscando o companheiro mais próximo.</span>
+                <span><strong>{language === 'pt' ? 'PASSE' : 'PASS'}:</strong> {language === 'pt' ? 'Disparo rasteiro e controlado buscando o companheiro mais próximo.' : 'Low and controlled shot looking for the nearest teammate.'}</span>
               </li>
               <li className="flex gap-1.5 items-start">
                 <span className="text-cyan-400 font-extrabold">&bull;</span>
-                <span><strong>CRUZAMENTO:</strong> Lança a bola levantada, ideal para transpor bloqueios adversários.</span>
+                <span><strong>{language === 'pt' ? 'CRUZAMENTO' : 'CROSS'}:</strong> {language === 'pt' ? 'Lança a bola levantada, ideal para transpor bloqueios adversários.' : 'Launches a raised ball, ideal for bypassing opponent blockers.'}</span>
               </li>
               <li className="flex gap-1.5 items-start">
                 <span className="text-rose-400 font-extrabold">&bull;</span>
-                <span><strong>CHUTE:</strong> Força máxima direcionada rumo ao gol adversário.</span>
+                <span><strong>{language === 'pt' ? 'CHUTE' : 'SHOOT'}:</strong> {language === 'pt' ? 'Força máxima direcionada rumo ao gol adversário.' : 'Maximum strength directed towards the opponent\'s goal.'}</span>
               </li>
               <li className="flex gap-1.5 items-start">
                 <span className="text-purple-400 font-extrabold">&bull;</span>
-                <span><strong>DESARME:</strong> Trava a bola rigidamente para neutralizar ataques e roubar a posse.</span>
+                <span><strong>{language === 'pt' ? 'DESARME' : 'TACKLE'}:</strong> {language === 'pt' ? 'Trava a bola rigidamente para neutralizar ataques e roubar a posse.' : 'Strictly locks the ball to neutralize attacks and steal possession.'}</span>
               </li>
             </ul>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-2">
               <div className="p-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/20 text-cyan-300 text-[11px] leading-snug">
-                ⚠️ <strong>MIRA E FORÇA:</strong> Os pontinhos de mira são apenas um <strong>guia visual</strong> para ajudar na precisão espacial, e <strong>NÃO</strong> alteram a velocidade ou força do peteleco!
+                ⚠️ <strong>{language === 'pt' ? 'MIRA E FORÇA:' : 'AIMING & POWER:'}</strong> {language === 'pt' ? 'Os pontinhos de mira são apenas um guia visual para ajudar na precisão espacial, e NÃO alteram a velocidade ou força do peteleco!' : 'Aiming dots are just a visual guide to help with spatial precision, and do NOT alter the flick\'s speed or power!'}
               </div>
               <div className="p-2.5 rounded-xl bg-purple-500/5 border border-purple-500/20 text-purple-300 text-[11px] leading-snug">
-                🛡️ <strong>ATÉ 3 BLOQUEADORES:</strong> Permite configurar <strong>até 3 jogadores</strong> em DESARME. Ao travar a bola, a jogada adversária é <strong>encerrada na hora</strong>, dando a vez e a posse a você!
+                🛡️ <strong>{language === 'pt' ? 'ATÉ 3 BLOQUEADORES:' : 'UP TO 3 BLOCKERS:'}</strong> {language === 'pt' ? 'Permite configurar até 3 jogadores em DESARME. Ao travar a bola, a jogada adversária é encerrada na hora, dando a vez e a posse a você!' : 'Allows configuring up to 3 players in TACKLE. When locking the ball, the opponent\'s play is immediately ended, giving you the turn and possession!'}
               </div>
               <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/20 text-amber-300 text-[11px] leading-snug">
-                ⚡ <strong>CUSTO DE PETELECOS:</strong> Cada lance comum <strong>gasta 1 peteleco</strong> (limite de 3). Porém, as saídas de jogo e pós-gol (<strong>Kickoffs</strong>) <strong>NÃO gastam petelecos</strong>!
+                ⚡ <strong>{language === 'pt' ? 'CUSTO DE PETELECOS:' : 'FLICK COST:'}</strong> {language === 'pt' ? 'Cada lance comum gasta 1 peteleco (limite de 3). Porém, as saídas de jogo e pós-gol (Kickoffs) NÃO gastam petelecos!' : 'Each regular shot costs 1 flick (limit of 3). However, kickoffs and post-goal kickoffs (Kickoffs) do NOT consume flicks!'}
               </div>
             </div>
           </div>
@@ -137,8 +137,8 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
       )
     },
     {
-      title: "Posicionamento Tático",
-      subtitle: "Organização defensiva e regras pós-gol",
+      title: language === 'pt' ? "Posicionamento Tático" : "Tactical Positioning",
+      subtitle: language === 'pt' ? "Organização defensiva e regras pós-gol" : "Defensive organization and post-goal rules",
       icon: Move,
       color: "from-emerald-500 to-teal-600",
       content: (
@@ -150,7 +150,9 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                 <div className="w-7 h-7 rounded-full bg-zinc-950 border-2 border-emerald-500/60 hover:border-emerald-400 flex items-center justify-center relative cursor-pointer group shadow-[0_0_12px_rgba(16,185,129,0.25)] animate-pulse">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                 </div>
-                <span className="text-[7px] font-black text-zinc-550 uppercase tracking-widest">Green Slot</span>
+                <span className="text-[7px] font-black text-zinc-550 uppercase tracking-widest">
+                  {language === 'pt' ? 'Slot Verde' : 'Green Slot'}
+                </span>
               </div>
 
               <div className="w-[1px] bg-zinc-800 self-stretch"></div>
@@ -160,40 +162,42 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                 <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center font-black text-[9px] text-white shadow-lg">
                   C
                 </div>
-                <span className="text-[7px] font-black text-cyan-400 uppercase tracking-widest">Capitão</span>
+                <span className="text-[7px] font-black text-cyan-400 uppercase tracking-widest">
+                  {language === 'pt' ? 'Capitão' : 'Captain'}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🛡️ <strong>Preparação Tática:</strong> No início da partida e em resets gerais, você tem um tempo limite de **2 minutos** (120 segundos) para arrastar e soltar seus pinos de botão nos slots verdes brilhantes e montar sua muralha tática.
+              🛡️ <strong>{language === 'pt' ? 'Preparação Tática:' : 'Tactical Preparation:'}</strong> {language === 'pt' ? 'No início da partida e em resets gerais, você tem um tempo limite de 2 minutos (120 segundos) para arrastar e soltar seus pinos de botão nos slots verdes brilhantes e montar sua muralha tática.' : 'At the start of the match and general resets, you have a time limit of 2 minutes (120 seconds) to drag and drop your buttons into the glowing green slots and build your tactical wall.'}
             </p>
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-350 text-[11px] leading-snug flex flex-col gap-2">
               <div className="flex items-start gap-2">
                 <span className="text-amber-400 font-extrabold mt-0.5">⚠️</span>
-                <span><strong>FORMAÇÃO OBRIGATÓRIA:</strong> É obrigatório posicionar pelo menos **1 jogador de linha no ataque** e pelo menos **1 jogador de linha no meio-campo**.</span>
+                <span><strong>{language === 'pt' ? 'FORMAÇÃO OBRIGATÓRIA:' : 'MANDATORY FORMATION:'}</strong> {language === 'pt' ? 'É obrigatório posicionar pelo menos 1 jogador de linha no ataque e pelo menos 1 jogador de linha no meio-campo.' : 'It is mandatory to position at least 1 field player in attack and at least 1 field player in midfield.'}</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-amber-400 font-extrabold mt-0.5">🛡️</span>
-                <span><strong>LINHA EXTRA DEFENSIVA:</strong> Não se pode colocar mais que **2 jogadores de defesa** na sua linha extra de defesa (logo à frente da área).</span>
+                <span><strong>{language === 'pt' ? 'LINHA EXTRA DEFENSIVA:' : 'EXTRA DEFENSIVE LINE:'}</strong> {language === 'pt' ? 'Não se pode colocar mais que 2 jogadores de defesa na sua linha extra de defesa (logo à frente da área).' : 'You cannot place more than 2 defending players in your extra defensive line (just ahead of the penalty area).'}</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-amber-400 font-extrabold mt-0.5">🔥</span>
-                <span><strong>LIMITE DE ATAQUE:</strong> É permitido posicionar no máximo **3 jogadores de linha** na zona de ataque (linha de ataque + linha extra do adversário).</span>
+                <span><strong>{language === 'pt' ? 'LIMITE DE ATAQUE:' : 'ATTACK LIMIT:'}</strong> {language === 'pt' ? 'É permitido posicionar no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra do adversário).' : 'It is allowed to position at most 3 field players in the attacking zone (attack line + opponent\'s extra line).'}</span>
               </div>
             </div>
             <p>
-              ⚽ <strong>Regras após sofrer gols (Multiplayer):</strong>
+              ⚽ <strong>{language === 'pt' ? 'Regras após sofrer gols (Multiplayer):' : 'Rules after conceding goals (Multiplayer):'}</strong>
             </p>
             <ul className="space-y-2 pl-2 text-[11px] md:text-xs">
               <li className="flex gap-2 items-start">
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px]">1 GOL</span>
-                <span>Se você sofrer apenas um gol, ganha o direito de mover **apenas o seu Capitão** (indicado pelo diamante brilhante, com cronômetro de **30 segundos** de tempo limite) para qualquer slot livre do seu campo para reajuste defensivo imediato.</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px]">{language === 'pt' ? '1 GOL' : '1 GOAL'}</span>
+                <span>{language === 'pt' ? 'Se você sofrer apenas um gol, ganha o direito de mover apenas o seu Capitão (indicado pelo diamante brilhante, com cronômetro de 30 segundos de tempo limite) para qualquer slot livre do seu campo para reajuste defensivo imediato.' : 'If you concede only one goal, you gain the right to move only your Captain (indicated by the glowing diamond, with a 30-second time limit) to any free slot in your field for immediate defensive adjustment.'}</span>
               </li>
               <li className="flex gap-2 items-start">
-                <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-black text-[9px]">2 GOLS CONSECUTIVOS</span>
-                <span>Se o mesmo time sofrer dois gols seguidos sem reagir, a tática quebrou! **Ambos os jogadores** ganham o direito de reorganizar seus **times inteiros** livremente no campo (com cronômetro de **2 minutos**).</span>
+                <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-black text-[9px]">{language === 'pt' ? '2 GOLS CONSECUTIVOS' : '2 CONSECUTIVE GOALS'}</span>
+                <span>{language === 'pt' ? 'Se o mesmo time sofrer dois gols seguidos sem reagir, a tática quebrou! Ambos os jogadores ganham o direito de reorganizar seus times inteiros livremente no campo (com cronômetro de 2 minutos).' : 'If the same team concedes two consecutive goals without reacting, the tactics broke! Both players gain the right to reorganize their entire teams freely on the field (with a 2-minute timer).'}</span>
               </li>
             </ul>
           </div>
@@ -201,8 +205,8 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
       )
     },
     {
-      title: "Paradas de Reposicionamento",
-      subtitle: "Momentos táticos cruciais para reajuste de campo",
+      title: language === 'pt' ? "Paradas de Reposicionamento" : "Repositioning Pauses",
+      subtitle: language === 'pt' ? "Momentos táticos cruciais para reajuste de campo" : "Crucial tactical moments for field adjustment",
       icon: Timer,
       color: "from-indigo-500 to-purple-600",
       content: (
@@ -216,7 +220,9 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
                 </div>
-                <span className="text-[8px] font-black text-cyan-400 uppercase tracking-wide">Flicks Zerados</span>
+                <span className="text-[8px] font-black text-cyan-400 uppercase tracking-wide">
+                  {language === 'pt' ? 'Petelecos Zerados' : 'Flicks Exhausted'}
+                </span>
               </div>
               
               <div className="flex flex-col items-center gap-1.5 p-2 bg-zinc-950/40 rounded-xl">
@@ -226,27 +232,29 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
               <div className="flex flex-col items-center gap-1.5 p-2 bg-zinc-950/40 rounded-xl">
                 <span className="text-xs font-black text-rose-400">⚽ x2</span>
-                <span className="text-[8px] font-black text-rose-400 uppercase tracking-wide">2 Gols Seguidos</span>
+                <span className="text-[8px] font-black text-rose-400 uppercase tracking-wide">
+                  {language === 'pt' ? '2 Gols Seguidos' : '2 Consecutive Goals'}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🛑 <strong>Pausas Táticas (Restrições de Tempo):</strong> O jogo entrará em pausa automática para permitir a reorganização e reajuste posicional das equipes (com cronômetro de **2 minutos** ou 120 segundos para confirmação) em 3 momentos específicos:
+              🛑 <strong>{language === 'pt' ? 'Pausas Táticas (Restrições de Tempo):' : 'Tactical Pauses (Time Restrictions):'}</strong> {language === 'pt' ? 'O jogo entrará em pausa automática para permitir a reorganização e reajuste posicional das equipes (com cronômetro de 2 minutos ou 120 segundos para confirmação) em 3 momentos específicos:' : 'The game will automatically pause to allow the reorganization and positional adjustment of the teams (with a 2-minute or 120-second confirmation timer) in 3 specific moments:'}
             </p>
             <ul className="space-y-2.5 pl-2 text-[11px] md:text-xs">
               <li className="flex gap-2 items-start">
                 <span className="text-cyan-400 font-extrabold">1.</span>
-                <span><strong>Petelecos Esgotados:</strong> Assim que ambos os jogadores completam sua sequência máxima de 3 flicks consecutivos, o jogo para para um novo reset e organização tática geral (tempo limite de **2 minutos**).</span>
+                <span><strong>{language === 'pt' ? 'Petelecos Esgotados:' : 'Flicks Exhausted:'}</strong> {language === 'pt' ? 'Assim que ambos os jogadores completam sua sequência máxima de 3 flicks consecutivos, o jogo para para um novo reset e organização tática geral (tempo limite de 2 minutos).' : 'As soon as both players complete their maximum sequence of 3 consecutive flicks, the game stops for a new reset and general tactical organization (2-minute time limit).'}</span>
               </li>
               <li className="flex gap-2 items-start">
                 <span className="text-amber-400 font-extrabold">2.</span>
-                <span><strong>Halftime (Intervalo):</strong> Pausa clássica na metade da partida onde as equipes trocam de lado e podem redefinir toda a postura tática de campo (tempo limite de **2 minutos**).</span>
+                <span><strong>{language === 'pt' ? 'Halftime (Intervalo):' : 'Halftime:'}</strong> {language === 'pt' ? 'Pausa clássica na metade da partida onde as equipes trocam de lado e podem redefinir toda a postura tática de campo (tempo limite de 2 minutos).' : 'Classic pause in the middle of the match where teams swap sides and can redefine their entire tactical stance on the field (2-minute time limit).'}</span>
               </li>
               <li className="flex gap-2 items-start">
                 <span className="text-rose-400 font-extrabold">3.</span>
-                <span><strong>Após 2 Gols Seguidos:</strong> O jogo para obrigatoriamente para permitir que o time castigado reorganize completamente suas linhas e evite goleadas desastrosas (tempo limite de **2 minutos**).</span>
+                <span><strong>{language === 'pt' ? 'Após 2 Gols Seguidos:' : 'After 2 Consecutive Goals:'}</strong> {language === 'pt' ? 'O jogo para obrigatoriamente para permitir que o time castigado reorganize completamente suas linhas e evite goleadas desastrosas (tempo limite de 2 minutos).' : 'The game must stop to allow the punished team to completely reorganize their lines and avoid disastrous blowouts (2-minute time limit).'}</span>
               </li>
             </ul>
           </div>
@@ -254,8 +262,8 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
       )
     },
     {
-      title: "Velocidade da Bola & Desgaste",
-      subtitle: "Física agressiva e cansaço dos goleiros",
+      title: language === 'pt' ? "Velocidade da Bola & Desgaste" : "Ball Speed & Fatigue",
+      subtitle: language === 'pt' ? "Física agressiva e cansaço dos goleiros" : "Aggressive physics and goalkeeper fatigue",
       icon: Zap,
       color: "from-orange-500 to-amber-600",
       content: (
@@ -265,51 +273,63 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
             <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-cyan-400 font-black animate-pulse">
                 <Zap size={13} className="text-cyan-400" />
-                <span className="text-[10px] md:text-xs">+ por Toque</span>
+                <span className="text-[10px] md:text-xs">{language === 'pt' ? '+ por Toque' : '+ per Touch'}</span>
               </div>
-              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">Supervelocidade</span>
+              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">
+                {language === 'pt' ? 'Supervelocidade' : 'Super Speed'}
+              </span>
             </div>
 
             {/* Visual goalkeeper abilities */}
             <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-emerald-400 font-black">
                 <BookOpen size={13} className="text-emerald-400" />
-                <span className="text-[10px] md:text-xs">Defesa / Estouro</span>
+                <span className="text-[10px] md:text-xs">{language === 'pt' ? 'Defesa / Estouro' : 'Save / Clearance'}</span>
               </div>
-              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">Habilidades Especiais</span>
+              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">
+                {language === 'pt' ? 'Habilidades Especiais' : 'Special Abilities'}
+              </span>
             </div>
 
             {/* Visual goalkeeper fatigue */}
             <div className="flex flex-col items-center gap-1.5 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-800">
               <div className="flex items-center gap-1 text-rose-400 font-black">
                 <ShieldAlert size={13} className="text-rose-400 animate-bounce" />
-                <span className="text-[10px] md:text-xs">- por Defesa</span>
+                <span className="text-[10px] md:text-xs">{language === 'pt' ? '- por Defesa' : '- per Save'}</span>
               </div>
-              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">Cansaço (Fadiga)</span>
+              <span className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest text-center">
+                {language === 'pt' ? 'Cansaço (Fadiga)' : 'Fatigue'}
+              </span>
             </div>
           </div>
 
           <div className="space-y-2.5 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              🔥 <strong>Supervelocidade & Fadiga:</strong> A bola ganha **aceleração acumulada** a cada toque consecutivo feito pelos jogadores, enquanto o Goleiro perde **velocidade de reação** a cada defesa realizada. Ambos resetam assim que a bola parar!
+              🔥 <strong>{language === 'pt' ? 'Supervelocidade & Fadiga:' : 'Super Speed & Fatigue:'}</strong> {language === 'pt' ? 'A bola ganha aceleração acumulada a cada toque consecutivo feito pelos jogadores, enquanto o Goleiro perde velocidade de reação a cada defesa realizada. Ambos resetam assim que a bola parar!' : 'The ball gains accumulated acceleration with each consecutive touch made by players, while the Goalkeeper loses reaction speed with each save made. Both reset as soon as the ball stops!'}
             </p>
 
             <div className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-2.5">
               <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                <BookOpen size={12} /> Habilidades do Goleiro (Evitando o Swarming)
+                <BookOpen size={12} /> {language === 'pt' ? 'Habilidades do Goleiro (Evitando o Swarming)' : 'Goalkeeper Abilities (Avoiding Swarming)'}
               </h4>
               <ul className="space-y-2 text-[11px] md:text-xs leading-snug">
                 <li className="flex gap-2 items-start">
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">Defesa</span>
-                  <span>Em ataques oponentes, o goleiro tem chance de **segurar/bloquear a bola completamente** (igual a um pino de Desarme), parando a jogada do rival e garantindo a posse sob seu controle para fazer um passe limpo e controlado!</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">
+                    {language === 'pt' ? 'Defesa' : 'Save'}
+                  </span>
+                  <span>{language === 'pt' ? 'Em ataques oponentes, o goleiro tem chance de segurar/bloquear a bola completamente (igual a um pino de Desarme), parando a jogada do rival e garantindo a posse sob seu controle para fazer um passe limpo e controlado!' : 'On opponent attacks, the goalkeeper has a chance to catch/block the ball completely (similar to a Tackle button), stopping the rival\'s play and securing possession under his control to make a clean, controlled pass!'}</span>
                 </li>
                 <li className="flex gap-2 items-start">
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">Estouro</span>
-                  <span>O goleiro tem chance de **isolar a bola para o campo de ataque adversário** (Chutão), aliviando o sufoco com um balão alto e curvo que aterrissa estrategicamente entre o meio-campo e a grande área do rival!</span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">
+                    {language === 'pt' ? 'Estouro' : 'Clearance'}
+                  </span>
+                  <span>{language === 'pt' ? 'O goleiro tem chance de isolar a bola para o campo de ataque adversário (Chutão), aliviando o sufoco com um balão alto e curvo que aterrissa estrategicamente entre o meio-campo e a grande área do rival!' : 'The goalkeeper has a chance to clear the ball to the opponent\'s attacking field (Big Kick), relieving pressure with a high, curved ball that lands strategically between the rival\'s midfield and penalty area!'}</span>
                 </li>
                 <li className="flex gap-2 items-start">
-                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">Recuo Seguro</span>
-                  <span>Ao tocar a bola intencionalmente para o seu próprio goleiro (recuo), ele **nunca** fará o bloqueio de Defesa (para não paralisar o seu ataque), mas a chance de **Estouro (Chutão)** para longe sobe significativamente!</span>
+                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-black text-[9px] uppercase tracking-wider flex-shrink-0">
+                    {language === 'pt' ? 'Recuo Seguro' : 'Safe Backpass'}
+                  </span>
+                  <span>{language === 'pt' ? 'Ao tocar a bola intencionalmente para o seu próprio goleiro (recuo), ele nunca fará o bloqueio de Defesa (para não paralisar o seu ataque), mas a chance de Estouro (Chutão) para longe sobe significativamente!' : 'When intentionally passing the ball to your own goalkeeper (backpass), he will never make a Save block (so as not to paralyze your attack), but the chance of Clearance (Big Kick) increases significantly!'}</span>
                 </li>
               </ul>
             </div>
@@ -318,8 +338,8 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
       )
     },
     {
-      title: "Regra das Faltas (Anti-Loop)",
-      subtitle: "Evitando deadlocks físicos por design",
+      title: language === 'pt' ? "Regra das Faltas (Anti-Loop)" : "Foul Rule (Anti-Loop)",
+      subtitle: language === 'pt' ? "Evitando deadlocks físicos por design" : "Avoiding physical deadlocks by design",
       icon: AlertTriangle,
       color: "from-rose-500 to-red-600",
       content: (
@@ -333,7 +353,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
               <div className="absolute inset-0 bg-rose-950/20 border border-rose-500/20 rounded-2xl flex items-center justify-center">
                 <span className="px-2 py-0.5 rounded bg-rose-500 text-zinc-950 font-black tracking-widest text-[9px] uppercase animate-pulse flex items-center gap-1">
                   <ShieldAlert size={10} />
-                  BOLA PRESA
+                  {language === 'pt' ? 'BOLA PRESA' : 'LOCKED BALL'}
                 </span>
               </div>
             </div>
@@ -341,21 +361,21 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
 
           <div className="space-y-3 text-xs md:text-sm text-zinc-300 leading-relaxed">
             <p>
-              ⚠️ <strong>Por que ocorrem faltas?</strong> As faltas são acionadas exclusivamente em situações muito específicas quando a bola fica **completamente presa ou travada** entre múltiplos pinos ou as paredes da arena.
+              ⚠️ <strong>{language === 'pt' ? 'Por que ocorrem faltas?' : 'Why do fouls occur?'}</strong> {language === 'pt' ? 'As faltas são acionadas exclusivamente em situações muito específicas quando a bola fica completamente presa ou travada entre múltiplos pinos ou as paredes da arena.' : 'Fouls are triggered exclusively in very specific situations when the ball is completely stuck or locked between multiple buttons or the arena walls.'}
             </p>
             <p>
-              🔧 <strong>Mecanismo de Segurança:</strong> Esta regra foi projetada para **evitar loops infinitos ou loops de colisões mortais** que poderiam travar o motor de física do jogo e arruinar a experiência.
+              🔧 <strong>{language === 'pt' ? 'Mecanismo de Segurança:' : 'Safety Mechanism:'}</strong> {language === 'pt' ? 'Esta regra foi projetada para evitar loops infinitos ou loops de colisões mortais que poderiam travar o motor de física do jogo e arruinar a experiência.' : 'This rule was designed to avoid infinite loops or deadly collision loops that could crash the game\'s physics engine and ruin the experience.'}
             </p>
             <p>
-              🔄 <strong>Resgate Justo:</strong> O jogo resolverá a falta automaticamente redistribuindo as posições e devolvendo a posse de bola de forma limpa e justa, mantendo o jogo sempre fluído.
+              🔄 <strong>{language === 'pt' ? 'Resgate Justo:' : 'Fair Rescue:'}</strong> {language === 'pt' ? 'O jogo resolverá a falta automaticamente redistribuindo as posições e devolvendo a posse de bola de forma limpa e justa, mantendo o jogo sempre fluído.' : 'The game will resolve the foul automatically by redistributing positions and returning ball possession cleanly and fairly, keeping the game always fluid.'}
             </p>
           </div>
         </div>
       )
     },
     {
-      title: "Tudo Pronto para o Jogo!",
-      subtitle: "Como reabrir e preferências do tutorial",
+      title: language === 'pt' ? "Tudo Pronto para o Jogo!" : "All Ready for the Game!",
+      subtitle: language === 'pt' ? "Como reabrir e preferências do tutorial" : "How to reopen and tutorial preferences",
       icon: CheckCircle2,
       color: "from-cyan-500 to-indigo-600",
       content: (
@@ -364,16 +384,22 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
             <div className="w-14 h-14 rounded-full bg-cyan-950/60 border border-cyan-500 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
               <CheckCircle2 size={32} className="animate-bounce" />
             </div>
-            <h4 className="text-sm font-black text-zinc-100 uppercase tracking-wide">Você está pronto!</h4>
+            <h4 className="text-sm font-black text-zinc-100 uppercase tracking-wide">
+              {language === 'pt' ? 'Você está pronto!' : 'You are ready!'}
+            </h4>
             <p className="text-xs text-zinc-400 max-w-sm">
-              Agora você conhece todas as regras essenciais que governam as táticas e físicas de Tableball.
+              {language === 'pt' ? 'Agora você conhece todas as regras essenciais que governam as táticas e físicas de Tableball.' : 'Now you know all the essential rules governing Tableball tactics and physics.'}
             </p>
           </div>
 
           <div className="bg-zinc-900/60 border border-zinc-800 p-3 rounded-2xl text-[11px] leading-relaxed text-zinc-350 flex items-start gap-2.5">
             <HelpCircle size={16} className="text-cyan-400 flex-shrink-0 mt-0.5" />
             <p>
-              Esqueceu de algo no meio da partida? Sem problemas! Você pode reabrir este manual de regras a qualquer momento clicando no botão <strong>Regras</strong> no menu principal ou acessando o botão <strong>Regras do Jogo</strong> dentro do painel de Ajustes ⚙️ (canto inferior esquerdo) enquanto joga.
+              {language === 'pt' ? (
+                <>Esqueceu de algo no meio da partida? Sem problemas! Você pode reabrir este manual de regras a qualquer momento clicando no botão <strong>Regras</strong> no menu principal ou acessando o botão <strong>Regras do Jogo</strong> dentro do painel de Ajustes ⚙️ (canto inferior esquerdo) enquanto joga.</>
+              ) : (
+                <>Forgot something in the middle of the match? No problem! You can reopen this rule manual at any time by clicking the <strong>Rules</strong> button in the main menu or accessing the <strong>Game Rules</strong> button inside the Settings ⚙️ panel (bottom-left corner) while playing.</>
+              )}
             </p>
           </div>
         </div>
@@ -402,7 +428,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
           
           <button 
             onClick={handleClose}
-            className="text-zinc-550 hover:text-zinc-300 p-2 rounded-lg hover:bg-zinc-900 transition-colors text-xs font-black"
+            className="text-zinc-555 hover:text-zinc-300 p-2 rounded-lg hover:bg-zinc-900 transition-colors text-xs font-black"
           >
             ✕
           </button>
@@ -432,8 +458,8 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
               ))}
             </div>
 
-            <span className="text-[9px] font-black tracking-widest text-zinc-600 uppercase">
-              Página {currentPage + 1} de {pages.length}
+            <span className="text-[9px] font-black tracking-widest text-zinc-650 uppercase">
+              {t('rules.pageTitle', { current: currentPage + 1, total: pages.length })}
             </span>
           </div>
 
@@ -446,12 +472,12 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
               disabled={currentPage === 0}
               className={`px-4 py-2 border rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1 active:scale-98 ${
                 currentPage === 0 
-                  ? 'border-transparent text-zinc-700 bg-transparent cursor-default' 
+                  ? 'border-transparent text-zinc-750 bg-transparent cursor-default' 
                   : 'border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
               }`}
             >
               <ChevronLeft size={13} />
-              Voltar
+              {t('rules.back')}
             </button>
 
             {/* Show "Don't show again" checkbox only on the last page AND if it was auto-triggered */}
@@ -468,7 +494,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                   <div className="absolute top-[2px] left-[2px] w-3 h-3 rounded-full bg-zinc-500 peer-checked:bg-white peer-checked:translate-x-4 transition-all duration-300 shadow-sm"></div>
                 </div>
                 <span className="text-[10px] font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors uppercase tracking-wide leading-none">
-                  Não mostrar novamente
+                  {t('rules.dontShowAgain')}
                 </span>
               </label>
             )}
@@ -478,7 +504,7 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
               onClick={handleNext}
               className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white font-black text-xs tracking-widest uppercase rounded-xl shadow-[0_4px_15px_rgba(6,182,212,0.3)] transition-all active:scale-98 flex items-center gap-1"
             >
-              <span>{currentPage === 5 ? 'OK, ENTENDIDO!' : 'Avançar'}</span>
+              <span>{currentPage === 5 ? t('rules.finish') : t('rules.next')}</span>
               {currentPage < 5 && <ChevronRight size={13} />}
             </button>
 
