@@ -625,7 +625,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
         <div className="absolute bottom-3.5 right-4 z-20 pointer-events-none select-none flex items-center gap-1.5 text-[10.5px] font-bold text-zinc-500 uppercase tracking-wider leading-none">
           <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
           <span className="text-zinc-800 font-black">&bull;</span>
-          <span className="text-zinc-400 font-black">v1.1.0</span>
+          <span className="text-zinc-400 font-black">v1.1.1</span>
         </div>
 
         {/* Login Modal (Mobile) */}
@@ -843,7 +843,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
             
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v1.1.0</span>
+              <span>v1.1.1</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -965,7 +965,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               {language === 'pt' ? 'Cancelar e Excluir Sala' : 'Cancel & Delete Room'}
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-650 uppercase tracking-widest select-none">
-              <span>v1.1.0</span>
+              <span>v1.1.1</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>

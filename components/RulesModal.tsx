@@ -186,6 +186,10 @@ const RulesModal: React.FC<RulesModalProps> = ({ onClose }) => {
                 <span className="text-amber-400 font-extrabold mt-0.5">🔥</span>
                 <span><strong>{language === 'pt' ? 'LIMITE DE ATAQUE:' : 'ATTACK LIMIT:'}</strong> {language === 'pt' ? 'É permitido posicionar no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra do adversário).' : 'It is allowed to position at most 3 field players in the attacking zone (attack line + opponent\'s extra line).'}</span>
               </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-extrabold mt-0.5">🛡️</span>
+                <span><strong>{language === 'pt' ? 'LIMITE DE DEFESA:' : 'DEFENSE LIMIT:'}</strong> {language === 'pt' ? 'É permitido posicionar no máximo 5 jogadores de linha na zona de defesa (linha defensiva + linha extra).' : 'It is allowed to position at most 5 field players in the defensive zone (defensive line + extra defensive line).'}</span>
+              </div>
             </div>
             <p>
               ⚽ <strong>{language === 'pt' ? 'Regras após sofrer gols (Multiplayer):' : 'Rules after conceding goals (Multiplayer):'}</strong>

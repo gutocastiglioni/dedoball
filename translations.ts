@@ -141,6 +141,7 @@ export const translations: Record<Language, Record<string, any>> = {
             mandatory: "MANDATORY FORMATION: It is mandatory to position at least 1 field player in attack and at least 1 field player in midfield.",
             extraLine: "EXTRA DEFENSIVE LINE: You cannot place more than 2 defending players in your extra defensive line (just ahead of the penalty area).",
             attackLimit: "ATTACK LIMIT: It is allowed to position at most 3 field players in the attacking zone (attack line + opponent's extra line).",
+            defenseLimit: "DEFENSE LIMIT: It is allowed to position at most 5 field players in the defensive zone (defensive line + extra defensive line).",
             postGoal: "Rules after conceding goals (Multiplayer):",
             oneGoal: "1 GOAL: If you concede only one goal, you gain the right to move only your Captain (indicated by the glowing diamond, with a 30-second time limit) to any free slot in your field for immediate defensive adjustment.",
             twoGoals: "2 CONSECUTIVE GOALS: If the same team concedes two consecutive goals without reacting, the tactics broke! Both players gain the right to reorganize their entire teams freely on the field (with a 2-minute timer)."
@@ -450,6 +451,7 @@ export const translations: Record<Language, Record<string, any>> = {
             mandatory: "FORMAÇÃO OBRIGATÓRIA: É obrigatório posicionar pelo menos 1 jogador de linha no ataque e pelo menos 1 jogador de linha no meio-campo.",
             extraLine: "LINHA EXTRA DEFENSIVA: Não se pode colocar mais que 2 jogadores de defesa na sua linha extra de defesa (logo à frente da área).",
             attackLimit: "LIMITE DE ATAQUE: É permitido posicionar no máximo 3 jogadores de linha na zona de ataque (linha de ataque + linha extra do adversário).",
+            defenseLimit: "LIMITE DE DEFESA: É permitido posicionar no máximo 5 jogadores de linha na zona de defesa (linha defensiva + linha extra).",
             postGoal: "Regras após sofrer gols (Multiplayer):",
             oneGoal: "1 GOL: Se você sofrer apenas um gol, ganha o direito de mover apenas o seu Capitão (indicado pelo diamante brilhante, com cronômetro de 30 segundos de tempo limite) para qualquer slot livre do seu campo para reajuste defensivo imediato.",
             twoGoals: "2 GOLS CONSECUTIVOS: Se o mesmo time sofrer dois gols seguidos sem reagir, a tática quebrou! Ambos os jogadores ganham o direito de reorganizar seus times inteiros livremente no campo (com cronômetro de 2 minutos)."
