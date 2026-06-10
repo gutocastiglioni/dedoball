@@ -374,8 +374,31 @@ const HUDOverlays: React.FC = () => {
                 </div>
               </div>
 
+              {/* Feedback Popup inside the Game Over Screen */}
+              <div className="w-full mt-4 p-4 rounded-2xl bg-zinc-950/80 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.05)] flex flex-col items-center text-center gap-3">
+                <span className="text-[12px] md:text-base font-black text-cyan-400 uppercase tracking-wider">
+                  {t('kofi.question')}
+                </span>
+                <p className="text-[11px] md:text-xs text-zinc-400 font-semibold max-w-sm">
+                  {t('kofi.opinionText')}
+                </p>
+                <a 
+                  href="https://ko-fi.com/gutocastiglioni" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:scale-[1.02] active:scale-98 transition-all cursor-pointer inline-flex items-center gap-2.5 bg-[#27272a] hover:bg-[#3f3f46] px-5 py-2.5 rounded-xl border border-zinc-750 text-white text-[12px] md:text-sm font-black uppercase tracking-wider"
+                >
+                  <img 
+                    src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_badge_blue.png" 
+                    alt="Support me on Ko-fi" 
+                    className="h-[32px] md:h-[40px] w-auto"
+                  />
+                  <span>{t('kofi.donateButton')}</span>
+                </a>
+              </div>
+
               {/* Bottom Actions */}
-              <div className={`w-full flex flex-col sm:flex-row gap-3 ${isMobile ? 'pt-1' : 'pt-2'}`}>
+              <div className={`w-full flex flex-col sm:flex-row gap-3 ${isMobile ? 'pt-1' : 'pt-2'} mt-2`}>
                 <button 
                   onClick={resetMatch}
                   className={`bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black tracking-widest uppercase shadow-[0_4px_20px_rgba(6,182,212,0.3)] hover:shadow-[0_4px_30px_rgba(6,182,212,0.5)] hover:scale-[1.01] active:scale-98 transition-all duration-300 flex items-center justify-center gap-2 w-full ${

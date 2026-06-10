@@ -260,9 +260,9 @@ export const updateBallPhysics = (
           let triggerEstouro = false;
 
           if (isOpponentPlay) {
-            if (roll < 0.25) {
+            if (roll < 0.15) {
               triggerDefense = true;
-            } else if (roll < 0.50) {
+            } else if (roll < 0.40) {
               triggerEstouro = true;
             }
           } else {

@@ -622,10 +622,25 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
         )}
 
         {/* Floating Version & Branding in Bottom-Right Corner (Mobile) */}
-        <div className="absolute bottom-3.5 right-4 z-20 pointer-events-none select-none flex items-center gap-1.5 text-[10.5px] font-bold text-zinc-500 uppercase tracking-wider leading-none">
-          <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
-          <span className="text-zinc-800 font-black">&bull;</span>
-          <span className="text-zinc-400 font-black">v1.1.1</span>
+        <div className="absolute bottom-2 right-4 z-20 flex items-center gap-3 select-none pointer-events-auto">
+          {/* Ko-fi Badge (Mobile) */}
+          <a 
+            href="https://ko-fi.com/gutocastiglioni" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all cursor-pointer mr-1"
+          >
+            <img 
+              src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_blue.png" 
+              alt="Support me on Ko-fi" 
+              className="h-[34px] w-auto filter drop-shadow-[0_1px_5px_rgba(6,182,212,0.15)]"
+            />
+          </a>
+          <div className="flex items-center gap-1.5 text-[12px] font-bold text-zinc-550 uppercase tracking-wider leading-none">
+            <span className="text-zinc-650 font-extrabold">gutocastiglioni</span>
+            <span className="text-zinc-800 font-black">&bull;</span>
+            <span className="text-zinc-400 font-black">v1.1.2</span>
+          </div>
         </div>
 
         {/* Login Modal (Mobile) */}
@@ -839,11 +854,23 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
           </div>
 
           {/* Instruction Toggle & Footer Merged for Perfect Viewport Proportion */}
-          <div className="w-full pt-3 border-t border-zinc-900 flex justify-end items-center text-[10px] font-bold text-zinc-500 px-2 mt-2 select-none relative">
-            
+          <div className="w-full pt-3 border-t border-zinc-900 flex justify-between items-center text-[10px] font-bold text-zinc-500 px-2 mt-2 select-none relative pointer-events-auto">
+            {/* Ko-fi Badge */}
+            <a 
+              href="https://ko-fi.com/gutocastiglioni" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+            >
+              <img 
+                src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_blue.png" 
+                alt="Support me on Ko-fi" 
+                className="h-[30px] md:h-[36px] w-auto filter drop-shadow-[0_2px_8px_rgba(6,182,212,0.15)]"
+              />
+            </a>
             
             <div className="flex items-center gap-3 text-zinc-650 uppercase tracking-widest text-[9px] font-bold select-none">
-              <span>v1.1.1</span>
+              <span>v1.1.2</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>
@@ -965,7 +992,7 @@ const LobbyMenu: React.FC<LobbyMenuProps> = ({
               {language === 'pt' ? 'Cancelar e Excluir Sala' : 'Cancel & Delete Room'}
             </button>
             <div className="flex items-center gap-3 text-[9px] font-bold text-zinc-650 uppercase tracking-widest select-none">
-              <span>v1.1.1</span>
+              <span>v1.1.2</span>
               <span>&bull;</span>
               <span>gutocastiglioni &copy; 2026</span>
             </div>

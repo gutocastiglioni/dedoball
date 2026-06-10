@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { Team, BallState, GamePhase, PlayerConfig, GameLogEntry } from '../types';
 import { db, ref, set, update } from '../firebase';
@@ -171,6 +171,10 @@ export const useGameTransitions = ({
   enforceBlockerLimit,
   syncGameStateToFirebase
 }: UseGameTransitionsParams) => {
+  // Stable refs so changePossession/triggerFoul can call these before they're declared
+  const handleHalfTimeRef = useRef<() => void>(() => {});
+  const handleFullTimeRef = useRef<() => void>(() => {});
+
 
   // Confirm captain placement after goal (resumes play)
   const confirmCaptainMove = useCallback(() => {
@@ -321,6 +325,18 @@ export const useGameTransitions = ({
 
   // Change Possession & Setup turn
   const changePossession = useCallback((newPossession: Team, stoppedPosition: [number, number, number], isKickoff?: boolean) => {
+    // Injury time: resolve halftime/fulltime on any ball stop (tackle, gk save, etc.)
+    const currentInjuryTime = injuryTimeRef.current;
+    if (currentInjuryTime !== 'none') {
+      console.log(`%c[Game Loop] ⏰ Injury time resolved via changePossession: ${currentInjuryTime}. Ball stopped at [${stoppedPosition.map(n=>n.toFixed(2)).join(', ')}]`, 'color: #e74c3c; font-weight: bold; background: #2c0000; padding: 4px 8px;');
+      if (currentInjuryTime === 'halftime') {
+        handleHalfTimeRef.current();
+      } else {
+        handleFullTimeRef.current();
+      }
+      return;
+    }
+
     console.log(
       `%c[Possession Event] 🔄 Possession transferring: ${turnRef.current} ➔ ${newPossession} | Position: [${stoppedPosition.map(n=>n.toFixed(2)).join(', ')}] | isKickoff: ${isKickoff}`,
       "color: #9b59b6; font-weight: bold; background: #f5eef8; padding: 2px 4px; border-radius: 4px;"
@@ -413,12 +429,24 @@ export const useGameTransitions = ({
         nextStatus
       );
     }
-  }, [isMultiplayer, myRole, roomId, syncGameStateToFirebase, setHomeFlicksSync, setAwayFlicksSync, setPhaseSync, setTurnSync, setBallSync, setBall, setTurn, setActionStatus, setHomeReady, setAwayReady, turnRef, myRoleRef, homeFlicksRemainingRef, awayFlicksRemainingRef, scoresRef, ballRef, gameTimeRef, homePlayersRef, awayPlayersRef, phaseRef]);
+  }, [isMultiplayer, myRole, roomId, syncGameStateToFirebase, setHomeFlicksSync, setAwayFlicksSync, setPhaseSync, setTurnSync, setBallSync, setBall, setTurn, setActionStatus, setHomeReady, setAwayReady, turnRef, myRoleRef, homeFlicksRemainingRef, awayFlicksRemainingRef, scoresRef, ballRef, gameTimeRef, homePlayersRef, awayPlayersRef, phaseRef, injuryTimeRef, handleHalfTimeRef, handleFullTimeRef]);
 
   // Trigger Foul and transfer possession with flick consumption
   const triggerFoul = useCallback((e1: string, e2: string, stoppedPosition: [number, number, number]) => {
     SoundManager.playRefereeWhistle('foul');
     SoundManager.playCrowdSigh();
+
+    // Injury time: resolve halftime/fulltime on foul stop
+    const currentInjuryTime = injuryTimeRef.current;
+    if (currentInjuryTime !== 'none') {
+      console.log(`%c[Game Loop] ⏰ Injury time resolved via triggerFoul: ${currentInjuryTime}. Ball stopped at [${stoppedPosition.map(n=>n.toFixed(2)).join(', ')}]`, 'color: #e74c3c; font-weight: bold; background: #2c0000; padding: 4px 8px;');
+      if (currentInjuryTime === 'halftime') {
+        handleHalfTimeRef.current();
+      } else {
+        handleFullTimeRef.current();
+      }
+      return;
+    }
 
     const isMaster = !isMultiplayer || turnRef.current === myRoleRef.current;
     if (!isMaster) return;
@@ -520,7 +548,7 @@ export const useGameTransitions = ({
       );
     }
   }, [
-    isMultiplayer, roomId, myRole, syncGameStateToFirebase, addGameLog, setBall, setTurn, setActionStatus, setHomeFlicksRemaining, setAwayFlicksRemaining, setHomeReady, setAwayReady, turnRef, myRoleRef, homeFlicksRemainingRef, awayFlicksRemainingRef, ballRef, scoresRef, gameTimeRef, homePlayersRef, awayPlayersRef, phaseRef
+    isMultiplayer, roomId, myRole, syncGameStateToFirebase, addGameLog, setBall, setTurn, setActionStatus, setHomeFlicksRemaining, setAwayFlicksRemaining, setHomeReady, setAwayReady, turnRef, myRoleRef, homeFlicksRemainingRef, awayFlicksRemainingRef, ballRef, scoresRef, gameTimeRef, homePlayersRef, awayPlayersRef, phaseRef, injuryTimeRef, handleHalfTimeRef, handleFullTimeRef
   ]);
 
   // Handle Half Time
@@ -574,6 +602,7 @@ export const useGameTransitions = ({
       );
     }
   }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog, setBallSync, setTurnSync, setPhaseSync, setActionStatus, setHomeFlicksSync, setAwayFlicksSync, setHomeReady, setAwayReady, homePlayersRef, awayPlayersRef, scoresRef, setInjuryTimeSync, setGameTimeSecondsSync, setGameTimeSync, matchDurationRef]);
+  handleHalfTimeRef.current = handleHalfTime;
 
   // Handle Full Time
   const handleFullTime = useCallback(() => {
@@ -622,6 +651,7 @@ export const useGameTransitions = ({
       );
     }
   }, [isMultiplayer, roomId, syncGameStateToFirebase, addGameLog, setBallSync, setPhaseSync, setActionStatus, ballRef, scoresRef, homePlayersRef, awayPlayersRef, turnRef, homeFlicksRemainingRef, awayFlicksRemainingRef, setInjuryTimeSync, setGameTimeSecondsSync, setGameTimeSync, matchDurationRef]);
+  handleFullTimeRef.current = handleFullTime;
 
   // Handle Ball Stopped
   const handleBallStopped = useCallback((stoppedPosition: [number, number, number]) => {

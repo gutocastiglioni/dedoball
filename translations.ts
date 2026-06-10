@@ -309,6 +309,12 @@ export const translations: Record<Language, Record<string, any>> = {
       goal: "Goal",
       tackle: "Tackle",
       phase: "Phase"
+    },
+    kofi: {
+      buttonText: "Help us improve",
+      question: "Did you like the game?",
+      opinionText: "You can report bugs, share feedback, and suggest new features for the game when donating through our channel.",
+      donateButton: "Support me on Ko-fi"
     }
   },
   pt: {
@@ -619,6 +625,12 @@ export const translations: Record<Language, Record<string, any>> = {
       goal: "Gol",
       tackle: "Desarme",
       phase: "Fase"
+    },
+    kofi: {
+      buttonText: "Ajude-nos a melhorar",
+      question: "Gostou do jogo?",
+      opinionText: "Você pode comentar sobre bugs, opinar e dar novas ideias para o jogo ao doar pelo Canal.",
+      donateButton: "Apoie no Ko-fi"
     }
   }
 };
