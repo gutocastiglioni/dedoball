@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { GamePhase, Team, PlayerConfig, BallState, GameLogEntry, UniformConfig, Difficulty } from '../types';
 import { 
@@ -12,6 +12,39 @@ import {
 } from '../firebaseMultiplayer';
 import SoundManager from '../SoundManager';
 import { INITIAL_BALL } from '../gameConstants';
+
+// --- SESSION PERSISTENCE HELPERS ---
+const SESSION_KEY = 'tableball_mp_session';
+
+/**
+ * Persiste a sessão multiplayer ativa no localStorage.
+ * @param roomId ID da sala
+ * @param role Papel do jogador ('HOME' | 'AWAY')
+ */
+const saveSession = (roomId: string, role: Team) => {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ roomId, role }));
+  } catch (_) {}
+};
+
+/**
+ * Lê a sessão multiplayer salva no localStorage.
+ * @returns Objeto com roomId e role, ou null se não houver sessão.
+ */
+const loadSession = (): { roomId: string; role: Team } | null => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as { roomId: string; role: Team };
+  } catch (_) { return null; }
+};
+
+/**
+ * Remove a sessão multiplayer do localStorage.
+ */
+const clearSession = () => {
+  try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+};
 
 interface UseGameMultiplayerParams {
   phase: GamePhase;
@@ -334,7 +367,12 @@ export const useGameMultiplayer = ({
     let finalScores = { home: 0, away: 0 };
     let nextStatus = '';
 
-    if (phase === GamePhase.PREPARATION && !homeReady && !awayReady) {
+    // Use currentRoom player ready flags to avoid stale closure values
+    const homeReadyNow = currentRoom?.players?.home?.ready ?? false;
+    const awayReadyNow = currentRoom?.players?.away?.ready ?? false;
+    const bothNotReady = !homeReadyNow && !awayReadyNow;
+
+    if (bothNotReady) {
       finalScores = {
         home: currentScores.home,
         away: currentScores.away
@@ -374,7 +412,64 @@ export const useGameMultiplayer = ({
       'gameState/scores': finalScores,
       'gameState/actionStatus': nextStatus
     });
-  }, [isMultiplayer, roomId, myRole, addGameLog, scoresRef, phase, homeReady, awayReady, setScoresSync, setPhaseSync, setActionStatus, setOpponentDisconnected, setPrepTimer]);
+  }, [isMultiplayer, roomId, myRole, addGameLog, scoresRef, currentRoom, setScoresSync, setPhaseSync, setActionStatus, setOpponentDisconnected, setPrepTimer]);
+
+  /**
+   * Força o início da partida ao expirar o timer de preparação quando o HOME já confirmou
+   * mas o AWAY não confirmou a tempo. Somente o HOME (árbitro) executa esta ação.
+   * Inicia o jogo com as formações no estado atual do Firebase.
+   */
+  const triggerForceStartAfterTimeout = useCallback(() => {
+    if (!isMultiplayer || !roomId || myRole !== 'HOME') return;
+    console.log("%c[Game Loop] ⏰ Prep timeout: HOME confirmed, forcing match start!", "color: #e67e22; font-weight: bold;");
+
+    const freshBall: BallState = {
+      position: [0, 0.11, 0],
+      velocity: [0, 0, 0],
+      possession: 'HOME',
+      lastTouchedByPlayerId: null,
+      isKickoff: true,
+      speedMultiplier: 1
+    };
+
+    const nextStatus = 'Partida iniciada! O adversário não confirmou a tática a tempo.';
+    addGameLog('Partida forçada pelo árbitro! O time visitante não confirmou a tática dentro do prazo de 120s.', 'phase');
+
+    const updates: any = {
+      status: 'playing',
+      gameState: {
+        ball: freshBall,
+        homePlayers: homePlayersRef.current,
+        awayPlayers: awayPlayersRef.current,
+        turn: 'HOME',
+        scores: { home: 0, away: 0 },
+        gameTime: 0,
+        gameTimeSeconds: 0,
+        homeFlicksRemaining: 3,
+        awayFlicksRemaining: 3,
+        phase: GamePhase.ACTION,
+        actionStatus: nextStatus,
+        lastGoalScorer: null,
+        consecutiveGoalsCount: 0,
+        gkMoveActiveTeam: null,
+        gkMoveTimer: null,
+        injuryTime: 'none'
+      }
+    };
+
+    update(ref(db, `rooms/${roomId}`), updates);
+
+    // Transition locally as well
+    flushSync(() => {
+      setPhaseSync(GamePhase.ACTION);
+      setActionStatus(nextStatus);
+      setBallSync(freshBall);
+      setHomeFlicksSync(3);
+      setAwayFlicksSync(3);
+      setTurnSync('HOME');
+      setPrepTimer(null);
+    });
+  }, [isMultiplayer, roomId, myRole, addGameLog, homePlayersRef, awayPlayersRef, setPhaseSync, setActionStatus, setBallSync, setHomeFlicksSync, setAwayFlicksSync, setTurnSync, setPrepTimer]);
 
   // Derrota por Inatividade (Timeout de peteleco na fase de ação ativa) - Multiplayer Apenas
   const triggerActiveTurnTimeout = useCallback((timedOutTeam: Team) => {
@@ -639,10 +734,10 @@ export const useGameMultiplayer = ({
         setAwayReady(awaySetup);
 
         if (room.gameState) {
-          if (myRoleRef.current === 'HOME' && room.gameState.awayPlayers) {
+          if (myRoleRef.current === 'HOME' && Array.isArray(room.gameState.awayPlayers)) {
             setAwayPlayers(room.gameState.awayPlayers);
           }
-          if (myRoleRef.current === 'AWAY' && room.gameState.homePlayers) {
+          if (myRoleRef.current === 'AWAY' && Array.isArray(room.gameState.homePlayers)) {
             setHomePlayers(room.gameState.homePlayers);
           }
         }
@@ -736,8 +831,14 @@ export const useGameMultiplayer = ({
           setActionStatus(room.gameState.actionStatus);
 
           setBallSync(room.gameState.ball);
-          setHomePlayers(room.gameState.homePlayers);
-          setAwayPlayers(room.gameState.awayPlayers);
+          // Validate player arrays before syncing to prevent React error #185
+          // caused by malformed/non-array data from Firebase crashing the renderer.
+          if (Array.isArray(room.gameState.homePlayers)) {
+            setHomePlayers(room.gameState.homePlayers);
+          }
+          if (Array.isArray(room.gameState.awayPlayers)) {
+            setAwayPlayers(room.gameState.awayPlayers);
+          }
           if (room.gameState.lastGoalScorer !== undefined) {
             setLastGoalScorer(room.gameState.lastGoalScorer);
             lastGoalScorerRef.current = room.gameState.lastGoalScorer;
@@ -922,6 +1023,87 @@ export const useGameMultiplayer = ({
   }, [activeTournamentId, setTournament, setActionStatus]);
 
   // --- MULTIPLAYER ROOM HELPERS ---
+
+  /**
+   * Reconecta silenciosamente a uma sala existente após um disconnect.
+   * Não chama joinMultiplayerRoom (evita sobrescrever dados) — apenas restaura
+   * o estado local, re-registra presence e onDisconnect no Firebase.
+   * @param id ID da sala a reconectar
+   * @param role Papel do jogador ('HOME' | 'AWAY')
+   */
+  const reconnectToRoom = useCallback(async (id: string, role: Team) => {
+    try {
+      const roomSnap = await get(ref(db, `rooms/${id}`));
+      if (!roomSnap.exists()) {
+        clearSession();
+        return;
+      }
+
+      const room: Room = roomSnap.val();
+
+      // Sala encerrada ou expirada — limpar sessão
+      if (room.status === 'ended') {
+        clearSession();
+        return;
+      }
+
+      // Verificar se o UID do usuário ainda é membro da sala
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const isHome = room.players.home?.uid === uid;
+      const isAway = room.players.away?.uid === uid;
+      if (!isHome && !isAway) {
+        clearSession();
+        return;
+      }
+
+      // Confirmar que o role salvo bate com o UID
+      const confirmedRole: Team = isHome ? 'HOME' : 'AWAY';
+
+      console.log(`%c[Reconnect] 🔄 Reconectando à sala ${id} como ${confirmedRole}...`, 'color: #f39c12; font-weight: bold;');
+
+      // Re-registrar presence e onDisconnect
+      const presenceKey = confirmedRole === 'HOME' ? 'home' : 'away';
+      const myPresenceRef = ref(db, `rooms/${id}/presence/${presenceKey}`);
+      await set(myPresenceRef, true);
+
+      if (confirmedRole === 'HOME') {
+        onDisconnect(myPresenceRef).remove();
+        onDisconnect(ref(db, `rooms/${id}`)).remove();
+      } else {
+        onDisconnect(myPresenceRef).set(false);
+      }
+
+      // Restaurar estado local
+      isLeavingRef.current = false;
+      setRoomId(id);
+      setMyRole(confirmedRole);
+      setIsMultiplayer(true);
+      setMatchDuration(room.matchDuration ?? 180);
+      matchDurationRef.current = room.matchDuration ?? 180;
+
+      // Restaurar fase de acordo com o status da sala
+      if (room.status === 'playing' && room.gameState) {
+        setPhaseSync(room.gameState.phase ?? GamePhase.ACTION);
+      } else if (room.status === 'preparation') {
+        setPhaseSync(GamePhase.PREPARATION);
+      } else {
+        setPhaseSync(GamePhase.MENU);
+      }
+
+      setSystemMessage({
+        title: 'Reconectado!',
+        message: 'Você voltou à sala. Reconectando à partida...',
+        type: 'success'
+      });
+
+      saveSession(id, confirmedRole);
+    } catch (err) {
+      console.error('[Reconnect] Erro ao reconectar:', err);
+      clearSession();
+    }
+  }, [isLeavingRef, setRoomId, setMyRole, setIsMultiplayer, setMatchDuration, matchDurationRef, setPhaseSync, setSystemMessage]);
+
   const handleCreateRoom = async (name: string, pass?: string, duration: number = 180, mode: 'standard' | 'manual' = 'standard') => {
     try {
       isLeavingRef.current = false;
@@ -938,6 +1120,7 @@ export const useGameMultiplayer = ({
       setMatchDuration(duration);
       matchDurationRef.current = duration;
       setGameTimeSecondsSync(0);
+      saveSession(id, 'HOME');
       
       if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
     } catch (err) {
@@ -956,8 +1139,13 @@ export const useGameMultiplayer = ({
       setScores({ home: 0, away: 0 });
       initializeTeams();
       setBall({ ...INITIAL_BALL, isKickoff: true });
-      setPhase(GamePhase.PREPARATION);
+      // Stay in MENU — the room listener handles the MENU→PREPARATION transition
+      // when it detects room.status === 'preparation' and phaseRef === MENU.
+      // Forcing PREPARATION here bypasses the lobby and crashes the 3D scene
+      // for the AWAY player because players/ball data is not yet synced.
+      setPhase(GamePhase.MENU);
       setActionStatus('Conectado à sala! Monte sua tática de guerra.');
+      saveSession(id, 'AWAY');
       
       if (activeUser) refreshHistoryAndLeaderboard(activeUser.uid);
     } catch (err: any) {
@@ -1121,10 +1309,33 @@ export const useGameMultiplayer = ({
     }, 300);
   }, [isMultiplayer, roomId, myRole, activeUser, scoresRef, activeTournamentId, isLeavingRef, resetMatch]);
 
+  // --- BOOT RECONNECT (runs once on mount) ---
+  // Lê a sessão salva no localStorage e tenta reconectar silenciosamente
+  // se o usuário retornou após um disconnect durante uma partida.
+  const hasAttemptedReconnect = useRef(false);
+  useEffect(() => {
+    if (hasAttemptedReconnect.current) return;
+    hasAttemptedReconnect.current = true;
+
+    const session = loadSession();
+    if (!session) return;
+
+    // Aguardar o Firebase Auth estabilizar antes de tentar reconectar
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      if (!user) {
+        clearSession();
+        return;
+      }
+      reconnectToRoom(session.roomId, session.role);
+    });
+  }, [reconnectToRoom]);
+
   return {
     syncGameStateToFirebase,
     triggerWO,
     triggerTimeoutDefeat,
+    triggerForceStartAfterTimeout,
     triggerActiveTurnTimeout,
     triggerForfeit,
     handleCreateRoom,
@@ -1134,6 +1345,7 @@ export const useGameMultiplayer = ({
     handleStartTournament,
     handlePlayTournamentMatch,
     handleJoinTournamentMatch,
-    refreshHistoryAndLeaderboard
+    refreshHistoryAndLeaderboard,
+    reconnectToRoom
   };
 };

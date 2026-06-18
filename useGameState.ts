@@ -441,6 +441,7 @@ export const useGameState = () => {
     injuryTime, setInjuryTimeSync,
     triggerActiveTurnTimeout: multiplayerHook.triggerActiveTurnTimeout,
     triggerTimeoutDefeat: multiplayerHook.triggerTimeoutDefeat,
+    triggerForceStartAfterTimeout: multiplayerHook.triggerForceStartAfterTimeout,
     triggerWO: multiplayerHook.triggerWO,
     handleHalfTime: transitionHook.handleHalfTime,
     handleFullTime: transitionHook.handleFullTime
@@ -490,6 +491,9 @@ export const useGameState = () => {
     if (isMultiplayer && roomId && myRole) {
       leaveMultiplayerRoom(roomId, myRole);
     }
+    
+    // Limpar sessão salva (saída voluntária)
+    try { localStorage.removeItem('tableball_mp_session'); } catch (_) {}
     
     // Define o tab correto do lobby ao retornar
     if (isMultiplayer) {
@@ -640,6 +644,7 @@ export const useGameState = () => {
     startTournament: multiplayerHook.handleStartTournament,
     playTournamentMatch: multiplayerHook.handlePlayTournamentMatch,
     joinTournamentMatch: multiplayerHook.handleJoinTournamentMatch,
+    reconnectToRoom: multiplayerHook.reconnectToRoom,
 
     // Language i18n
     language,

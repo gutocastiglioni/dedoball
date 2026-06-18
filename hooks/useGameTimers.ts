@@ -37,6 +37,7 @@ interface UseGameTimersParams {
   currentRoom: any;
   triggerActiveTurnTimeout: (team: Team) => void;
   triggerTimeoutDefeat: () => void;
+  triggerForceStartAfterTimeout: () => void;
   triggerWO: () => void;
   handleHalfTime: () => void;
   handleFullTime: () => void;
@@ -78,6 +79,7 @@ export const useGameTimers = ({
   currentRoom,
   triggerActiveTurnTimeout,
   triggerTimeoutDefeat,
+  triggerForceStartAfterTimeout,
   triggerWO,
   handleHalfTime,
   handleFullTime,
@@ -179,19 +181,27 @@ export const useGameTimers = ({
         }
         if (prev <= 1) {
           clearInterval(interval);
-          
+
           const isReady = myRole === 'HOME' ? homeReady : awayReady;
-          
+
           if (phase === GamePhase.PREPARATION) {
             if (!isReady) {
+              // Este jogador não confirmou a tática a tempo -> derrota por timeout
               triggerTimeoutDefeat();
+            } else {
+              // Este jogador já confirmou mas o oponente não;
+              // somente o HOME (arbitro) força o início da partida
+              if (myRoleRef.current === 'HOME') {
+                triggerForceStartAfterTimeout();
+              }
+              // O AWAY aguarda: o listener do Firebase vai receber a mudança e reagir
             }
           } else if (phase === GamePhase.GOAL_CELEBRATION && captainMoveMode !== null) {
             if (captainMoveMode === myRole) {
               triggerTimeoutDefeat();
             }
           }
-          
+
           return 0;
         }
         return prev - 1;
@@ -199,7 +209,7 @@ export const useGameTimers = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [prepTimer, isMultiplayer, opponentDisconnected, triggerTimeoutDefeat, homeReady, awayReady, myRole, phase, captainMoveMode, setPrepTimer]);
+  }, [prepTimer, isMultiplayer, opponentDisconnected, triggerTimeoutDefeat, triggerForceStartAfterTimeout, homeReady, awayReady, myRole, myRoleRef, phase, captainMoveMode, setPrepTimer]);
 
   // Listener de Desconexão (Contagem Regressiva para substituir por IA ou voltar ao lobby)
   useEffect(() => {

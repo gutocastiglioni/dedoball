@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useGameStateContext } from '../../GameStateContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { PlusCircle, Lock, Users, Zap, Sliders } from 'lucide-react';
+import { PlusCircle, Lock, Users, Zap, Sliders, RefreshCw } from 'lucide-react';
+import { ref, get } from 'firebase/database';
+import { db } from '../../firebase';
 
 const MultiplayerTab: React.FC = () => {
   const { activeRooms, createRoom, joinRoom } = useGameStateContext();
@@ -14,6 +16,30 @@ const MultiplayerTab: React.FC = () => {
   const [createRoomMode, setCreateRoomMode] = useState<'standard' | 'manual'>('standard');
   const [isCreateModeSelected, setIsCreateModeSelected] = useState(false);
   const [showCreateRoomForm, setShowCreateRoomForm] = useState(false);
+
+  // Refresh de salas
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  /**
+   * Força um get() pontual no Firebase para atualizar a lista de salas manualmente.
+   * Possui cooldown de 2s para evitar spam de requisições.
+   */
+  const handleRefreshRooms = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const roomsRef = ref(db, 'rooms');
+      const snap = await get(roomsRef);
+      // O listener onValue em tempo real atualizará automaticamente;
+      // o get() aqui apenas garante que o estado seja refrescado imediatamente
+      // mesmo que o WebSocket tenha perdido eventos durante o disconnect.
+      console.log('%c[Rooms] 🔄 Refresh manual de salas executado.', 'color: #3498db; font-weight: bold;');
+    } catch (err) {
+      console.error('[Rooms] Erro no refresh manual:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 2000);
+    }
+  }, [isRefreshing]);
 
   // Password Prompt for joining closed rooms
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
@@ -30,13 +56,27 @@ const MultiplayerTab: React.FC = () => {
           <h3 className="text-xs sm:text-sm font-bold text-indigo-400 text-left">SALAS MULTIPLAYER</h3>
           <p className={`text-[9px] text-zinc-550 text-left ${isMobile ? 'hidden' : 'block'}`}>Crie sua sala e desafie amigos em tempo real</p>
         </div>
-        <button
-          onClick={() => setShowCreateRoomForm(!showCreateRoomForm)}
-          className="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-650 hover:bg-indigo-500 text-white rounded-xl text-[9.5px] sm:text-xs font-black tracking-wider flex items-center gap-1 transition-all hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20"
-        >
-          <PlusCircle size={12} />
-          NOVA SALA
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Refresh button */}
+          <button
+            onClick={handleRefreshRooms}
+            disabled={isRefreshing}
+            title="Atualizar lista de salas"
+            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw
+              size={11}
+              className={isRefreshing ? 'animate-spin text-indigo-400' : ''}
+            />
+          </button>
+          <button
+            onClick={() => setShowCreateRoomForm(!showCreateRoomForm)}
+            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-650 hover:bg-indigo-500 text-white rounded-xl text-[9.5px] sm:text-xs font-black tracking-wider flex items-center gap-1 transition-all hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20"
+          >
+            <PlusCircle size={12} />
+            NOVA SALA
+          </button>
+        </div>
       </div>
 
       {/* Create Room Modal/Box */}
